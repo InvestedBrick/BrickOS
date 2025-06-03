@@ -1,4 +1,4 @@
-ENTRY = entry.asm
+ENTRY = src/entry.asm
 LD_SCRIPT = link.ld
 LD_ARGS = -m elf_i386
 ASM_O = entry.o
@@ -14,8 +14,8 @@ all: $(TARGET)
 $(ASM_O): $(ENTRY)
 	nasm -f elf32 $(ENTRY) -o $(ASM_O)
 
-$(CPP_O): kernel.c
-	$(CC) $(CFLAGS) -c kernel.c -o $(CPP_O)
+$(CPP_O): src/kernel.c
+	$(CC) $(CFLAGS) -c src/kernel.c -o $(CPP_O)
 
 $(TARGET): $(ASM_O) $(CPP_O)
 	ld $(LD_ARGS) -T $(LD_SCRIPT) $(ASM_O) $(CPP_O) -o $(TARGET)
