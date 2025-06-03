@@ -1,4 +1,5 @@
 kernel.elf
 kernel.o
-stage2_eldorito
+entry.o
+stage2_eltorito
 BrickOS.iso
