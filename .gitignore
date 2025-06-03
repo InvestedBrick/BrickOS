@@ -1,0 +1,4 @@
+kernel.elf
+kernel.o
+stage2_eldorito
+BrickOS.iso
