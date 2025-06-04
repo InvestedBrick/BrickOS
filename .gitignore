@@ -2,3 +2,4 @@ kernel.elf
 src/*.o
 stage2_eltorito
 BrickOS.iso
+.vscode/
