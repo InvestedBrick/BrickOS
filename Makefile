@@ -1,8 +1,11 @@
-ENTRY = src/entry.asm
+ASM_SOURCES = $(wildcard src/*.asm)
+C_SOURCES = $(wildcard src/*.c)
+
 LD_SCRIPT = link.ld
 LD_ARGS = -m elf_i386
-ASM_O = entry.o
-CPP_O = kernel.o
+
+ASM_OBJS = $(ASM_SOURCES:.asm=.o)
+C_OBJS = $(C_SOURCES:.c=.o)
 TARGET = kernel.elf
 ISO = BrickOS.iso
 
@@ -11,14 +14,15 @@ CFLAGS = -ffreestanding -m32 -nostdlib -nostdinc -fno-builtin -fno-stack-protect
 
 all: $(TARGET)
 
-$(ASM_O): $(ENTRY)
-	nasm -f elf32 $(ENTRY) -o $(ASM_O)
+%.o: %.asm
+	nasm -f elf32 $< -o $@
 
-$(CPP_O): src/kernel.c
-	$(CC) $(CFLAGS) -c src/kernel.c -o $(CPP_O)
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
 
-$(TARGET): $(ASM_O) $(CPP_O)
-	ld $(LD_ARGS) -T $(LD_SCRIPT) $(ASM_O) $(CPP_O) -o $(TARGET)
+
+$(TARGET): $(ASM_OBJS) $(C_OBJS)
+	ld $(LD_ARGS) -T $(LD_SCRIPT) $(ASM_OBJS) $(C_OBJS) -o $(TARGET)
 
 
 iso: $(TARGET)
@@ -26,4 +30,4 @@ iso: $(TARGET)
 	bash stage3.sh
 
 clean:
-	rm -f $(ASM_O) $(TARGET) $(ISO)
+	rm -f $(ASM_OBJS) $(TARGET) $(ISO) $(C_OBJS)
