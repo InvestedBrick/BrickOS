@@ -31,4 +31,4 @@ iso: $(TARGET)
 	bash stage3.sh
 
 clean:
-	rm -f $(ASM_OBJS) $(TARGET) $(ISO) $(BRICK_ASM)
+	rm -f $(ASM_OBJS) $(TARGET) $(ISO) $(BRICK_ASM) $(BRICK_OBJ)
