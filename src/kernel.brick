@@ -1,0 +1,8 @@
+#include screen.brick
+
+brick main {
+    dec msg as array byte -> 15 {"Hello BrickOS!"};
+
+    clear_screen();
+
+}
