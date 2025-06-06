@@ -1,6 +1,6 @@
 bits 32
 section .text
-global start
+global entry
     ; grub multiboot specs
     align 4
     dd 0x1badb002       ; Magic number to identify header
@@ -8,12 +8,12 @@ global start
     dd - ( 0x1badb002 + 0x1) ; checksum
 
 
-extern kmain ; external C function 
+extern _start ; brick main func
 
-start:
+entry:
     cli    ; clear interrupts
     mov esp, stack_space
-    call kmain
+    call _start
     
 halt:
     hlt
