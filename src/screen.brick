@@ -1,0 +1,44 @@
+#define VIDEO_MEMORY_START 753664
+
+#define SCREEN_ROWS 25
+#define SCREEN_COLUMNS 80
+
+#define COLOR_BLACK 0
+#define COLOR_BLUE 1
+#define COLOR_GREEN 2
+#define COLOR_CYAN 3
+#define COLOR_RED 4
+#define COLOR_MAGENTA 5
+#define COLOR_BROWN 6
+#define COLOR_LIGHT_GREY 7
+#define COLOR_DARK_GREY 8
+#define COLOR_LIGHT_BLUE 9
+#define COLOR_LIGHT_GREEN 10
+#define COLOR_LIGHT_CYAN 11
+#define COLOR_LIGHT_RED 12
+#define COLOR_LIGHT_MAGENTA 13
+#define COLOR_LIGHT_BROWN 14
+#define COLOR_WHITE 15
+
+
+globals : [
+    dec fb as byte ptr -> VIDEO_MEMORY_START;
+]
+
+brick fb_write_cell : short -> i,byte -> c, byte -> fg, byte -> bg {
+    set globals::fb[i * 2] to c;
+
+    dec back as byte -> (bg & 15) << 4;
+    dec front as byte -> (fg & 15);
+
+    set globals::fb[i * 2 + 1] to (back | front);
+}
+
+
+brick clear_screen {
+    dec i as short -> 0;
+    while i < SCREEN_COLUMNS * SCREEN_ROWS {
+        fb_write_cell(i,' ',COLOR_BLACK,COLOR_BLACK);
+        i++;
+    }   
+}
