@@ -2,7 +2,7 @@
 #include "io/log.h"
 #include "screen.h"
 #include "tables/gdt.h"
-
+#include "tables/idt.h"
 void kmain(void)
 {
     const char* msg = "Hello BrickOS!";
@@ -15,8 +15,14 @@ void kmain(void)
     serial_configure_buffer(SERIAL_COM1_BASE);
     serial_configure_modem(SERIAL_COM1_BASE);
 
-
-    // Setup global descriptor table
+    log("Set up serial port");
+    // Set up global descriptor table
     init_gdt();
+
+    //Set up Interrupt descriptor table
+    init_idt();
+
+    //trigger manual interrupt
+    //__asm__ volatile ("int $3");
     return;
 }
