@@ -1,0 +1,51 @@
+
+#define FB_COMMAND_PORT                 980
+#define FB_DATA_PORT                    981
+
+#define FB_HIGH_BYTE_COMMAND            14
+#define FB_LOW_BYTE_COMMAND             15
+
+#define SERIAL_COM1_BASE                1016
+
+#define SERIAL_FIFO_COMMAND_PORT_ADD     2
+#define SERIAL_LINE_COMMAND_PORT_ADD     3
+#define SERIAL_MODEM_COMMAND_PORT_ADD    4
+#define SERIAL_LINE_STATUS_PORT_ADD      5 
+
+
+#define SERIAL_LINE_ENABLE_DLAB          128
+
+
+brick outb : int -> data, int -> port {
+    __asm__ volatile {"    mov al, [ebp - 4]"};
+    __asm__ volatile {"    mov dx, [ebp - 8]"};
+    __asm__ volatile {"    out dx, al"};
+    __asm__ volatile {"    ret "};
+}
+
+brick inb : int -> port {
+    __asm__ volatile {"    xor eax, eax"};
+    __asm__ volatile {"    mov dx, [ebp - 4]"};
+    __asm__ volatile {"    in al, dx"};
+    __asm__ volatile {"    ret"};
+}=> byte
+
+brick serial_setup_port : short -> com, short -> divisor {
+    // configure baud rate
+    outb(SERIAL_LINE_ENABLE_DLAB,com + SERIAL_LINE_COMMAND_PORT_ADD);
+    outb((divisor >> 8) & 0xff, com);
+    outb(divisor & 0xff, com);
+
+    // configure line
+    outb(3,com + SERIAL_LINE_COMMAND_PORT_ADD);
+    
+    // configure FIFO queue
+    outb(199,com + SERIAL_FIFO_COMMAND_PORT_ADD);
+
+    // configure modem 
+    outb(3,com + SERIAL_MODEM_COMMAND_PORT_ADD);
+}
+
+brick serial_is_transmit_fifo_empty : int -> com {
+    return inb(com + SERIAL_LINE_STATUS_PORT_ADD) & 32;
+}
