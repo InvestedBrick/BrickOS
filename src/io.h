@@ -52,6 +52,53 @@ unsigned char inb(unsigned short port);
  * @param com The COM port to configure
  * @param divisor The divisor
  */
-
 void serial_configure_baud_rate(unsigned short com, unsigned short divisor);
+
+/** serial_configure_line:
+ *  Configures the line of the given serial port. The port is set to have a
+ *  data length of 8 bits, no parity bits, one stop bit and break control
+ *  disabled.
+ *
+ *  @param com  The serial port to configure
+ */
+void serial_configure_line(unsigned short com);
+
+/**
+ * serial_configure_buffer:
+ * Configures the buffer of the given serial port. The port enables FIFO, clears reciever and transmission FIFO queues
+ * and uses 14 bytes as the queue size
+ * 
+ * @param com The serial port to configure
+ */
+void serial_configure_buffer(unsigned short com);
+
+
+/**
+ * serial_configure_modem:
+ * Configures the modem for the given serial port
+ * Sets it up to be ready for transmission and ready for data terminal
+ * 
+ * @param com The serial port to configure
+ */
+void serial_configure_modem(unsigned short com);
+
+/**
+ * serial_is_transmit_fifo_empty:
+ * Checks wether the transmit FIFO queue is empty or not for the givem COM port
+ * 
+ * @param com The COM port
+ * @return 0 if the transmit FIFO queue is not empty 
+ *         1 if the transmit FIFO queue is emtpy
+ */
+int serial_is_transmit_fifo_empty(unsigned int com);
+
+/** 
+ * serial_write:
+ * writes a null-terminated string to a given COM port
+ * 
+ * @param data The string ptr
+ * @param com The COM port
+*/
+void serial_write(const unsigned char* data, unsigned short com);
+
 #endif
