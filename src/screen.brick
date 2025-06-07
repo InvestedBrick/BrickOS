@@ -64,3 +64,8 @@ brick write_string : byte ptr -> str {
         set globals::cursor_pos to globals::cursor_pos + 1;
     }
 }
+
+brick newline {
+    dec rest_of_line as int -> (SCREEN_COLUMNS - (globals::cursor_pos % SCREEN_COLUMNS));
+    set globals::cursor_pos to globals::cursor_pos + rest_of_line; 
+}
