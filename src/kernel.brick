@@ -10,6 +10,5 @@ brick main {
 
     serial_setup_port(SERIAL_COM1_BASE,3);
 
-    dec log_msg as array byte -> 19 {"Hello Serial Port!"};
-    serial_write(&log_msg[0],SERIAL_COM1_BASE);
+    serial_write("Hello Serial Port!",SERIAL_COM1_BASE);
 }
