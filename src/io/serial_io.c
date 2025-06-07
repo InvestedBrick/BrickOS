@@ -34,7 +34,7 @@ void serial_configure_modem(unsigned short com) {
 }
 
 int serial_is_transmit_fifo_empty(unsigned int com){
-    return inb(SERIAL_LINE_STATUS_PORT(com) & 0x20);
+    return (inb(SERIAL_LINE_STATUS_PORT(com)) & 0x20);
 }
 
 void serial_write(const unsigned char* data, unsigned short com){
