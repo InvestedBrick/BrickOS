@@ -23,6 +23,7 @@
 
 globals : [
     dec fb as byte ptr -> VIDEO_MEMORY_START;
+    dec cursor_pos as short -> 0;
 ]
 
 brick fb_write_cell : short -> i,byte -> c, byte -> fg, byte -> bg {
@@ -41,4 +42,25 @@ brick clear_screen {
         fb_write_cell(i,' ',COLOR_BLACK,COLOR_BLACK);
         i++;
     }   
+}
+
+brick scroll_screen_up {
+    for dec i as int -> 0; i < (SCREEN_COLUMNS * SCREEN_ROWS) - SCREEN_COLUMNS; i++;{
+        set globals::fb[i * 2] to globals::fb[i * 2 + SCREEN_COLUMNS];
+        set globals::fb[i * 2 + 1] to globals::fb[i * 2 + SCREEN_COLUMNS + 1]; 
+    }
+
+    for dec idx as short -> (SCREEN_COLUMNS * SCREEN_ROWS) - SCREEN_COLUMNS; idx < (SCREEN_COLUMNS * SCREEN_ROWS);idx++;{
+        fb_write_cell(idx,' ',COLOR_BLACK,COLOR_BLACK);
+    }
+    
+
+    set globals::cursor_pos = globals::cursor_pos - SCREEN_COLUMNS;
+}
+
+brick write_string : byte ptr -> str {
+    for dec i as int -> 0; str[i] != null;i++; {
+        fb_write_cell(globals::cursor_pos,str[i],COLOR_LIGHT_GREY,COLOR_BLACK);
+        set globals::cursor_pos to globals::cursor_pos + 1;
+    }
 }
