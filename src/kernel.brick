@@ -1,8 +1,13 @@
 #include screen.brick
 
+#include io.brick
+
 brick main {
     dec msg as array byte -> 15 {"Hello BrickOS!"};
 
     clear_screen();
+    write_string(&msg[0]);
+    
+    serial_setup_port(SERIAL_COM1_BASE,3);
 
 }
