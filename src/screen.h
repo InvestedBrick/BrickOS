@@ -1,4 +1,8 @@
 #pragma once
+
+#ifndef INCLUDE_SCREEN_H
+#define INCLUDE_SCREEM_H
+
 #define VIDEO_MEMORY_START 0xb8000
 
 #define SCREEN_ROWS 25
@@ -63,3 +67,5 @@ void fb_set_cursor(unsigned short pos);
  * scrolls the screen up by one row
  */
 void scroll_screen_up();
+
+#endif
