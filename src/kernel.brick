@@ -4,10 +4,15 @@
 
 brick main {
     dec msg as array byte -> 15 {"Hello BrickOS!"};
+    dec second_line as array byte -> 12 {"Second line"};
 
     clear_screen();
     write_string(&msg[0]);
-    
+    newline();
+    write_string(&second_line[0]);
+
     serial_setup_port(SERIAL_COM1_BASE,3);
 
+    dec log_msg as array byte -> 19 {"Hello Serial Port!"};
+    serial_write(&log_msg[0],SERIAL_COM1_BASE);
 }
