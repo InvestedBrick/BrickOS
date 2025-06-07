@@ -3,13 +3,10 @@
 #include io.brick
 
 brick main {
-    dec msg as array byte -> 15 {"Hello BrickOS!"};
-    dec second_line as array byte -> 12 {"Second line"};
-
     clear_screen();
-    write_string(&msg[0]);
+    write_string("Hello BrickOS!");
     newline();
-    write_string(&second_line[0]);
+    write_string("Updates coming soon :3");
 
     serial_setup_port(SERIAL_COM1_BASE,3);
 
