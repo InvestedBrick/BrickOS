@@ -1,6 +1,7 @@
-#include "io.h"
-#include "log.h"
+#include "io/io.h"
+#include "io/log.h"
 #include "screen.h"
+#include "tables/gdt.h"
 
 void kmain(void)
 {
@@ -14,8 +15,8 @@ void kmain(void)
     serial_configure_buffer(SERIAL_COM1_BASE);
     serial_configure_modem(SERIAL_COM1_BASE);
 
-    log("Hello Log");
-    warn("Watch out!");
-    error("FAILED");
+
+    // Setup global descriptor table
+    init_gdt();
     return;
 }

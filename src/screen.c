@@ -1,5 +1,5 @@
 #include "screen.h"
-#include "io.h"
+#include "io/io.h"
 
 unsigned short g_cursor_pos = 0;
 
