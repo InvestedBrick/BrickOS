@@ -20,21 +20,19 @@ brick outb : int -> data, int -> port {
     __asm__ volatile {"    mov al, [ebp - 4]"};
     __asm__ volatile {"    mov dx, [ebp - 8]"};
     __asm__ volatile {"    out dx, al"};
-    __asm__ volatile {"    ret "};
 }
 
 brick inb : int -> port {
     __asm__ volatile {"    xor eax, eax"};
     __asm__ volatile {"    mov dx, [ebp - 4]"};
     __asm__ volatile {"    in al, dx"};
-    __asm__ volatile {"    ret"};
 }=> byte
 
-brick serial_setup_port : short -> com, short -> divisor {
+brick serial_setup_port : int -> com, short -> divisor {
     // configure baud rate
     outb(SERIAL_LINE_ENABLE_DLAB,com + SERIAL_LINE_COMMAND_PORT_ADD);
-    outb((divisor >> 8) & 0xff, com);
-    outb(divisor & 0xff, com);
+    outb((divisor >> 8) & 255, com);
+    outb((divisor & 255), com);
 
     // configure line
     outb(3,com + SERIAL_LINE_COMMAND_PORT_ADD);
@@ -47,5 +45,13 @@ brick serial_setup_port : short -> com, short -> divisor {
 }
 
 brick serial_is_transmit_fifo_empty : int -> com {
-    return inb(com + SERIAL_LINE_STATUS_PORT_ADD) & 32;
+    return (inb(com + SERIAL_LINE_STATUS_PORT_ADD) & 32);
+}=> bool
+
+brick serial_write : byte ptr -> str, int -> com {
+    for dec i as int -> 0; str[i] != null;i++;{
+        while serial_is_transmit_fifo_empty(com) == false {}
+        dec data as int -> str[i];
+        outb(data,com);
+    }
 }
