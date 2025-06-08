@@ -3,6 +3,7 @@
 #include "screen.h"
 #include "tables/gdt.h"
 #include "tables/interrupts.h"
+#include "drivers/keyboard/keyboard.h"
 void kmain(void)
 {
     const char* msg = "Hello BrickOS!";
@@ -22,7 +23,14 @@ void kmain(void)
     //Set up Interrupt descriptor table
     init_idt();
 
-    //trigger manual interrupt
-    //__asm__ volatile ("int $3");
+    //Initialize keyboard
+    init_keyboard();
+
+    //get input
+    while(1){
+        while(!kb_buffer_is_empty())
+            handle_screen_input();
+        __asm__ volatile ("hlt");
+    }
     return;
 }
