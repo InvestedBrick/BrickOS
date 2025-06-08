@@ -31,8 +31,25 @@ common_interrupt_handler:
     push edi
     push ebp
 
-    call interrupt_handler
 
+    ; Stack
+    ;   [esp + 0x2c] eflags
+    ;   [esp + 0x28] cs
+    ;   [esp + 0x24] eip
+    ;   [esp + 0x20] error code            
+    ;   [esp + 0x1c] interrupt number            
+    ;   [esp + 0x18] eax
+    ;   [esp + 0x14] ebx
+    ;   [esp + 0x10] ecx
+    ;   [esp + 0x0c] edx
+    ;   [esp + 0x08] esi
+    ;   [esp + 0x04] edi
+    ;   [esp       ] ebp
+
+    push esp
+    call interrupt_handler
+    add esp, 4
+    
     pop ebp
     pop edi
     pop esi 
@@ -77,11 +94,28 @@ no_error_code_interrupt_handler 28
 no_error_code_interrupt_handler 29
 error_code_interrupt_handler 30
 no_error_code_interrupt_handler 31
+no_error_code_interrupt_handler 32
+no_error_code_interrupt_handler 33
+no_error_code_interrupt_handler 34
+no_error_code_interrupt_handler 35
+no_error_code_interrupt_handler 36
+no_error_code_interrupt_handler 37
+no_error_code_interrupt_handler 38
+no_error_code_interrupt_handler 39
+no_error_code_interrupt_handler 40
+no_error_code_interrupt_handler 41
+no_error_code_interrupt_handler 42
+no_error_code_interrupt_handler 43
+no_error_code_interrupt_handler 44
+no_error_code_interrupt_handler 45
+no_error_code_interrupt_handler 46
+no_error_code_interrupt_handler 47
+no_error_code_interrupt_handler 48
 
 global idt_code_table
 idt_code_table:
 %assign i 0
-%rep    32
+%rep    48
     dd interrupt_handler_%+i
 %assign i i+1
 %endrep
