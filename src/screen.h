@@ -68,4 +68,11 @@ void fb_set_cursor(unsigned short pos);
  */
 void scroll_screen_up();
 
+/**
+ * handle_screen_input:
+ * Prints a character from the keyboard buffer to the screen
+ * 
+ */
+void handle_screen_input();
+
 #endif
