@@ -31,6 +31,15 @@
 #define ICW4_BUF_PIC1 0x0c
 #define ICW4_SFMN 0x10  // special fully nested
 
+#define INT_TIMER 0x20
+#define INT_KEYBOARD 0x21
+#define INT_PIC2 0x22
+#define INT_COM2 0x23
+#define INT_COM1 0x24
+#define INT_LPT2 0x25
+#define INT_FLOPPY 0x26
+#define INT_LPT1 0x27
+#define INT_RTC 0x28
 typedef struct
 {
     unsigned short offset_low;
@@ -46,25 +55,6 @@ typedef struct
     unsigned int base;
 }__attribute__((packed)) idt_t;
 
-/*
-typedef struct {
-    unsigned int eax;
-    unsigned int ebx;
-    unsigned int ecx;
-    unsigned int edx;
-    unsigned int esi;
-    unsigned int edi;
-    unsigned int ebp;
-    unsigned int esp;
-}__attribute__((packed)) cpu_state_t;
-
-typedef struct  {
-    unsigned int error_code;
-    unsigned int eip;
-    unsigned int cs;
-    unsigned int eflags;
-}__attribute__((packed)) stack_state_t;
-*/
 
 typedef struct {
     unsigned int ebp,edi,esi,edx,ecx,ebx,eax;
