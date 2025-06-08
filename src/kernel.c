@@ -2,7 +2,7 @@
 #include "io/log.h"
 #include "screen.h"
 #include "tables/gdt.h"
-#include "tables/idt.h"
+#include "tables/interrupts.h"
 void kmain(void)
 {
     const char* msg = "Hello BrickOS!";
