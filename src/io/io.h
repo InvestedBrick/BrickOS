@@ -4,8 +4,8 @@
 #define INCLUDE_IO_H
 
 /* SCREEN I/O */
-#define FB_COMMAND_PORT                 0x3D4
-#define FB_DATA_PORT                    0x3D5
+#define FB_COMMAND_PORT                 0x3d4
+#define FB_DATA_PORT                    0x3d5
    
 #define FB_HIGH_BYTE_COMMAND            14
 #define FB_LOW_BYTE_COMMAND             15
