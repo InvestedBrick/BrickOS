@@ -1,5 +1,6 @@
 #include "interrupts.h"
 #include "../io/log.h"
+#include "../drivers/keyboard/keyboard.h"
 
 __attribute__((aligned(0x10)))
 static idt_entry_t idt_entries[IDT_MAX_ENTRIES];
@@ -30,16 +31,17 @@ void init_idt(){
     remap_PIC(PIC1_START_INTERRUPT,PIC2_START_INTERRUPT); // [32; 39] and [40;47]
 
 }
-static unsigned int timer_ticks = 0;
 void interrupt_handler(interrupt_stack_frame_t* stack_frame) {
 
-    if (stack_frame->interrupt_number == 0x20){
-        timer_ticks++;
-        log("Timer tick");
+    if (stack_frame->interrupt_number == INT_KEYBOARD){
+        handle_keyboard_interrupt();
         acknowledge_PIC(stack_frame->interrupt_number);
         return;
     }
-    //__asm__ volatile ("hlt");
+    else if (stack_frame->interrupt_number == INT_TIMER){
+        acknowledge_PIC(stack_frame->interrupt_number);
+        return;
+    }
 }
 
 void remap_PIC(unsigned int offset1, unsigned int offset2){
