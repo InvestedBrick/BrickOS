@@ -17,3 +17,22 @@ void warn(const unsigned char* msg){
 void error(const unsigned char* msg){
     serial_write_with_prefix("[ERROR] ",msg,SERIAL_COM1_BASE);
 }
+
+void log_uint(unsigned int num){
+    //convert num to ASCII
+    char ascii[11] = {0};
+    if(num == 0){
+        ascii[0] = '0';
+        ascii[1] = '\0';
+        log(ascii);
+        return;
+    }
+    unsigned int temp,count = 0,i;
+    for(temp=num;temp != 0; temp /= 10,count++);
+    for (i = count - 1, temp=num;i < 0xffffffff;i--){
+        ascii[i] = (temp%10) + 0x30;
+        temp /= 10;
+    }
+    
+    log(ascii);
+}
