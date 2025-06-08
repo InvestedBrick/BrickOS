@@ -25,4 +25,11 @@ void warn(const unsigned char* msg);
  */
 void error(const unsigned char* msg);
 
+/**
+ * log_uint:
+ * Writes an unsigned integer to the COM1 serial port
+ * 
+ * @param num The integer
+ */
+void log_uint(unsigned int num);
 #endif
