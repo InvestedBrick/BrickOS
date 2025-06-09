@@ -4,8 +4,12 @@
 #include "tables/gdt.h"
 #include "tables/interrupts.h"
 #include "drivers/keyboard/keyboard.h"
-void kmain(void)
-{
+#include "multiboot.h"
+#include "memory/memory.h"
+#include "memory/kmalloc.h"
+
+void kmain(multiboot_info_t* boot_info)
+{   
     const char* msg = "Hello BrickOS!";
     clear_screen();
     write_string(msg,15);
@@ -19,18 +23,31 @@ void kmain(void)
     log("Set up serial port");
     // Set up global descriptor table
     init_gdt();
+    log("Initialized the GDT");
 
     //Set up Interrupt descriptor table
     init_idt();
+    log("Initialited the IDT");
 
     //Initialize keyboard
     init_keyboard();
+    log("Initialized keyboard");
 
+
+    unsigned int mod1 = *(unsigned int*) (boot_info->mods_addr + 4);
+    unsigned int physical_alloc_start = (mod1 - 0xfff) & ~ 0xfff;
+
+    init_memory(physical_alloc_start,boot_info->mem_upper);
+    log("Initialized paged memory");
+     
+    init_kmalloc(MEMORY_PAGE_SIZE);
+    log("Initialized kmalloc");
+    
     //get input
     while(1){
         while(!kb_buffer_is_empty())
             handle_screen_input();
-        __asm__ volatile ("hlt");
+        asm ("hlt");
     }
     return;
 }
