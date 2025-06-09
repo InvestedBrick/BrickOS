@@ -1,1 +1,6 @@
 [LOG] Set up serial port
+[LOG] Initialized the GDT
+[LOG] Initialited the IDT
+[LOG] Initialized keyboard
+[LOG] Initialized paged memory
+[LOG] Initialized kmalloc
