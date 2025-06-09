@@ -3,7 +3,7 @@
 #ifndef INCLUDE_SCREEN_H
 #define INCLUDE_SCREEM_H
 
-#define VIDEO_MEMORY_START 0xb8000
+#define VIDEO_MEMORY_START 0xc00b8000 // need to remap due to allocated memory pages
 
 #define SCREEN_ROWS 25
 #define SCREEN_COLUMNS 80
