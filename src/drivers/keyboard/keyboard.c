@@ -1,6 +1,5 @@
 #include "keyboard.h"
 #include "../../io/io.h"
-#include "../../io/log.h"
 unsigned char read_scan_code(){
     return inb(KEYBOARD_DATA_PORT);
 }
@@ -136,8 +135,6 @@ unsigned char decode_scan_code(unsigned char scan_code){
     if (scan_code > 127 || is_special_code(scan_code)){
         return 0;
     }
-    //log_uint((unsigned int)scan_code);
-    //log_uint(KB_STATUS);
     if (KB_STATUS == KB_UPPER){
       return keyboard_map_upper[scan_code];
     }
