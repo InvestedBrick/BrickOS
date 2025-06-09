@@ -4,21 +4,41 @@ ENTRY(start)
 SECTIONS {
     . = 0x00100000;
 
-    .text ALIGN(0x1000): {
+    kernel_physical_start = .;
+    kernel_virtual_start = . + 0xc0000000;
+
+    .multiboot ALIGN(4K) : {
+        *(.multiboot)
+    }
+
+
+    .note.gnu.build-id ALIGN(4K): {
+        *(.note.gnu.build-id)
+    }
+
+    .boot ALIGN(4K) : {
+        *(.boot)
+    }
+
+
+    . += 0xC0000000;
+
+
+    .text ALIGN(4K): AT(ADDR(.text) - 0xC0000000){
         *(.text)
     }
 
-    .rodata ALIGN (0x1000) : 
-    {
-        *(.rodata*)
+    .rodata ALIGN(4K): AT(ADDR(.rodata) - 0xC0000000){
+        *(.rodata)
     }
-
-    .data ALIGN(0x1000) : {
+    .data ALIGN(4K): AT(ADDR(.data) - 0xC0000000){
         *(.data)
     }
-
-    .bss ALIGN(0x1000) : {
+    .bss ALIGN(4K): AT(ADDR(.bss) - 0xC0000000){
         *(COMMON)
-        *(.bss)
+        *(.text)
     }
+
+    kernel_physical_end = .;
+    kernel_virtual_end = . + 0xc0000000;
 }
