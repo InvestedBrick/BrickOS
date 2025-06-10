@@ -23,6 +23,66 @@ void mem_change_page_dir(unsigned int* pd){
     pd = (unsigned int*)(((unsigned int)pd) - KERNEL_START);
     mem_set_current_page_dir(pd);
 }
+
+void pmm_free_page_frame(unsigned int phys_addr){
+    unsigned int frame = phys_addr / MEMORY_PAGE_SIZE;
+    unsigned int byte = frame / 8;
+    unsigned int bit = frame % 8;
+    physical_memory_bitmap[byte] &= ~(1 << bit);
+}
+
+void free_user_page_dir(unsigned int* usr_pd){
+    for (unsigned int i = 0; i < NUM_PAGE_DIRS;i++){
+        if (page_dirs[i] == usr_pd){
+            page_dir_used[i] = 0;
+
+            // free page tables
+            for(unsigned int pt_idx = 0; pt_idx < 768;pt_idx++){
+                unsigned int pt_entry = usr_pd[pt_idx];
+                if (pt_entry & PAGE_FLAG_PRESENT){
+                    unsigned int pt_phys_addr = pt_entry & 0xfffff000;
+                    unsigned int* page_table = (unsigned int*)(pt_phys_addr + KERNEL_START);
+
+                    //Free all pages in the page table
+                    for(unsigned int pf_idx = 0; pf_idx < 1024; pf_idx++){
+                        unsigned int page_entry = page_table[pf_idx];
+                        if (page_entry & PAGE_FLAG_PRESENT){
+                            unsigned int page_frame_phys_addr = page_entry & 0xfffff000;
+                            pmm_free_page_frame(page_frame_phys_addr);
+                        }
+                    }
+
+                    memset(page_table,0,sizeof(unsigned int) * 1024);
+                    //Free the page table
+                    pmm_free_page_frame(pt_phys_addr);
+
+                    //mark the page directory as free
+                    usr_pd[pt_idx] = 0;
+                }
+            }
+        }
+    }
+}
+
+unsigned int* create_user_page_dir(){
+    for (unsigned int i = 0; i < NUM_PAGE_DIRS;i++){
+        if(!page_dir_used[i]){
+            page_dir_used[i] = 1;
+            unsigned int* pd = page_dirs[i];
+            memset(pd,0,sizeof(unsigned int) * 1024);
+
+            // Copy Kernel mapping
+            for (unsigned int j = 768; j < 1024;j++){
+                pd[j] = initial_page_dir[j];
+            }
+
+            pd[1023] = ((unsigned int)pd - KERNEL_START) | PAGE_FLAG_PRESENT | PAGE_FLAG_WRITE;
+            return pd;
+        }
+    }
+    return (unsigned int*)0;
+}
+
 void sync_page_dirs(){
     for (unsigned  i = 0; i < NUM_PAGE_DIRS;i++){
         if (page_dir_used[i]){
