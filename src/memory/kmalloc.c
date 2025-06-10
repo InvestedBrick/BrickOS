@@ -5,6 +5,7 @@ static unsigned int heap_size;
 static unsigned int heap_allocated;
 static unsigned char kmalloc_initialized = 0;
 
+//NOTE: This allocator does currently not care abour returning allocated pages to the page manager since I don't wanna deal with it
 memory_block_t* head = 0;
 
 void alloc_and_map_new_page(){
@@ -13,7 +14,7 @@ void alloc_and_map_new_page(){
     unsigned int new_page_addr = KERNEL_MALLOC_START + n_allocated_pages * MEMORY_PAGE_SIZE;
     mem_map_page(new_page_addr,phys_addr,PAGE_FLAG_WRITE);
     heap_size += MEMORY_PAGE_SIZE;
-    return (void*)(new_page_addr);
+    //return (void*)(new_page_addr);
 }
 
 memory_block_t* find_free_block(unsigned int size){
@@ -75,6 +76,7 @@ void merge_blocks(memory_block_t* block){
     while (!block->next && block->next->free ){
         block->size = block->size + MEMORY_BLOCK_SIZE + block->next->size;
         block->next = block->next->next;
+        heap_allocated -= block->size + MEMORY_BLOCK_SIZE;
     }
 }
 void kfree(void* addr){
