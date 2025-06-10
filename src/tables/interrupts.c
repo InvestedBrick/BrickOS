@@ -2,8 +2,7 @@
 #include "../io/log.h"
 #include "../drivers/keyboard/keyboard.h"
 
-__attribute__((aligned(0x10)))
-static idt_entry_t idt_entries[IDT_MAX_ENTRIES];
+static idt_entry_t idt_entries[IDT_MAX_ENTRIES] __attribute__((aligned(0x10)));
 static int enabled_idt[IDT_MAX_ENTRIES] = {0};
 
 extern void* idt_code_table[];
@@ -25,8 +24,7 @@ void init_idt(){
         set_idt_entry(v,idt_code_table[v],STANDARD_KERNEL_ATTRIBUTES);
         enabled_idt[v] = 1;
     }
-
-    load_idt((idt_entry_t*)&idt);
+    load_idt(&idt);
 
     remap_PIC(PIC1_START_INTERRUPT,PIC2_START_INTERRUPT); // [32; 39] and [40;47]
 
