@@ -12,6 +12,7 @@
 #define PAGE_FLAG_PRESENT 0x1
 #define PAGE_FLAG_WRITE (1 << 1)
 #define PAGE_FLAG_OWNER (1 << 9)
+#define PAGE_FLAG_USER  (1 << 2)
 
 #define NUM_PAGE_DIRS 256
 #define NUM_PAGE_FRAMES (0x10000000 / 0x1000 / 0x8)
@@ -45,7 +46,7 @@ unsigned int pmm_alloc_page_frame();
  * 
  * @param virt_addr The virtual address of the memory page
  * @param phys_addr The physical address of the memory page
- * @param flags The flags (R/W/X) for the page
+ * @param flags The flags for the page
  */
 void mem_map_page(unsigned int virt_addr, unsigned int phys_addr, unsigned int flags);
 
@@ -74,4 +75,19 @@ void mem_set_current_page_dir(unsigned int* pd);
  * synchronices the page directories
  */
 void sync_page_dirs();
+
+/**
+ * create_user_page_dir:
+ * Creates a page directory for a user process
+ * 
+ * @return The page directory
+ */
+unsigned int* create_user_page_dir();
+/**
+ * free_user_page_dir:
+ * Marks a user page directory as unused, frees all page tables and page frames within
+ * 
+ * @param usr_pd The user page directory
+ */
+void free_user_page_dir(unsigned int* usr_pd);
 #endif
