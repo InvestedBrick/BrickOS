@@ -17,8 +17,14 @@ typedef struct {
     unsigned char base_high;
 }__attribute__((packed)) gdt_entry_t;
 
+#define KERNEL_CODE_SEGMENT 0x9a
+#define KERNEL_DATA_SEGMENT 0x92
 
+#define USER_CODE_SEGMENT 0xfa
+#define USER_DATA_SEGNENT 0xf2
+#define GRANULARITY 0xcf
 
+#define N_GDT_ENTRIES 5
 /**
  * load_gdt - loads global descriptor table
  * @param table A pointer to a gdt
