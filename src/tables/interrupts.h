@@ -79,7 +79,7 @@ void init_idt();
 
 void interrupt_handler(interrupt_stack_frame_t* stack_frame);
 
-void load_idt(const idt_entry_t* first_entry);
+void load_idt(const idt_t* first_entry);
 
 /**
  * remap_PIC:
