@@ -3,11 +3,14 @@
 #ifndef INCLUDE_KMALLOC_H
 #define INCLUDE_KMALLOC_H
 
-typedef struct{
+struct memory_block{
     unsigned int size;
-    memory_block_t* next;
+    struct memory_block* next;
     unsigned char free;
-}__attribute__((packed)) memory_block_t;
+}__attribute__((packed));
+
+typedef struct memory_block memory_block_t; 
+
 #define MEMORY_BLOCK_SIZE sizeof(memory_block_t)
 
 /**
