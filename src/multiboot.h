@@ -4,6 +4,13 @@
 #define INCLUDE_MULTIBOOT_H
 
 typedef struct {
+    unsigned int mod_start;
+    unsigned int mod_end;
+    unsigned int cmdline;
+    unsigned int reserved;
+} multiboot_module_t;
+
+typedef struct {
     unsigned int tabsize;
     unsigned int strsize;
     unsigned int addr;
