@@ -20,8 +20,12 @@ void set_idt_entry(unsigned char num,void* offset,unsigned char attributes){
 void init_idt(){
     idt.base = (unsigned int)&idt_entries[0];
     idt.limit = sizeof(idt_entry_t) * IDT_MAX_ENTRIES - 1;
-    for(unsigned char v = 0; v < 48;v++){
-        set_idt_entry(v,idt_code_table[v],STANDARD_KERNEL_ATTRIBUTES);
+    for(unsigned char v = 0; v < 49;v++){
+        if(v == INT_SOFTWARE){
+            set_idt_entry(v,idt_code_table[v],STANDARD_USER_ATTRIBUTES); // user software interrupt call (syscall)
+        }else{
+            set_idt_entry(v,idt_code_table[v],STANDARD_KERNEL_ATTRIBUTES);
+        }
         enabled_idt[v] = 1;
     }
     load_idt(&idt);
@@ -38,6 +42,14 @@ void interrupt_handler(interrupt_stack_frame_t* stack_frame) {
     }
     else if (stack_frame->interrupt_number == INT_TIMER){
         acknowledge_PIC(stack_frame->interrupt_number);
+        return;
+    }
+    else if(stack_frame->interrupt_number == INT_SOFTWARE){
+        if (stack_frame->eax == 1){
+            log("SYSCALL 1");
+        }else{
+            log("NOT SYSCALL 1");
+        }
         return;
     }
 }
