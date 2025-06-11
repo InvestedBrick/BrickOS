@@ -2,6 +2,8 @@
 #include "../memory/memory.h"
 #include "../memory/kmalloc.h"
 #include "../util.h"
+#include "../multiboot.h"
+#include "../io/log.h"
 
 vector_t user_process_vector;
 static unsigned char pid_used[MAX_PIDS] = {0};
@@ -25,7 +27,7 @@ unsigned int free_pid(unsigned int pid){
     }
 }
 
-unsigned int create_user_process() {
+unsigned int create_user_process(unsigned char* binary, unsigned int size) {
 // To setup a user process:
   /**
    * create_user_page_dir()
@@ -35,21 +37,54 @@ unsigned int create_user_process() {
    * mem_map_page() for both pages (code/data at 0x00000000, stack at 0xBFFFFFFB) with flag PAGE_FLAG_USER
    */
     user_process_t* process = (user_process_t*)kmalloc(sizeof(user_process_t));
+    log("Allocated one user process");
+    
     unsigned int* pd = create_user_page_dir();
-    mem_change_page_dir(pd);
-    unsigned int code_data_mem = pmm_alloc_page_frame();
-    unsigned int stack_mem = pmm_alloc_page_frame();
-
-    mem_map_page(USER_CODE_DATA_VMEMORY_START,code_data_mem,PAGE_FLAG_WRITE | PAGE_FLAG_USER);
-    mem_map_page(USER_STACK_VMEMORY_START,stack_mem,PAGE_FLAG_WRITE | PAGE_FLAG_USER);
-
+    log("Created page dir");
+    log_uint((unsigned int)pd);
     process->page_dir = pd;
+    
+    mem_change_page_dir(pd); 
+    log("Changed page dir");
+
+    unsigned int code_data_pages = CEIL_DIV(size,MEMORY_PAGE_SIZE);
+    for (unsigned int i = 0; i < code_data_pages;i++){
+        unsigned int code_data_mem = pmm_alloc_page_frame();
+        mem_map_page(USER_CODE_DATA_VMEMORY_START + i * MEMORY_PAGE_SIZE,code_data_mem,PAGE_FLAG_WRITE | PAGE_FLAG_USER);
+        
+        // copy binary into mapped page
+        unsigned int offset = i * MEMORY_PAGE_SIZE;
+        unsigned int to_copy = (size - offset > MEMORY_PAGE_SIZE) ? MEMORY_PAGE_SIZE : (size - offset);
+        if (to_copy > 0){
+            void* dest = (void*)(USER_CODE_DATA_VMEMORY_START + offset);
+            memcpy(dest,binary + offset,to_copy);
+        }
+    }
+    log("Copied binary into allocated pages");
+    
+    unsigned int stack_mem = pmm_alloc_page_frame();
+    mem_map_page(USER_STACK_VMEMORY_START,stack_mem,PAGE_FLAG_WRITE | PAGE_FLAG_USER);
+    
+    //allocate a kernel stack
+    process->kernel_stack = (unsigned int)kmalloc(MEMORY_PAGE_SIZE);
+    log("Allocated kernel stack");
     unsigned int pid = get_pid();
     if (pid == 0) return 0;
     process->process_id = pid;
+    log("Got PID");
+    
     vector_append(&user_process_vector,(unsigned int)process); // too lazy to implement a vector for structs
 
     return process->process_id;
+}
+
+user_process_t* get_user_process_by_pid(unsigned int pid){
+    for (unsigned i = 0; i < user_process_vector.size;i++){
+        if (((user_process_t*)(user_process_vector.data[i]))->process_id == pid){
+            return (user_process_t*)(user_process_vector.data[i]);
+        }
+    }
+    return 0;
 }
 
 void init_user_process_vector(){
