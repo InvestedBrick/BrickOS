@@ -21,10 +21,10 @@ typedef struct {
 #define KERNEL_DATA_SEGMENT 0x92
 
 #define USER_CODE_SEGMENT 0xfa
-#define USER_DATA_SEGNENT 0xf2
+#define USER_DATA_SEGMENT 0xf2
 #define GRANULARITY 0xcf
 
-#define N_GDT_ENTRIES 5
+#define N_GDT_ENTRIES 6
 /**
  * load_gdt - loads global descriptor table
  * @param table A pointer to a gdt
@@ -32,13 +32,19 @@ typedef struct {
  */
 void load_gdt(const gdt_t* table);
 /**
+ * 
+ * load_tss - loads the task state segment
+ * @param tss_segment The TSS segment index (should be 0x28)
+ */
+void load_tss(unsigned int tss_segment);
+/**
  * set_gdt_entry:
  * creates a gdt entry with the given parameters
  * @param num The index of the gdt entry
  * @param base The start of the memory segment
  * @param limit The end of the memory segment
  * @param access The access of the memory segment
- * @param gran The granularity of the memroy segment
+ * @param gran The granularity of the memory segment
  */
 void set_gdt_entry(int num,unsigned int base, unsigned int limit, unsigned char access, unsigned char gran);
 
