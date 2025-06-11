@@ -3,3 +3,4 @@ timeout=0
 
 title BrickOS
 kernel /boot/kernel.elf
+module /modules/interrupt
