@@ -1,6 +1,6 @@
 #include "memory.h"
 #include "../util.h"
-
+#include "../io/log.h"
 static unsigned int page_frame_min;
 static unsigned int page_frame_max;
 static unsigned int total_alloc;
@@ -8,7 +8,8 @@ static unsigned int mem_number_vpages;
 
 unsigned char physical_memory_bitmap[(NUM_PAGE_FRAMES / 8)]; // Update dynamically && bitarray
 
-static unsigned int page_dirs[NUM_PAGE_DIRS] [1024] __attribute__((aligned(MEMORY_PAGE_SIZE)));
+__attribute__((aligned(0x1000)))
+static unsigned int page_dirs[NUM_PAGE_DIRS] [1024];
 static unsigned char page_dir_used[NUM_PAGE_DIRS];
 
 void pmm_init(unsigned int mem_low, unsigned int mem_high){
@@ -22,6 +23,7 @@ void pmm_init(unsigned int mem_low, unsigned int mem_high){
 void mem_change_page_dir(unsigned int* pd){
     pd = (unsigned int*)(((unsigned int)pd) - KERNEL_START);
     mem_set_current_page_dir(pd);
+    log("Called asm func to set current page dir");
 }
 
 void pmm_free_page_frame(unsigned int phys_addr){
@@ -49,6 +51,9 @@ void free_user_page_dir(unsigned int* usr_pd){
                         if (page_entry & PAGE_FLAG_PRESENT){
                             unsigned int page_frame_phys_addr = page_entry & 0xfffff000;
                             pmm_free_page_frame(page_frame_phys_addr);
+
+                            unsigned int virt_addr = (pt_idx<< 22) | (pf_idx << 12);
+                            invalidate(virt_addr);
                         }
                     }
 
@@ -70,13 +75,15 @@ unsigned int* create_user_page_dir(){
             page_dir_used[i] = 1;
             unsigned int* pd = page_dirs[i];
             memset(pd,0,sizeof(unsigned int) * 1024);
-
             // Copy Kernel mapping
             for (unsigned int j = 768; j < 1024;j++){
                 pd[j] = initial_page_dir[j];
             }
-
             pd[1023] = ((unsigned int)pd - KERNEL_START) | PAGE_FLAG_PRESENT | PAGE_FLAG_WRITE;
+            
+            // Identity map the page directory so the CPU can read it after CR3 is loaded
+            unsigned int physical_addr = (unsigned int)pd - KERNEL_START;
+            pd[((unsigned int)pd >> 22) & 0x3ff] = physical_addr | PAGE_FLAG_PRESENT | PAGE_FLAG_WRITE;
             return pd;
         }
     }
@@ -94,6 +101,14 @@ void sync_page_dirs(){
         }
     }
 }
+
+void restore_kernel_memory_page_dir(){
+    unsigned int* current_page_dir = mem_get_current_page_dir();
+    if (current_page_dir != initial_page_dir){
+        mem_change_page_dir(initial_page_dir);
+    }
+}
+
 void mem_map_page(unsigned int virt_addr, unsigned int phys_addr, unsigned int flags){
     unsigned int* prev_page_dir = 0;
 
@@ -158,6 +173,10 @@ unsigned int pmm_alloc_page_frame() {
     return 0;
 }
 
+void un_identity_map_first_4MB(){
+    initial_page_dir[0];
+    invalidate(0);
+}
 
 
 void init_memory(unsigned int physical_alloc_start, unsigned int mem_high){
