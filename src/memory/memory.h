@@ -90,4 +90,11 @@ unsigned int* create_user_page_dir();
  * @param usr_pd The user page directory
  */
 void free_user_page_dir(unsigned int* usr_pd);
+
+/**
+ * void restore_kernel_memory_page_dir:
+ * restores the current page directory to be the kernel page directory
+ */
+void restore_kernel_memory_page_dir();
+
 #endif
