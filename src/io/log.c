@@ -22,9 +22,7 @@ void log_uint(unsigned int num){
     //convert num to ASCII
     char ascii[11] = {0};
     if(num == 0){
-        ascii[0] = '0';
-        ascii[1] = '\0';
-        log(ascii);
+        log("0");
         return;
     }
     unsigned int temp,count = 0,i;
