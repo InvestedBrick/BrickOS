@@ -3,3 +3,4 @@ src/*.o
 stage2_eltorito
 BrickOS.iso
 .vscode/
+linecounter.py
