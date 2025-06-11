@@ -17,3 +17,12 @@ load_gdt:
     jmp 0x08:flush_cs ; load the code segment
 flush_cs:
     ret
+
+global load_tss
+load_tss:
+    ; loads the task state segment
+    ; stack: [esp + 4] segment index
+    ;        [esp    ] return address
+    mov eax, [esp + 4]
+    ltr ax
+    ret
