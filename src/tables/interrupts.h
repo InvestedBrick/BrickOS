@@ -3,7 +3,8 @@
 #ifndef INCLUDE_IDT_H
 #define INCLUDE_IDT_H
 
-#define STANDARD_KERNEL_ATTRIBUTES 0x8e // Present, DPL=0, 32-bit interrupt gate
+#define STANDARD_KERNEL_ATTRIBUTES 0x8e // Present, DPL=0, 32-bit interrupt gate 
+#define STANDARD_USER_ATTRIBUTES 0xee // Present, DPL = 3, 32-bit interrupt gate
 
 #define IDT_MAX_ENTRIES 256
 
@@ -40,6 +41,8 @@
 #define INT_FLOPPY 0x26
 #define INT_LPT1 0x27
 #define INT_RTC 0x28
+
+#define INT_SOFTWARE 0x30
 typedef struct
 {
     unsigned short offset_low;
