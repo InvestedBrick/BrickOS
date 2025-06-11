@@ -4,3 +4,6 @@ all: $(TARGET)
 
 $(TARGET): $(ASM)
 	nasm -f bin $(ASM) -o $(TARGET)
+
+clean:
+	rm interrupt
