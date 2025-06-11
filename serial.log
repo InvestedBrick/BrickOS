@@ -1,38 +1,9 @@
 [LOG] Set up serial port
 [LOG] Initialized the GDT
-[LOG] Set up serial port
-[LOG] Initialized the GDT
 [LOG] Initialited the IDT
 [LOG] Initialized keyboard
 [LOG] Initialized paged memory
 [LOG] Initialized kmalloc
 [LOG] Initialized user process vector
-[LOG] Found a module
-[LOG] Before User process
-[LOG] Allocated one user process
-[LOG] Created page dir
-[LOG] 3222450176
-[LOG] Set up serial port
-[LOG] Initialized the GDT
-[LOG] Initialited the IDT
-[LOG] Initialized keyboard
-[LOG] Initialized paged memory
-[LOG] Initialized kmalloc
-[LOG] Initialized user process vector
-[LOG] Found a module
-[LOG] Before User process
-[LOG] Allocated one user process
-[LOG] Created page dir
-[LOG] 3222450176
-[LOG] Set up serial port
-[LOG] Initialized the GDT
-[LOG] Initialited the IDT
-[LOG] Initialized keyboard
-[LOG] Initialized paged memory
-[LOG] Initialized kmalloc
-[LOG] Initialized user process vector
-[LOG] Found a module
-[LOG] Before User process
-[LOG] Allocated one user process
-[LOG] Created page dir
-[LOG] 3222450176
+[LOG] NOT SYSCALL 1
+[LOG] SYSCALL 1
