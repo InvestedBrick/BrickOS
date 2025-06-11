@@ -1,4 +1,7 @@
 #include "gdt.h"
+#include "tss.h"
+#include "../util.h"
+tss_entry_t tss_entry;
 
 gdt_entry_t gdt_entries[N_GDT_ENTRIES];
 gdt_t gdtp;
@@ -25,7 +28,22 @@ void init_gdt() {
     set_gdt_entry(2,0,0xffffffff,KERNEL_DATA_SEGMENT,GRANULARITY); // Data segment
 
     set_gdt_entry(3,0,0xffffffff,USER_CODE_SEGMENT,GRANULARITY);
-    set_gdt_entry(4,0,0xffffffff,USER_DATA_SEGNENT,GRANULARITY);
+    set_gdt_entry(4,0,0xffffffff,USER_DATA_SEGMENT,GRANULARITY);
+
+    write_tss(0x10,0); // 0x10 is the Kernel data segment
 
     load_gdt((gdt_t*)&gdtp);
+    load_tss(0x28);
+}
+
+void write_tss(unsigned short ss0, unsigned int esp0){
+    set_gdt_entry(5,(unsigned int)&tss_entry,sizeof(tss_entry_t) - 1,0x89,GRANULARITY); // 0x89 = present, ring 0, type 9 (TSS)
+    memset(&tss_entry,0,sizeof(tss_entry_t));
+    tss_entry.ss0 = ss0;
+    tss_entry.esp0 = esp0;
+    tss_entry.iomap_base = sizeof(tss_entry_t);
+}
+
+void set_kernel_stack(unsigned int stack){
+    tss_entry.esp0 = stack;
 }
