@@ -9,7 +9,7 @@ static unsigned int mem_number_vpages;
 unsigned char physical_memory_bitmap[(NUM_PAGE_FRAMES / 8)]; // Update dynamically && bitarray
 
 __attribute__((aligned(0x1000)))
-static unsigned int page_dirs[NUM_PAGE_DIRS] [1024];
+static unsigned int page_dirs[NUM_PAGE_DIRS] [1024] __attribute__((aligned(4096)));
 static unsigned char page_dir_used[NUM_PAGE_DIRS];
 
 void pmm_init(unsigned int mem_low, unsigned int mem_high){
@@ -23,7 +23,6 @@ void pmm_init(unsigned int mem_low, unsigned int mem_high){
 void mem_change_page_dir(unsigned int* pd){
     pd = (unsigned int*)(((unsigned int)pd) - KERNEL_START);
     mem_set_current_page_dir(pd);
-    log("Called asm func to set current page dir");
 }
 
 void pmm_free_page_frame(unsigned int phys_addr){
@@ -109,6 +108,26 @@ void restore_kernel_memory_page_dir(){
     }
 }
 
+void mem_map_page_in_dir(unsigned int* page_dir, unsigned int virt_addr, unsigned int phys_addr, unsigned int flags){
+    unsigned int pd_index = virt_addr >> 22;
+    unsigned int pt_index = virt_addr >> 12 & 0x3ff;
+
+    if (!(page_dir[pd_index] & PAGE_FLAG_PRESENT)){ // if the given page tables are not present -> allocate them
+        unsigned int pt_phys_addr = pmm_alloc_page_frame();
+        page_dir[pd_index] = pt_phys_addr | PAGE_FLAG_PRESENT | PAGE_FLAG_WRITE  | PAGE_FLAG_OWNER | flags;
+        
+        unsigned int* page_table = (unsigned int*)(pt_phys_addr + KERNEL_START);
+        for(unsigned int i = 0; i < 1024;i++){ 
+            page_table[i] = 0;
+        }
+    }
+
+    unsigned int pt_phys_addr = page_dir[pd_index] & 0xfffff000;
+    unsigned int* page_table = (unsigned int*)(pt_phys_addr + KERNEL_START);
+
+    page_table[pt_index] = phys_addr | PAGE_FLAG_PRESENT | flags;
+}
+
 void mem_map_page(unsigned int virt_addr, unsigned int phys_addr, unsigned int flags){
     unsigned int* prev_page_dir = 0;
 
@@ -120,15 +139,15 @@ void mem_map_page(unsigned int virt_addr, unsigned int phys_addr, unsigned int f
     }
 
     unsigned int pd_index = virt_addr >> 22;
-    unsigned int pt_index = virt_addr >> 12 & 0x3ff ;
+    unsigned int pt_index = virt_addr >> 12 & 0x3ff;
 
     unsigned int* page_dir = REC_PAGE_DIR;
     unsigned int* page_table = REC_PAGE_TABLE(pd_index);
 
-    if (!(page_dir[pd_index] & PAGE_FLAG_PRESENT)){ // if the given page is not present -> allocate it
+    if (!(page_dir[pd_index] & PAGE_FLAG_PRESENT)){ // if the given page tables are not present -> allocate them
         unsigned int pt_phys_addr = pmm_alloc_page_frame();
         page_dir[pd_index] = pt_phys_addr | PAGE_FLAG_PRESENT | PAGE_FLAG_WRITE  | PAGE_FLAG_OWNER | flags;
-
+        
         invalidate(virt_addr);
         for(unsigned int i = 0; i < 1024;i++){ 
             page_table[i] = 0;
@@ -137,6 +156,39 @@ void mem_map_page(unsigned int virt_addr, unsigned int phys_addr, unsigned int f
     page_table[pt_index] = phys_addr | PAGE_FLAG_PRESENT | flags;
     mem_number_vpages++;
     invalidate(virt_addr);
+    if (prev_page_dir != 0){
+        sync_page_dirs();
+        if (prev_page_dir != initial_page_dir){
+            mem_change_page_dir(prev_page_dir);
+        }
+    }
+}
+
+void mem_unmap_page(unsigned int virt_addr){
+
+    unsigned int* prev_page_dir = 0;
+
+    if (virt_addr >= KERNEL_MALLOC_START){ // if we are in kernel memory
+        prev_page_dir = mem_get_current_page_dir(); // switch to the kernel memory page
+        if (prev_page_dir != initial_page_dir){
+            mem_change_page_dir(initial_page_dir);
+        }
+    }
+    
+    unsigned int pd_index = virt_addr >> 22;
+    unsigned int pt_index = virt_addr >> 12 & 0x3ff;
+    
+    unsigned int* page_dir = REC_PAGE_DIR;
+
+    if (page_dir[pd_index] & PAGE_FLAG_PRESENT){ // only free if present
+        
+        unsigned int* page_table = REC_PAGE_TABLE(pd_index);
+        
+        // we explicitly do NOT free the page frame 
+        page_table[pt_index] = 0x00000000;
+        mem_number_vpages--;
+        invalidate(virt_addr);
+    }
     if (prev_page_dir != 0){
         sync_page_dirs();
         if (prev_page_dir != initial_page_dir){
@@ -165,7 +217,8 @@ unsigned int pmm_alloc_page_frame() {
                 physical_memory_bitmap[b] = byte;
                 total_alloc++;
 
-                unsigned int phys_addr = (b * 8 * i) * MEMORY_PAGE_SIZE;
+                unsigned int phys_addr = (b * 8 + i) * MEMORY_PAGE_SIZE;
+                
                 return phys_addr;
             }
         }
@@ -173,16 +226,17 @@ unsigned int pmm_alloc_page_frame() {
     return 0;
 }
 
-void un_identity_map_first_4MB(){
-    initial_page_dir[0];
+void un_identity_map_first_page_table(){
+    initial_page_dir[0] = 0;
     invalidate(0);
 }
 
-
 void init_memory(unsigned int physical_alloc_start, unsigned int mem_high){
     mem_number_vpages = 0;
-    initial_page_dir[0] = 0;
-    invalidate(0);
+    
+    //initial_page_dir[0] = 0;
+    //invalidate(0);
+
     initial_page_dir[1023] = ((unsigned int)initial_page_dir - KERNEL_START) | PAGE_FLAG_PRESENT | PAGE_FLAG_WRITE ;
     invalidate(0xfffff000);
 
