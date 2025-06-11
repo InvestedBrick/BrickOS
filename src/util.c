@@ -65,5 +65,5 @@ unsigned int vector_erase(vector_t* vec,unsigned int idx){
 void init_vector(vector_t* vec){
     vec->size = 0;
     vec->capacity = 1;
-    vec->data = 0;
+    vec->data = kmalloc(1);
 }
