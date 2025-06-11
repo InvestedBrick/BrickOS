@@ -31,25 +31,46 @@ common_interrupt_handler:
     push edi
     push ebp
 
+    push ds
+    push es
+    push fs
+    push gs
+
+    ; set up kernel data segments
+    mov ax, 0x10
+    mov ds, ax
+    mov es, ax
+    mov fs, ax
+    mov gs, ax
+
 
     ; Stack
-    ;   [esp + 0x2c] eflags
-    ;   [esp + 0x28] cs
-    ;   [esp + 0x24] eip
-    ;   [esp + 0x20] error code            
-    ;   [esp + 0x1c] interrupt number            
-    ;   [esp + 0x18] eax
-    ;   [esp + 0x14] ebx
-    ;   [esp + 0x10] ecx
-    ;   [esp + 0x0c] edx
-    ;   [esp + 0x08] esi
-    ;   [esp + 0x04] edi
-    ;   [esp       ] ebp
+    ;   [esp + 0x2c + 0x10] eflags
+    ;   [esp + 0x28 + 0x10] cs
+    ;   [esp + 0x24 + 0x10] eip
+    ;   [esp + 0x20 + 0x10] error code            
+    ;   [esp + 0x1c + 0x10] interrupt number            
+    ;   [esp + 0x18 + 0x10] eax
+    ;   [esp + 0x14 + 0x10] ebx
+    ;   [esp + 0x10 + 0x10] ecx
+    ;   [esp + 0x0c + 0x10] edx
+    ;   [esp + 0x08 + 0x10] esi
+    ;   [esp + 0x04 + 0x10] edi
+    ;   [esp + 0x10 + 0x10] ebp
+    ;   [esp + 0x0c] ds
+    ;   [esp + 0x08] es
+    ;   [esp + 0x04] fs
+    ;   [esp       ] gs
 
     push esp
     call interrupt_handler
     add esp, 4
     
+    pop gs
+    pop fs
+    pop es
+    pop ds
+
     pop ebp
     pop edi
     pop esi 
@@ -115,7 +136,7 @@ no_error_code_interrupt_handler 48
 global idt_code_table
 idt_code_table:
 %assign i 0
-%rep    48
+%rep    49
     dd interrupt_handler_%+i
 %assign i i+1
 %endrep
