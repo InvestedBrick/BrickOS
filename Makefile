@@ -1,5 +1,5 @@
 ASM_SOURCES = $(wildcard src/*.asm) $(wildcard src/io/*.asm) $(wildcard src/tables/*.asm) $(wildcard src/memory/*.asm) $(wildcard src/user/*.asm)
-C_SOURCES = $(wildcard src/*.c) $(wildcard src/io/*.c) $(wildcard src/tables/*.c) $(wildcard src/drivers/keyboard/*.c) $(wildcard src/memory/*.c) $(wildcard src/user/*.c)
+C_SOURCES = $(wildcard src/*.c) $(wildcard src/io/*.c) $(wildcard src/tables/*.c) $(wildcard src/drivers/keyboard/*.c) $(wildcard src/memory/*.c) $(wildcard src/user/*.c) $(wildcard src/modules/*.c)
 
 LD_SCRIPT = link.ld
 LD_ARGS = -m elf_i386
@@ -27,7 +27,9 @@ $(TARGET): $(ASM_OBJS) $(C_OBJS)
 
 iso: $(TARGET)
 	cp kernel.elf iso/boot
+	make -C iso/modules
 	bash stage3.sh
 
 clean:
 	rm -f $(ASM_OBJS) $(TARGET) $(ISO) $(C_OBJS)
+	make -C iso/modules clean
