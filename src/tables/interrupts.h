@@ -60,6 +60,7 @@ typedef struct
 
 
 typedef struct {
+    unsigned int gs,fs,es,ds;
     unsigned int ebp,edi,esi,edx,ecx,ebx,eax;
     unsigned int interrupt_number,error_code,eip,cs,eflags;
 }__attribute__((packed)) interrupt_stack_frame_t;
