@@ -4,8 +4,10 @@
 
 #define KERNEL_START 0xc0000000 
 #define KERNEL_MALLOC_START 0xd0000000 // give the kernel some space
+#define KERNEL_MALLOC_END 0xf0000000  // I think 131k pages will be enough memory for now
+#define TEMP_KERNEL_COPY_ADDR 0xf0000000
 #define REC_PAGE_DIR ((unsigned int*)0xfffff000)
-#define REC_PAGE_TABLE(i) ((unsigned int*) (0xffc00000) + (0x400 * i))
+#define REC_PAGE_TABLE(i) ((unsigned int*) (0xffc00000) + ((i) * 0x400))
 
 #define MEMORY_PAGE_SIZE 0x1000
 
@@ -96,5 +98,33 @@ void free_user_page_dir(unsigned int* usr_pd);
  * restores the current page directory to be the kernel page directory
  */
 void restore_kernel_memory_page_dir();
+/**
+ * pmm_free_page_frame:
+ * Frees a page frame
+ * @param phys_addr The physical address of the page frame
+ */
+void pmm_free_page_frame(unsigned int phys_addr);
 
+/**
+ * mem_unmap_page:
+ * Unmaps a memory page, but does not free the page frame (see pmm_free_page_frame)
+ * @param virt_addr The virtual address to which the page was mapped
+ */
+void mem_unmap_page(unsigned int virt_addr);
+
+/**
+ * mem_map_page_in_dir:
+ * Map a memory page frame into a currently non-selected page directory
+ * @param page_dir The currently non-selected page directory
+ * @param virt_addr The desired virtual address to map to
+ * @param phys_addr The physical address of the page
+ * @param flags The flags for the page
+ */
+void mem_map_page_in_dir(unsigned int* page_dir, unsigned int virt_addr, unsigned int phys_addr, unsigned int flags);
+
+/**
+ * un_identity_map_first_page_table:
+ * Do you really need an explanation for this?
+ */
+void un_identity_map_first_page_table();
 #endif
