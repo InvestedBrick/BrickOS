@@ -1,5 +1,22 @@
-ASM_SOURCES = $(wildcard src/*.asm) $(wildcard src/io/*.asm) $(wildcard src/tables/*.asm) $(wildcard src/memory/*.asm) $(wildcard src/user/*.asm)
-C_SOURCES = $(wildcard src/*.c) $(wildcard src/io/*.c) $(wildcard src/tables/*.c) $(wildcard src/drivers/keyboard/*.c) $(wildcard src/memory/*.c) $(wildcard src/user/*.c) $(wildcard src/modules/*.c)
+ASM_SOURCES = \
+    src/*.asm \
+    src/io/*.asm \
+    src/tables/*.asm \
+    src/memory/*.asm \
+    src/user/*.asm
+
+C_SOURCES = \
+    src/*.c \
+    src/io/*.c \
+    src/tables/*.c \
+    src/drivers/keyboard/*.c \
+    src/memory/*.c \
+    src/user/*.c \
+    src/modules/*.c \
+	src/drivers/ATA_PIO/*.c
+
+ASM_SOURCES := $(wildcard $(ASM_SOURCES))
+C_SOURCES := $(wildcard $(C_SOURCES))
 
 LD_SCRIPT = link.ld
 LD_ARGS = -m elf_i386
