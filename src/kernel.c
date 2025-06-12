@@ -11,7 +11,7 @@
 #include "tables/tss.h"
 #include "util.h"
 #include "modules/module_handler.h"
-
+#include "drivers/ATA_PIO/ata.h"
 
 void kmain(multiboot_info_t* boot_info)
 {   
@@ -57,15 +57,17 @@ void kmain(multiboot_info_t* boot_info)
     init_user_process_vector();
     log("Initialized user process vector");
     
+    init_disk_driver();
+    log("Initialized disk driver");
 
-    if (module_count > 0){
-        unsigned int pid = create_user_process((char*)module_binary_structs[0].start,module_binary_structs[0].size);
-        free_saved_module_binaries();
-        user_process_t* process = get_user_process_by_pid(pid);
-        set_kernel_stack(process->kernel_stack + MEMORY_PAGE_SIZE);
-        enter_user_mode(); // we are never getting out of here
-        restore_kernel_memory_page_dir();
-    } 
+    //if (module_count > 0){
+    //    unsigned int pid = create_user_process((char*)module_binary_structs[0].start,module_binary_structs[0].size);
+    //    free_saved_module_binaries();
+    //    user_process_t* process = get_user_process_by_pid(pid);
+    //    set_kernel_stack(process->kernel_stack + MEMORY_PAGE_SIZE);
+    //    enter_user_mode(); // we are never getting out of here
+    //    restore_kernel_memory_page_dir();
+    //} 
 
     //get input
     while(1){
