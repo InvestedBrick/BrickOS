@@ -98,9 +98,9 @@ void read_sectors(unsigned short bus,unsigned char n_sectors, unsigned char* buf
  * write_sectors:
  * Writes a number of sectors into a specified ATA bus
  * @param bus The ATA bus
- * @param n_sectors The number of sectors to read
- * @param buf The buffer to read the sectors into
- * @param lba The address from where to start reading
+ * @param n_sectors The number of sectors to write
+ * @param buf The buffer which to write into the sectors
+ * @param lba The address from where to start writing
  */
 void write_sectors(unsigned short bus, unsigned char n_sectors, unsigned char* buf,unsigned int lba);
 
