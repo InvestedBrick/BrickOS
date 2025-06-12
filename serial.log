@@ -5,5 +5,7 @@
 [LOG] Initialized paged memory
 [LOG] Initialized kmalloc
 [LOG] Initialized user process vector
-[LOG] NOT SYSCALL 1
-[LOG] SYSCALL 1
+[LOG] Selected Drive supports LBA48
+[LOG] Number of addressable LBA28 sectors: 
+[LOG] 524288
+[LOG] Initialized disk driver
