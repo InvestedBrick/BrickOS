@@ -36,12 +36,25 @@
 void outb(unsigned short port, unsigned char data);
 
 /**
+ * outw - sends a word to I/O port
+ * @param port ID of port
+ * @param data word (short) to be sent
+ */
+void outw(unsigned short port, unsigned short data);
+
+/**
  * 
  * inb - recieves byte from I/O port
  * @param port ID of port
  * @return recieved byte
  */
 unsigned char inb(unsigned short port);
+/**
+ * inw - recieves a word from I/O port
+ * @param port ID of port
+ * @return recieved word (short)
+ */
+unsigned short inw(unsigned short port);
 
 /**
  * serial_configure_baud_rate:
