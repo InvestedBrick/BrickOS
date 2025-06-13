@@ -223,7 +223,8 @@ unsigned int pmm_alloc_page_frame() {
             }
         }
     }
-    return 0;
+    // We can out of physical memory
+    panic("System ran out of physical memory");
 }
 
 void un_identity_map_first_page_table(){
