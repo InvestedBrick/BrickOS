@@ -20,9 +20,20 @@ void* memcpy(void* dest,void* src, unsigned int n){
     return dest;
 }
 
+char streq(const char* str1, const char* str2, unsigned int length){
+    for (unsigned int i = 0; i < length;i++){
+        if (str1[i] != str2[i]) return 1;
+
+        if (str1[i] == '\0' && str2[i] == '\0') return 0;
+
+    }
+
+    return 1;
+}
+
 void vector_resize(vector_t* vec,unsigned int new_size){
     unsigned int* new_data = kmalloc(sizeof(unsigned int) * new_size);
-    memcpy(new_data,vec->data,vec->size);
+    memcpy(new_data,vec->data,vec->size * sizeof(unsigned int));
     kfree(vec->data);
 
     vec->data = new_data;
@@ -54,7 +65,7 @@ unsigned char vector_is_empty(vector_t* vec) {
 unsigned int vector_erase(vector_t* vec,unsigned int idx){
     unsigned int erased_item = vec->data[idx];
 
-    for(unsigned int i = idx; idx < vec->size;i++){
+    for(unsigned int i = idx; idx < vec->size - 1;i++){
         vec->data[i] = vec->data[i + 1];
     }
 
@@ -65,5 +76,15 @@ unsigned int vector_erase(vector_t* vec,unsigned int idx){
 void init_vector(vector_t* vec){
     vec->size = 0;
     vec->capacity = 1;
-    vec->data = kmalloc(1);
+    vec->data = kmalloc(sizeof(unsigned int));
+}
+
+
+void vector_free(vector_t* vec, unsigned char ptrs){
+    if (ptrs){
+        for (unsigned int i = 0; i < vec->size;i++){
+            kfree((void*)vec->data[i]);
+        }
+    }
+    kfree((void*)vec->data);
 }
