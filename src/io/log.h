@@ -31,4 +31,10 @@ void error(const unsigned char* msg);
  * @param num The integer
  */
 void log_uint(unsigned int num);
+
+/**
+ * panic: 
+ * Something went really wrong, spins in place eternally
+ */
+void panic(const unsigned char* msg);
 #endif
