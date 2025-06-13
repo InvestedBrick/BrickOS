@@ -1,4 +1,3 @@
-#pragma once
 
 #ifndef INCLUDE_ATA_H
 #define INCLUDE_ATA_H

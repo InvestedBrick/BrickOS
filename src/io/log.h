@@ -1,4 +1,3 @@
-#pragma once
 
 #ifndef INCLUDE_LOG_H
 #define INCLUDE_LOG_H

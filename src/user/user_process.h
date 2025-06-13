@@ -1,7 +1,6 @@
-#pragma once
 
-#ifndef USER_LAND_H
-#define USER_LAND_H
+#ifndef INCLUDE_USER_PROCESS_H
+#define INCLUDE_USER_PROCESS_H
 
 typedef struct {
     unsigned int process_id;

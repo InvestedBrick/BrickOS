@@ -1,4 +1,3 @@
-#pragma once
 
 #ifndef INCLUDE_IO_H
 #define INCLUDE_IO_H

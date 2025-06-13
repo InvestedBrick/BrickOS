@@ -1,4 +1,3 @@
-#pragma once
 
 #ifndef MODULE_HANDLER_H
 #define MODULE_HANDLER_H

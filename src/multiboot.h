@@ -1,4 +1,3 @@
-#pragma once
 
 #ifndef INCLUDE_MULTIBOOT_H
 #define INCLUDE_MULTIBOOT_H

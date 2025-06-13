@@ -1,8 +1,9 @@
-#pragma once
+
 #ifndef INCLUDE_UTIL_H
 #define INCLUDE_UTIL_H
 
 #define CEIL_DIV(a,b) (((a + b) - 1 )/ b)
+
 /**
  * memset:
  * Sets n bytes of dest to val

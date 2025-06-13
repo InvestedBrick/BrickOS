@@ -1,4 +1,3 @@
-#pragma once
 
 #ifndef INCLUDE_SCREEN_H
 #define INCLUDE_SCREEM_H

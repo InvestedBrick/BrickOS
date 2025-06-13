@@ -1,4 +1,3 @@
-#pragma once
 
 #ifndef INCLUDE_TSS_H
 #define INCLUDE_TSS_H

@@ -1,4 +1,3 @@
-#pragma once
 
 #ifndef INCLUDE_KMALLOC_H
 #define INCLUDE_KMALLOC_H
