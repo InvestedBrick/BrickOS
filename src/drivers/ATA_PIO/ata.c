@@ -2,6 +2,8 @@
 #include "../../io/io.h"
 #include "../../io/log.h"
 
+
+unsigned int addressable_LBA28_sectors = 0;
 void await_bsy_clear(unsigned short bus){
     while(inb(ATA_STATUS_PORT(bus)) & 0x80);
 }
@@ -54,7 +56,7 @@ void init_disk_driver(){
 
     if (identify_info[83] & 0x400) log("Selected Drive supports LBA48");
 
-    unsigned int addressable_LBA28_sectors = identify_info[61];
+    addressable_LBA28_sectors = identify_info[61];
     addressable_LBA28_sectors <<= 16;
     addressable_LBA28_sectors |= identify_info[60];
     log("Number of addressable LBA28 sectors: ");
