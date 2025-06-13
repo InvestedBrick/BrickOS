@@ -26,6 +26,17 @@ void* memset(void* dest, int val, unsigned int n);
  */
 void* memcpy(void* dest,void* src, unsigned int n);
 
+/**
+ * streq:
+ * Compares the length of two strings
+ * @param str1 A pointer to the first string
+ * @param str2 A pointer to the second string
+ * @param length The max length of both strings
+ * 
+ * @return 1 if both strings are equal
+ *         0 else 
+ */
+char streq(const char* str1, const char* str2, unsigned int length);
 
 typedef struct {
     unsigned int size;
@@ -71,4 +82,13 @@ void init_vector(vector_t* vec);
  * @return The erased item
  */
 unsigned int vector_erase(vector_t* vec,unsigned int idx);
+
+/**
+ * vector_free:
+ * Frees the data of a vector and if given the data itself (if the data was pointers)
+ * @param vec The vector
+ * @param ptrs Whether the vector data is pointers that need to be freed
+ */
+void vector_free(vector_t* vec, unsigned char ptrs);
+
 #endif
