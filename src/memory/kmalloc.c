@@ -1,6 +1,7 @@
 #include "kmalloc.h"
 #include "memory.h"
 #include "../util.h"
+#include "../io/log.h"
 static unsigned int heap_size;
 static unsigned int heap_allocated;
 static unsigned char kmalloc_initialized = 0;
@@ -9,7 +10,7 @@ static unsigned char kmalloc_initialized = 0;
 memory_block_t* head = 0;
 
 void alloc_and_map_new_page(){
-    if(heap_size + MEMORY_PAGE_SIZE > KERNEL_MALLOC_END) {warn("Kernel heap has run out of memory"); return;}
+    if(heap_size + MEMORY_PAGE_SIZE > KERNEL_MALLOC_END) {panic("Kernel heap has run out of memory"); return;}
     unsigned int phys_addr = pmm_alloc_page_frame();
     unsigned int n_allocated_pages = CEIL_DIV(heap_size,MEMORY_PAGE_SIZE);
     unsigned int new_page_addr = KERNEL_MALLOC_START + n_allocated_pages * MEMORY_PAGE_SIZE;
@@ -41,7 +42,8 @@ void split_block(memory_block_t* block, unsigned int size){
 }
 
 void* kmalloc(unsigned int size){
-    if (!kmalloc_initialized || size <= 0) return 0;
+    if (size <= 0) return 0;
+    if (!kmalloc_initialized) { error("kmalloc has not been initialized"); return 0;}
     memory_block_t* block = find_free_block(size);
     if(block != 0){
         split_block(block,size);
