@@ -4,7 +4,7 @@
 
 #define KERNEL_START 0xc0000000 
 #define KERNEL_MALLOC_START 0xd0000000 // give the kernel some space
-#define KERNEL_MALLOC_END 0xf0000000  // I think 131k pages will be enough memory for now
+#define KERNEL_MALLOC_END 0xf0000000 
 #define TEMP_KERNEL_COPY_ADDR 0xf0000000
 #define REC_PAGE_DIR ((unsigned int*)0xfffff000)
 #define REC_PAGE_TABLE(i) ((unsigned int*) (0xffc00000) + ((i) * 0x400))
@@ -17,7 +17,7 @@
 #define PAGE_FLAG_USER  (1 << 2)
 
 #define NUM_PAGE_DIRS 256
-#define NUM_PAGE_FRAMES (0x10000000 / 0x1000 / 0x8)
+#define NUM_PAGE_FRAMES (0x20000000 / 0x1000 / 0x8)
 
 extern unsigned int initial_page_dir[1024];
 
