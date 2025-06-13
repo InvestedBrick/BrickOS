@@ -1,7 +1,7 @@
 
 #ifndef INCLUDE_ATA_H
 #define INCLUDE_ATA_H
-
+extern unsigned int addressable_LBA28_sectors;
 /**
  * Primary bus I/O ports:
  * 0x1f0 - 0x1f7
