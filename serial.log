@@ -1,11 +1,7 @@
 [LOG] Set up serial port
 [LOG] Initialized the GDT
-[LOG] Set up serial port
-[LOG] Initialized the GDT
 [LOG] Initialited the IDT
 [LOG] Initialized keyboard
-[LOG] Number of usable page frames:
-[LOG] 1048137
 [LOG] Initialized paged memory
 [LOG] Initialized kmalloc
 [LOG] Initialized user process vector
@@ -13,3 +9,4 @@
 [LOG] Number of addressable LBA28 sectors: 
 [LOG] 524288
 [LOG] Initialized disk driver
+[LOG] Initialized the filesystem
