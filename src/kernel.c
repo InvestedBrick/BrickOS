@@ -77,5 +77,7 @@ void kmain(multiboot_info_t* boot_info)
     log("User returned from shell");
     // write the data to disk when the user exits
     write_to_disk();
+
+    panic("This is the end of the world");
     return;
 }
