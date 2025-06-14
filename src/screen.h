@@ -73,5 +73,14 @@ void scroll_screen_up();
  * 
  */
 void handle_screen_input();
-
+/**
+ * newline: 
+ * Prints a newline
+ */
+void newline();
+/**
+ * erase_one_char: 
+ * Erases one character from the screen
+ */
+void erase_one_char();
 #endif
