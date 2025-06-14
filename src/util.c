@@ -1,6 +1,7 @@
 #include "util.h"
 #include "memory/kmalloc.h"
 
+// TODO: move the vector stuff out of here
 void* memset(void* dest, int val, unsigned int n){
     unsigned char* p = dest;
     for(unsigned int i = 0; i < n;i++){
@@ -22,13 +23,19 @@ void* memcpy(void* dest,void* src, unsigned int n){
 
 char streq(const char* str1, const char* str2, unsigned int length){
     for (unsigned int i = 0; i < length;i++){
-        if (str1[i] != str2[i]) return 1;
+        if (str1[i] != str2[i]) return 0;
 
-        if (str1[i] == '\0' && str2[i] == '\0') return 0;
+        if (str1[i] == '\0' && str2[i] == '\0') return 1;
 
     }
 
     return 1;
+}
+
+unsigned int strlen(unsigned char* str){
+    unsigned int len = 0;
+    while(str[len] != 0){len++;}
+    return len;
 }
 
 void vector_resize(vector_t* vec,unsigned int new_size){
@@ -87,4 +94,12 @@ void vector_free(vector_t* vec, unsigned char ptrs){
         }
     }
     kfree((void*)vec->data);
+}
+
+void free_string_arr(string_array_t* str_arr){
+    for (unsigned int i = 0; i < str_arr->length;i++){
+        kfree(str_arr->strings[i].str);
+    }
+    kfree(str_arr->strings);
+    kfree(str_arr);
 }
