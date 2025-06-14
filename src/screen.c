@@ -9,7 +9,7 @@ char* const g_fb = (char*)VIDEO_MEMORY_START;
 
 #define CURSOR_MAX ((SCREEN_ROWS * SCREEN_COLUMNS) - 1)
 
-static inline void clamp_cursor() {
+void clamp_cursor() {
     if (g_cursor_pos > CURSOR_MAX) g_cursor_pos = CURSOR_MAX;
     // g_cursor_pos is unsigned, so no need to check < 0
 }
@@ -62,7 +62,18 @@ void write_string(const char* str, const unsigned int len){
     fb_set_cursor(g_cursor_pos);
 }
 
+void erase_one_char(){
+    fb_write_cell(g_cursor_pos,' ',COLOR_BLACK,COLOR_BLACK);//remove current cell
+    if (g_cursor_pos != 0){
+        g_cursor_pos--;
+    }
+    clamp_cursor();
+    fb_write_cell(g_cursor_pos,' ',COLOR_BLACK,COLOR_BLACK);//remove current cell
+    fb_set_cursor(g_cursor_pos);
+}
+
 void newline(){
+    fb_write_cell(g_cursor_pos,' ',COLOR_BLACK,COLOR_BLACK);//remove current cell
     if (g_cursor_pos < (SCREEN_COLUMNS -1) * SCREEN_ROWS){
         g_cursor_pos += (SCREEN_COLUMNS - (g_cursor_pos % SCREEN_COLUMNS));
         clamp_cursor();
@@ -77,7 +88,7 @@ void handle_screen_input(){
         {
         case '\n':
             {
-                fb_write_cell(g_cursor_pos,' ',COLOR_BLACK,COLOR_BLACK);//remove current cell
+                
                 newline();
             break;}
         case '\t':{
@@ -91,13 +102,7 @@ void handle_screen_input(){
             break;
         }
         case '\b':{
-            fb_write_cell(g_cursor_pos,' ',COLOR_BLACK,COLOR_BLACK);//remove current cell
-            if (g_cursor_pos != 0){
-                g_cursor_pos--;
-            }
-            clamp_cursor();
-            fb_write_cell(g_cursor_pos,' ',COLOR_BLACK,COLOR_BLACK);//remove current cell
-            fb_set_cursor(g_cursor_pos);
+            erase_one_char();
             break;
         }
         default:{
