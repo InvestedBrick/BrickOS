@@ -4,6 +4,16 @@
 
 #define CEIL_DIV(a,b) (((a + b) - 1 )/ b)
 
+typedef struct {
+    unsigned int length;
+    unsigned char* str;
+} string_t;
+
+typedef struct {
+    unsigned int length;
+    string_t* strings;
+}string_array_t;
+
 /**
  * memset:
  * Sets n bytes of dest to val
@@ -37,6 +47,14 @@ void* memcpy(void* dest,void* src, unsigned int n);
  *         0 else 
  */
 char streq(const char* str1, const char* str2, unsigned int length);
+
+/**
+ * strlen: 
+ * Returns the length of a null-terminated string
+ * @param str The string
+ * @return The length of the string
+ */
+unsigned int strlen(unsigned char* str);
 
 typedef struct {
     unsigned int size;
@@ -91,4 +109,9 @@ unsigned int vector_erase(vector_t* vec,unsigned int idx);
  */
 void vector_free(vector_t* vec, unsigned char ptrs);
 
+/**
+ * Frees a string array assuming the array, the strings and the char* are heap allocated
+ * @param str_arr The string array
+ */
+void free_string_arr(string_array_t* str_arr);
 #endif
