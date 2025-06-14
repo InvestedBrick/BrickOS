@@ -2,7 +2,9 @@
 #ifndef INCLUDE_FILESYSTEM_H
 #define INCLUDE_FILESYSTEM_H
 
-#define NUM_DATA_SECTORS_PER_FILE 10
+#include "../util.h"
+// must be set so that the inode struct is exactly 64 bytes wide
+#define NUM_DATA_SECTORS_PER_FILE 12
 
 #define RESERVED_BITMAP_SECTORS 17 // (16 * 8) normal sector bitmaps + 1 sector for header + 2 big bitmaps
 // we can create up to 800 files / directories. Will be enough for now
@@ -31,7 +33,7 @@
 typedef struct{
     unsigned char big_sector_used_map[TOTAL_BIG_SECTORS / 8]; // 128 bytes as 1024-bit bitmap
     unsigned char big_sector_full_map[TOTAL_BIG_SECTORS / 8];
-
+    unsigned char inode_sector_map[RESERVED_INODE_SECTORS]; // (100 sectors * 8 inodes/sector) / 8 bits/byte
     unsigned char* sector_bitmaps[TOTAL_BIG_SECTORS];   // pointers to 64-byte (512-bit) normal sector bitmaps
 }sectors_headerdata_t;
 
@@ -55,6 +57,8 @@ typedef struct {
 
 }__attribute__((packed)) inode_t;
 
+extern inode_t* active_dir;
+
 typedef struct {
     unsigned int parent_id;
     unsigned int id;
@@ -62,8 +66,10 @@ typedef struct {
     unsigned char* name;
 }inode_name_pair_t;
 
+
 // This should be 8
 #define FS_INODES_PER_SECTOR (ATA_SECTOR_SIZE / sizeof(inode_t)) 
+
 
 /**
  * init_filesystem:
@@ -88,16 +94,24 @@ inode_name_pair_t* get_name_by_inode_id(unsigned int id);
 unsigned int get_inode_id_by_name(unsigned int parent_id, const char* name);
 
 /**
+ * get_active_dir: 
+ * Returns the name of the current active directory
+ * IMPORTANT: Do NOT free the char* associated with the returned string, it belongs to inode_name_pairs. This isn't Rust, get over it
+ * @return The name of the directory
+ */
+string_t get_active_dir();
+
+/**
  * read_bitmaps:
  * Reads the stored bitmaps from disk and loads them into a sectors_headerdata_t struct
  */
-void read_bitmaps();
+void read_bitmaps_from_disk();
 
 /**
  * write_bitmaps: 
  * Writes the bitmaps from the sectors_headerdata_t struct into the disk
  */
-void write_bitmaps();
+void write_bitmaps_to_disk();
 
 /**
  * free_sector: 
@@ -112,4 +126,31 @@ void free_sector(unsigned int sector_index);
  * @return The sector index from the allocated sector
  */
 unsigned int allocate_sector();
+
+/**
+ * get_all_names_in_dir:
+ * Returns an array of strings which contain all the names of the directory entries
+ * 
+ * IMPORTANT: You need to free the returned strings, the string struct and the returned string array pointer (See free_string_arr() in util.h)
+ * @param dir The directory of which to get the entires
+ * @return Array of strings which contain the data
+ * 
+ */
+string_array_t* get_all_names_in_dir(inode_t* dir);
+
+/**
+ * create_directory:
+ * Creates a directory in a given parent directory
+ * 
+ * @param parent_dir The parent directory inode
+ * @param name The name of the new directory
+ * @param name_length The length if the name
+ */
+void create_directory(inode_t* parent_dir, unsigned char* name, unsigned char name_length);
+
+/**
+ * write_to_disk: 
+ * Writes the disk metadata to the disk
+ */
+void write_to_disk();
 #endif
