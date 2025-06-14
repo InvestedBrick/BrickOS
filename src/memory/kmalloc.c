@@ -75,7 +75,7 @@ void* kmalloc(unsigned int size){
 }
 
 void merge_blocks(memory_block_t* block){
-    while (!block->next && block->next->free ){
+    while (block->next && block->next->free ){
         block->size = block->size + MEMORY_BLOCK_SIZE + block->next->size;
         block->next = block->next->next;
         heap_allocated -= block->size + MEMORY_BLOCK_SIZE;
