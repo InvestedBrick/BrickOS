@@ -12,7 +12,8 @@
 #include "util.h"
 #include "modules/module_handler.h"
 #include "drivers/ATA_PIO/ata.h"
-
+#include "filesystem/filesystem.h"
+#include "shell/kernel_shell.h"
 void kmain(multiboot_info_t* boot_info)
 {   
     const char* msg = "Hello BrickOS!";
@@ -60,6 +61,8 @@ void kmain(multiboot_info_t* boot_info)
     init_disk_driver();
     log("Initialized disk driver");
 
+    init_filesystem();
+    log("Initialized the filesystem");
     //if (module_count > 0){
     //    unsigned int pid = create_user_process((char*)module_binary_structs[0].start,module_binary_structs[0].size);
     //    free_saved_module_binaries();
@@ -70,10 +73,9 @@ void kmain(multiboot_info_t* boot_info)
     //} 
 
     //get input
-    while(1){
-        while(!kb_buffer_is_empty())
-            handle_screen_input();
-        asm ("hlt");
-    }
+    start_shell();
+    log("User returned from shell");
+    // write the data to disk when the user exits
+    write_to_disk();
     return;
 }
