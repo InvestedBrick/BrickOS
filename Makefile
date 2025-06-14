@@ -13,7 +13,9 @@ C_SOURCES = \
     src/memory/*.c \
     src/user/*.c \
     src/modules/*.c \
-	src/drivers/ATA_PIO/*.c
+	src/drivers/ATA_PIO/*.c \
+    src/filesystem/*c \
+    src/shell/*.c 
 
 ASM_SOURCES := $(wildcard $(ASM_SOURCES))
 C_SOURCES := $(wildcard $(C_SOURCES))
