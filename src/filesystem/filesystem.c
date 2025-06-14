@@ -5,15 +5,17 @@
 #include "../memory/kmalloc.h"
 
 vector_t inodes;
-vector_t inode_name_pairs;
-sectors_headerdata_t header_data;
-
+vector_t inode_name_pairs; // Note to self: do not free this with vector free, the names have to be freed too
+sectors_headerdata_t header_data; 
+inode_t* active_dir = 0;
 unsigned int active_partially_used_bitmaps;
 
 unsigned char first_time_fs_init = 0;
 
 unsigned char* last_read_sector;
 unsigned int last_read_sector_idx;
+
+
 
 inode_name_pair_t* get_name_by_inode_id(unsigned int id){
     for(unsigned int i = 0; i < inode_name_pairs.size;i++){
@@ -34,7 +36,13 @@ unsigned int get_inode_id_by_name(unsigned int parent_id, const char* name){
     }
     return (unsigned int)-1;
 }
-
+string_t get_active_dir(){
+    inode_name_pair_t* pair = get_name_by_inode_id(active_dir->id);
+    string_t str;
+    str.str = pair->name;
+    str.length = pair->length;
+    return str;
+}
 unsigned int count_partially_used_big_sectors(unsigned int end){
     unsigned int partially_used_bitmaps = 0;
     for(unsigned int i = 0; i < end;i++){
@@ -78,13 +86,14 @@ void shift_sector_bitmaps_left(unsigned char** bitmaps, unsigned int start, unsi
     bitmaps[n_active_bitmaps - 1] = 0;
 }
 
-void read_bitmaps(){
+void read_bitmaps_from_disk(){
     // bitmap headerdata starts at sector 101 (BITMAP_SECTOR_START)
     read_sectors(ATA_PRIMARY_BUS_IO,1,last_read_sector,BITMAP_SECTOR_START * ATA_SECTOR_SIZE);
     last_read_sector_idx = BITMAP_SECTOR_START;
 
     memcpy(header_data.big_sector_used_map,last_read_sector,BIG_SECTOR_BITMAP_SIZE); // read in used bitmap
     memcpy(header_data.big_sector_full_map,&last_read_sector[BIG_SECTOR_BITMAP_SIZE],BIG_SECTOR_BITMAP_SIZE); // read in fully used bitmap
+    memcpy(header_data.inode_sector_map,&last_read_sector[BIG_SECTOR_BITMAP_SIZE * 2],RESERVED_INODE_SECTORS);
 
     unsigned int partially_used_bitmaps = count_partially_used_big_sectors(BIG_SECTOR_BITMAP_SIZE);
     if (partially_used_bitmaps > 128) panic("Not enough reserved sectors for bitmaps");
@@ -102,16 +111,17 @@ void read_bitmaps(){
         header_data.sector_bitmaps[i] = (unsigned char*)kmalloc(SECTOR_BITMAP_SIZE);
 
         // read in the desired sector bitmap
-        memcpy(header_data.sector_bitmaps[i],last_read_sector[bitmap_idx_in_sector * SECTOR_BITMAP_SIZE],SECTOR_BITMAP_SIZE);
+        memcpy(header_data.sector_bitmaps[i],&last_read_sector[bitmap_idx_in_sector * SECTOR_BITMAP_SIZE],SECTOR_BITMAP_SIZE);
     }
 
 }
 
-void write_bitmaps() {
+void write_bitmaps_to_disk() {
 
     unsigned char sector[512] = {0};
     memcpy(sector,header_data.big_sector_used_map,BIG_SECTOR_BITMAP_SIZE);
     memcpy(&sector[BIG_SECTOR_BITMAP_SIZE],header_data.big_sector_full_map,BIG_SECTOR_BITMAP_SIZE);
+    memcpy(&sector[BIG_SECTOR_BITMAP_SIZE * 2],header_data.inode_sector_map,RESERVED_INODE_SECTORS);
     write_sectors(ATA_PRIMARY_BUS_IO,1,sector,BITMAP_SECTOR_START);
 
     unsigned char* bitmaps = (unsigned char*)kmalloc(active_partially_used_bitmaps * SECTOR_BITMAP_SIZE);
@@ -120,7 +130,6 @@ void write_bitmaps() {
     }
 
     write_sectors(ATA_PRIMARY_BUS_IO,CEIL_DIV(active_partially_used_bitmaps, 8),bitmaps,(BITMAP_SECTOR_START + 1));
-
     kfree(bitmaps);
 }
 
@@ -130,7 +139,7 @@ void free_sector(unsigned int sector_idx) {
 
     if (!BIT_CHECK(header_data.big_sector_used_map,big_sector_idx)) return;
     if (big_sector_idx >= TOTAL_BIG_SECTORS || big_sector_sector_idx >= BIG_SECTOR_SECTOR_COUNT) return;
-    
+
     unsigned int bitmap_idx = count_partially_used_big_sectors(big_sector_idx);
 
     if (BIT_CHECK(header_data.big_sector_full_map,big_sector_idx)){
@@ -232,6 +241,28 @@ unsigned int allocate_sector(){
     return (unsigned int)-1;
 }
 
+unsigned int allocate_inode_sector(){
+    for (unsigned int i = 0; i < RESERVED_INODE_SECTORS;i++){
+        for (unsigned int j = 0; j < 8; j++){
+            if (!BIT_CHECK(header_data.inode_sector_map,i * 8 + j)){
+                BIT_SET(header_data.inode_sector_map,i * 8 + j);
+                return i * 8 + j;
+            }
+        }
+    }
+    
+    panic("No free inode sector left");
+    return (unsigned int)-1;
+}
+
+void free_inode_sector(unsigned int inode_id){
+    if (!BIT_CHECK(header_data.inode_sector_map,inode_id)) return;
+
+    if (inode_id <= 0 || inode_id >= RESERVED_INODE_SECTORS * 8) return;
+
+    BIT_CLEAR(header_data.inode_sector_map,inode_id);
+}
+
 void build_inodes(inode_t* start_node,unsigned int parent_id){
     /**
      * Directory entry:
@@ -247,7 +278,7 @@ void build_inodes(inode_t* start_node,unsigned int parent_id){
         read_sectors(ATA_PRIMARY_BUS_IO,1,indirect_sectors,start_node->indirect_sector);
         last_read_sector_idx = start_node->indirect_sector;
 
-        for(unsigned int i = 0; *(unsigned int*)indirect_sectors[i] != 0, i < ATA_SECTOR_SIZE / sizeof(unsigned int);i+=4){
+        for(unsigned int i = 0; *(unsigned int*)&indirect_sectors[i] != 0, i < ATA_SECTOR_SIZE / sizeof(unsigned int);i+=4){
             indirect_sectors_count++;
         }
     }
@@ -276,7 +307,7 @@ void build_inodes(inode_t* start_node,unsigned int parent_id){
     unsigned int n_entries = *(unsigned int*)(&buffer[0]);
     unsigned int buffer_idx = 4;
     for (unsigned int i = 0; i < n_entries;i++){
-        unsigned int node_id = *(unsigned int*)buffer[buffer_idx];
+        unsigned int node_id = *(unsigned int*)&buffer[buffer_idx];
         buffer_idx += 4;
 
         unsigned char name_len = buffer[buffer_idx];
@@ -286,7 +317,7 @@ void build_inodes(inode_t* start_node,unsigned int parent_id){
         pair->id = node_id;
         pair->length = name_len;
         pair->parent_id = parent_id;
-        memcpy(pair->name,buffer[buffer_idx + 1],name_len);
+        memcpy(pair->name,&buffer[buffer_idx + 1],name_len);
         vector_append(&inode_name_pairs,(unsigned int)pair);
 
         buffer_idx += name_len + 1;
@@ -333,10 +364,9 @@ void init_filesystem(){
     // standard root dir stuff
     root_node->id = 0;
     root_node->type = FS_TYPE_DIR;
-
     if(!(last_read_sector[ATA_SECTOR_SIZE - 1] == FS_SECTOR_0_INIT_FLAG)){
         first_time_fs_init = 1;
-        memset(root_node->data_sectors,0x0,NUM_DATA_SECTORS_PER_FILE); // no data in the root dir right now
+        memset(root_node->data_sectors,0x0,NUM_DATA_SECTORS_PER_FILE * sizeof(unsigned int)); // no data in the root dir right now
         root_node->size = 0;
         *(unsigned int*)&last_read_sector[0x0] = root_node->id;
         *(unsigned int*)&last_read_sector[0x4] = root_node->size;
@@ -345,13 +375,13 @@ void init_filesystem(){
         last_read_sector[0xa] = 0;
         last_read_sector[0xb] = 0;
         *(unsigned int*)&last_read_sector[0xc] = 0;
-        memset(&last_read_sector[0x10],0x0,NUM_DATA_SECTORS_PER_FILE);
+        memset(&last_read_sector[0x10],0x0,NUM_DATA_SECTORS_PER_FILE * sizeof(unsigned int));
         last_read_sector[ATA_SECTOR_SIZE - 1] = FS_SECTOR_0_INIT_FLAG;
         write_sectors(ATA_PRIMARY_BUS_IO,1,last_read_sector,0); 
 
         memset(header_data.big_sector_used_map,0,BIG_SECTOR_BITMAP_SIZE);
         memset(header_data.big_sector_full_map,0,BIG_SECTOR_BITMAP_SIZE);
-
+        
         // reserve the reserved sectors
         for (unsigned int i = 0; i < RESERVED_SECTORS;i++){
             allocate_sector();
@@ -369,20 +399,193 @@ void init_filesystem(){
          * 0x00000010: root_data_sectors
          */
         root_node->id = *(unsigned int*)&last_read_sector[0x00];
-        root_node->type = last_read_sector[0x08];
         root_node->size = *(unsigned int*)&last_read_sector[0x04];
+        root_node->type = last_read_sector[0x08];
+        root_node->unused_flag_one = last_read_sector[0x09];
+        root_node->unused_flag_two = last_read_sector[0x0a];
+        root_node->unused_flag_three = last_read_sector[0x0b];
         root_node->indirect_sector = *(unsigned int*)&last_read_sector[0xc];
-        memcpy(root_node->data_sectors,last_read_sector[0x10],NUM_DATA_SECTORS_PER_FILE);
-        
-        read_bitmaps();
+        memcpy(root_node->data_sectors,&last_read_sector[0x10],NUM_DATA_SECTORS_PER_FILE * sizeof(unsigned int));
+        read_bitmaps_from_disk();
 
     }
+
+    active_dir = root_node;
+
+    inode_name_pair_t* name_pair = (inode_name_pair_t*)kmalloc(sizeof(inode_name_pair_t));
+    name_pair->length = 4;
+    name_pair->id = 0;
+    name_pair->parent_id = 0;
+    name_pair->name = kmalloc(sizeof(unsigned char) * 5);
+    memcpy(name_pair->name,"root",sizeof(unsigned char) * 5);
+    vector_append(&inode_name_pairs,(unsigned int)name_pair);
 
     vector_append(&inodes,(unsigned int)root_node);
 
     build_inodes(root_node,root_node->id);
 }
 
-void create_directory(inode_t* parent_dir){
 
+unsigned char write_directory_entry(inode_t* parent_dir, unsigned int child_inode_id, unsigned char* name, unsigned char name_length){
+    unsigned char data_buffer[sizeof(unsigned int) + sizeof(unsigned char) + 256];
+    unsigned int data_buffer_size = sizeof(unsigned int) + sizeof(unsigned char) + name_length;
+
+    // copy our data into the byte datastream buffer
+    *(unsigned int*)&data_buffer[0] = child_inode_id;
+    data_buffer[sizeof(unsigned int)] = name_length;
+    memcpy(&data_buffer[sizeof(unsigned int) + sizeof(unsigned short)],name,name_length);
+
+    unsigned int total_bytes = parent_dir->size;
+    unsigned int sector_idx = total_bytes / ATA_SECTOR_SIZE;
+    unsigned int sector_offset = total_bytes % ATA_SECTOR_SIZE;
+
+    if (sector_idx >= NUM_DATA_SECTORS_PER_FILE) return 0;
+
+    if(parent_dir->data_sectors[sector_idx] == 0){
+        parent_dir->data_sectors[sector_idx] = allocate_sector();
+    }
+
+    unsigned int sector = parent_dir->data_sectors[sector_idx];
+
+    read_sectors(ATA_PRIMARY_BUS_IO, 1, last_read_sector, sector);
+    last_read_sector_idx = sector;
+
+    unsigned int bytes_written = 0;
+    unsigned int remaining_bytes_in_sector = ATA_SECTOR_SIZE - sector_offset;
+    
+    while(bytes_written < data_buffer_size){
+
+        unsigned int to_write = data_buffer_size - bytes_written;
+        if(to_write > remaining_bytes_in_sector) to_write = remaining_bytes_in_sector;
+
+        memcpy(&last_read_sector[sector_offset],&data_buffer[bytes_written],to_write);
+        write_sectors(ATA_PRIMARY_BUS_IO,1,last_read_sector,sector);
+
+        bytes_written += to_write;
+        parent_dir->size += to_write;
+
+        if (bytes_written == data_buffer_size) break;
+
+        sector_idx++;
+        if (sector_idx >= NUM_DATA_SECTORS_PER_FILE) return 0;
+        if (parent_dir->data_sectors[sector_idx] == 0) {
+            parent_dir->data_sectors[sector_idx] = allocate_sector();
+        }
+        sector = parent_dir->data_sectors[sector_idx];
+        read_sectors(ATA_PRIMARY_BUS_IO, 1, last_read_sector, sector);
+        last_read_sector_idx = sector;
+
+        sector_offset = 0;
+        remaining_bytes_in_sector = ATA_SECTOR_SIZE;
+    }
+
+}
+
+string_array_t* get_all_names_in_dir(inode_t* dir){
+
+    unsigned int n_sectors = 0;
+    for(unsigned int i = 0; dir->data_sectors[i] != 0 && i < NUM_DATA_SECTORS_PER_FILE; i++) {n_sectors++;}
+
+    if (!n_sectors) return 0;
+
+    unsigned char* buffer = (unsigned char*)kmalloc(n_sectors * ATA_SECTOR_SIZE);
+
+    for (unsigned int i = 0; i < n_sectors;i++){
+        read_sectors(ATA_PRIMARY_BUS_IO,1,&buffer[i * ATA_SECTOR_SIZE],dir->data_sectors[i]);
+        last_read_sector_idx = dir->data_sectors[i];
+    }
+
+    string_array_t* str_arr = (string_array_t*)kmalloc(sizeof(string_array_t));
+
+    unsigned int n_strings = *(unsigned int*)&buffer[0];
+    string_t* strings = (string_t*)kmalloc(sizeof(string_t) * n_strings);
+
+    unsigned int buffer_idx = sizeof(unsigned int);
+    for (unsigned int i = 0; i < n_strings;i++){
+        buffer_idx += sizeof(unsigned int); // skip id
+        unsigned int str_len = buffer[buffer_idx++];
+        strings[i].length = str_len;
+        strings[i].str = (unsigned char*)kmalloc(str_len);
+        memcpy(strings[i].str,&buffer[buffer_idx],str_len);
+        buffer_idx += str_len; 
+    }
+
+    str_arr->length = n_strings;
+    str_arr->strings = strings;
+    kfree(buffer);
+
+    return str_arr;
+
+}
+
+void create_directory(inode_t* parent_dir, unsigned char* name, unsigned char name_length){
+
+    string_array_t* strs_in_parent_dir = get_all_names_in_dir(parent_dir);
+    for (unsigned int i = 0; i < strs_in_parent_dir->length;i++){
+        if(streq(name,strs_in_parent_dir->strings[i].str,name_length)) {error("Directory name already exists in parent directory");return;}
+    }
+
+    free_string_arr(strs_in_parent_dir);
+
+    if (parent_dir->data_sectors[0] == 0){
+        // parent dir was empty before
+        parent_dir->data_sectors[0] = allocate_sector();
+        parent_dir->size = sizeof(unsigned int); // entries 
+
+        read_sectors(ATA_PRIMARY_BUS_IO,1,last_read_sector,parent_dir->data_sectors[0]);
+        last_read_sector_idx = parent_dir->data_sectors[0];
+        *(unsigned int*)&last_read_sector[0] = parent_dir->size; // set the size at the first 4 bytes
+        
+    }    
+    
+    
+    inode_t* dir = (inode_t*)kmalloc(sizeof(inode_t));
+    dir->type = FS_TYPE_DIR;
+    dir->id = allocate_inode_sector();
+    memset(dir->data_sectors,0,NUM_DATA_SECTORS_PER_FILE * sizeof(unsigned int));
+    dir->indirect_sector = 0;
+    dir->size = 0;
+    vector_append(&inodes,(unsigned int)dir);
+
+    if (!write_directory_entry(parent_dir,dir->id,name,name_length)) {error("Failed to write directory entry");return;};
+
+    // cache to memory, TODO: gets cleared automatically after some time
+    inode_name_pair_t* name_pair = (inode_name_pair_t*)kmalloc(sizeof(inode_name_pair_t));
+    name_pair->id = dir->id;
+    name_pair->parent_id = parent_dir->id;
+    name_pair->length = name_length;
+    name_pair->name = kmalloc(name_length);
+    memcpy(name_pair->name,name,name_length);
+    vector_append(&inode_name_pairs,(unsigned int)name_pair);
+
+}
+
+void write_inode_to_disk(inode_t* inode){
+    unsigned int sector_idx = inode->id / 8;
+    unsigned int sector_start = (inode->id % 8) * SECTOR_BITMAP_SIZE;
+
+    if (last_read_sector_idx != sector_idx){
+        read_sectors(ATA_PRIMARY_BUS_IO,1,last_read_sector,sector_idx);
+        last_read_sector_idx = sector_idx;
+    }
+
+    *(unsigned int*)&last_read_sector[sector_start] = inode->id;
+    *(unsigned int*)&last_read_sector[sector_start + 0x4] = inode->size;
+    last_read_sector[sector_start + 0x8] = inode->type;
+    last_read_sector[sector_start + 0x9] = 0x0;
+    last_read_sector[sector_start + 0xa] = 0x0;
+    last_read_sector[sector_start + 0xb] = 0x0;
+    *(unsigned int*)&last_read_sector[sector_start + 0xc] = inode->indirect_sector;
+    memcpy(&last_read_sector[sector_start + 0x10],inode->data_sectors,sizeof(unsigned int) * NUM_DATA_SECTORS_PER_FILE);
+
+    write_sectors(ATA_PRIMARY_BUS_IO,1,last_read_sector,sector_idx);
+}
+
+void write_to_disk(){
+    for (unsigned int i = 0; i < inodes.size;i++){
+        write_inode_to_disk((inode_t*)inodes.data[i]);
+    }
+    log("Wrote all inodes to disk");
+    write_bitmaps_to_disk();
+    log("Wrote all bitmaps to disk");
 }
