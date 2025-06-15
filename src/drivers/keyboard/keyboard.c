@@ -90,8 +90,10 @@ void init_keyboard(){
     keyboard_map_lower[81] = '3';
 
     keyboard_map_upper[86] = '>';
+    keyboard_map_upper[57] = ' ';
 
     keyboard_map_ALT_GR[86] = '|';
+    keyboard_map_ALT_GR[57] = ' ';
 }
 
 int is_special_code(unsigned char scan_code){
