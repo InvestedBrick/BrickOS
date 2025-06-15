@@ -10,7 +10,7 @@ typedef struct {
 } string_t;
 
 typedef struct {
-    unsigned int length;
+    unsigned int n_strings;
     string_t* strings;
 }string_array_t;
 
