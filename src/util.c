@@ -1,6 +1,6 @@
 #include "util.h"
 #include "memory/kmalloc.h"
-
+#include "io/log.h"
 // TODO: move the vector stuff out of here
 void* memset(void* dest, int val, unsigned int n){
     unsigned char* p = dest;
@@ -11,6 +11,7 @@ void* memset(void* dest, int val, unsigned int n){
 }
 
 void* memcpy(void* dest,void* src, unsigned int n){
+    if (n == 0) return dest;
     unsigned char* _dest = dest;
     unsigned char* _src = src;
 
@@ -38,13 +39,13 @@ unsigned int strlen(unsigned char* str){
     return len;
 }
 
-void vector_resize(vector_t* vec,unsigned int new_size){
-    unsigned int* new_data = kmalloc(sizeof(unsigned int) * new_size);
+void vector_resize(vector_t* vec,unsigned int new_capacity){
+    unsigned int* new_data = kmalloc(sizeof(unsigned int) * new_capacity);
     memcpy(new_data,vec->data,vec->size * sizeof(unsigned int));
     kfree(vec->data);
 
     vec->data = new_data;
-    vec->capacity = new_size;
+    vec->capacity = new_capacity;
 }
 
 void vector_append(vector_t* vec, unsigned int data){
@@ -63,6 +64,7 @@ unsigned int vector_pop(vector_t* vec){
         vec->size--;
         return vec->data[vec->size];
     }
+    return 0;
 }
 
 unsigned char vector_is_empty(vector_t* vec) {
@@ -72,7 +74,7 @@ unsigned char vector_is_empty(vector_t* vec) {
 unsigned int vector_erase(vector_t* vec,unsigned int idx){
     unsigned int erased_item = vec->data[idx];
 
-    for(unsigned int i = idx; idx < vec->size - 1;i++){
+    for(unsigned int i = idx; i < vec->size - 1;i++){
         vec->data[i] = vec->data[i + 1];
     }
 
@@ -97,7 +99,7 @@ void vector_free(vector_t* vec, unsigned char ptrs){
 }
 
 void free_string_arr(string_array_t* str_arr){
-    for (unsigned int i = 0; i < str_arr->length;i++){
+    for (unsigned int i = 0; i < str_arr->n_strings;i++){
         kfree(str_arr->strings[i].str);
     }
     kfree(str_arr->strings);
