@@ -19,6 +19,8 @@ unsigned int last_read_sector_idx;
 
 inode_name_pair_t* get_name_by_inode_id(unsigned int id){
     for(unsigned int i = 0; i < inode_name_pairs.size;i++){
+        log("Address");
+        log_uint(inode_name_pairs.data[i]);
         inode_name_pair_t* pair = (inode_name_pair_t*)inode_name_pairs.data[i];
         log("tested data index");
         log_uint(i);
@@ -586,7 +588,7 @@ void create_directory(inode_t* parent_dir, unsigned char* name, unsigned char na
     name_pair->length = name_length;
     name_pair->name = kmalloc(name_length);
     memcpy(name_pair->name,name,name_length);
-    //vector_append(&inode_name_pairs,(unsigned int)name_pair);
+    vector_append(&inode_name_pairs,(unsigned int)name_pair);
 
 }
 
