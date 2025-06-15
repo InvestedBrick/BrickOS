@@ -25,8 +25,9 @@ string_t parse_word(unsigned char* line, unsigned char start_idx, unsigned int l
         word.length++;
     }
 
-    word.str = (unsigned char*)kmalloc(word.length);
+    word.str = (unsigned char*)kmalloc(word.length + 1);
     memcpy(word.str,buffer,word.length);
+    word.str[word.length] = '\0';
 
     kfree(buffer);
 
@@ -80,7 +81,10 @@ void readline(unsigned char* line){
             switch (ch)
             {
             case '\n':
+            {
+                line[line_idx] = 0;
                 return;
+            }
             case '\b':{
                 if (line_idx > 0){
                     erase_one_char();
@@ -119,7 +123,7 @@ void start_shell(){
 
         comd = parse_line(line,len);
         
-        if(!comd.command.str) continue; // no need to free or parse what is not there
+        if(!comd.command.length) continue; // no need to free or parse what is not there
         
         if (streq(comd.command.str,"clear",sizeof("clear"))) {
             clear_screen();
