@@ -20,7 +20,11 @@ unsigned int last_read_sector_idx;
 inode_name_pair_t* get_name_by_inode_id(unsigned int id){
     for(unsigned int i = 0; i < inode_name_pairs.size;i++){
         inode_name_pair_t* pair = (inode_name_pair_t*)inode_name_pairs.data[i];
+        log("tested data index");
+        log_uint(i);
         if (pair->id == id){
+            log("ID:");
+            log_uint(pair->id);
             return pair;
         }
     }
@@ -88,7 +92,7 @@ void shift_sector_bitmaps_left(unsigned char** bitmaps, unsigned int start, unsi
 
 void read_bitmaps_from_disk(){
     // bitmap headerdata starts at sector 101 (BITMAP_SECTOR_START)
-    read_sectors(ATA_PRIMARY_BUS_IO,1,last_read_sector,BITMAP_SECTOR_START * ATA_SECTOR_SIZE);
+    read_sectors(ATA_PRIMARY_BUS_IO,1,last_read_sector,BITMAP_SECTOR_START);
     last_read_sector_idx = BITMAP_SECTOR_START;
 
     memcpy(header_data.big_sector_used_map,last_read_sector,BIG_SECTOR_BITMAP_SIZE); // read in used bitmap
@@ -104,7 +108,7 @@ void read_bitmaps_from_disk(){
         unsigned int bitmap_idx_in_sector = (i % SECTOR_BITMAPS_PER_SECTOR);
 
         if (last_read_sector_idx != sector_bitmap_idx){
-            read_sectors(ATA_PRIMARY_BUS_IO,1,last_read_sector,last_read_sector_idx * ATA_SECTOR_SIZE);
+            read_sectors(ATA_PRIMARY_BUS_IO,1,last_read_sector,sector_bitmap_idx);
             last_read_sector_idx = sector_bitmap_idx;
         }
 
@@ -130,6 +134,7 @@ void write_bitmaps_to_disk() {
     }
 
     write_sectors(ATA_PRIMARY_BUS_IO,CEIL_DIV(active_partially_used_bitmaps, 8),bitmaps,(BITMAP_SECTOR_START + 1));
+
     kfree(bitmaps);
 }
 
@@ -241,7 +246,7 @@ unsigned int allocate_sector(){
     return (unsigned int)-1;
 }
 
-unsigned int allocate_inode_sector(){
+unsigned int allocate_inode_section(){
     for (unsigned int i = 0; i < RESERVED_INODE_SECTORS;i++){
         for (unsigned int j = 0; j < 8; j++){
             if (!BIT_CHECK(header_data.inode_sector_map,i * 8 + j)){
@@ -255,7 +260,7 @@ unsigned int allocate_inode_sector(){
     return (unsigned int)-1;
 }
 
-void free_inode_sector(unsigned int inode_id){
+void free_inode_section(unsigned int inode_id){
     if (!BIT_CHECK(header_data.inode_sector_map,inode_id)) return;
 
     if (inode_id <= 0 || inode_id >= RESERVED_INODE_SECTORS * 8) return;
@@ -314,7 +319,7 @@ void build_inodes(inode_t* start_node,unsigned int parent_id){
 
         // save the name
         inode_name_pair_t* pair = (inode_name_pair_t*)kmalloc(sizeof(inode_name_pair_t));
-        pair->id = node_id;
+        pair->id = node_id + 1; // bc 0 is root
         pair->length = name_len;
         pair->parent_id = parent_id;
         memcpy(pair->name,&buffer[buffer_idx + 1],name_len);
@@ -386,6 +391,15 @@ void init_filesystem(){
         for (unsigned int i = 0; i < RESERVED_SECTORS;i++){
             allocate_sector();
         }
+        //log("Number of active partially used bitmaps when init");
+        //log_uint(active_partially_used_bitmaps);
+        //unsigned char buf;
+        //log("reserved sectors:");
+        //
+        //for (unsigned int i = 0; i < 512;i++){
+        //    buf = BIT_CHECK(header_data.sector_bitmaps[0],i);
+        //    log_uint(buf > 0);
+        //}
         
     }else{
         /**
@@ -407,6 +421,15 @@ void init_filesystem(){
         root_node->indirect_sector = *(unsigned int*)&last_read_sector[0xc];
         memcpy(root_node->data_sectors,&last_read_sector[0x10],NUM_DATA_SECTORS_PER_FILE * sizeof(unsigned int));
         read_bitmaps_from_disk();
+        //log("Number of active big sectors:");
+        //log_uint(active_partially_used_bitmaps);
+        //unsigned char buf;
+        //log("reserved sectors:");
+        //
+        //for (unsigned int i = 0; i < 512;i++){
+        //    buf = BIT_CHECK(header_data.sector_bitmaps[0],i);
+        //    log_uint(buf > 0);
+        //}
 
     }
 
@@ -416,8 +439,8 @@ void init_filesystem(){
     name_pair->length = 4;
     name_pair->id = 0;
     name_pair->parent_id = 0;
-    name_pair->name = kmalloc(sizeof(unsigned char) * 5);
-    memcpy(name_pair->name,"root",sizeof(unsigned char) * 5);
+    name_pair->name = kmalloc(sizeof(unsigned char) * 4);
+    memcpy(name_pair->name,"root",sizeof(unsigned char) * 4);
     vector_append(&inode_name_pairs,(unsigned int)name_pair);
 
     vector_append(&inodes,(unsigned int)root_node);
@@ -433,7 +456,7 @@ unsigned char write_directory_entry(inode_t* parent_dir, unsigned int child_inod
     // copy our data into the byte datastream buffer
     *(unsigned int*)&data_buffer[0] = child_inode_id;
     data_buffer[sizeof(unsigned int)] = name_length;
-    memcpy(&data_buffer[sizeof(unsigned int) + sizeof(unsigned short)],name,name_length);
+    memcpy(&data_buffer[sizeof(unsigned int) + sizeof(unsigned char)],name,name_length);
 
     unsigned int total_bytes = parent_dir->size;
     unsigned int sector_idx = total_bytes / ATA_SECTOR_SIZE;
@@ -446,9 +469,10 @@ unsigned char write_directory_entry(inode_t* parent_dir, unsigned int child_inod
     }
 
     unsigned int sector = parent_dir->data_sectors[sector_idx];
-
-    read_sectors(ATA_PRIMARY_BUS_IO, 1, last_read_sector, sector);
-    last_read_sector_idx = sector;
+    if (last_read_sector_idx != sector){
+        read_sectors(ATA_PRIMARY_BUS_IO, 1, last_read_sector, sector);
+        last_read_sector_idx = sector;
+    }
 
     unsigned int bytes_written = 0;
     unsigned int remaining_bytes_in_sector = ATA_SECTOR_SIZE - sector_offset;
@@ -492,7 +516,6 @@ string_array_t* get_all_names_in_dir(inode_t* dir){
 
     for (unsigned int i = 0; i < n_sectors;i++){
         read_sectors(ATA_PRIMARY_BUS_IO,1,&buffer[i * ATA_SECTOR_SIZE],dir->data_sectors[i]);
-        last_read_sector_idx = dir->data_sectors[i];
     }
 
     string_array_t* str_arr = (string_array_t*)kmalloc(sizeof(string_array_t));
@@ -503,14 +526,15 @@ string_array_t* get_all_names_in_dir(inode_t* dir){
     unsigned int buffer_idx = sizeof(unsigned int);
     for (unsigned int i = 0; i < n_strings;i++){
         buffer_idx += sizeof(unsigned int); // skip id
-        unsigned int str_len = buffer[buffer_idx++];
+        unsigned char str_len = buffer[buffer_idx++];
         strings[i].length = str_len;
         strings[i].str = (unsigned char*)kmalloc(str_len);
+        strings[i].str[str_len] = 0;
         memcpy(strings[i].str,&buffer[buffer_idx],str_len);
         buffer_idx += str_len; 
     }
 
-    str_arr->length = n_strings;
+    str_arr->n_strings = n_strings;
     str_arr->strings = strings;
     kfree(buffer);
 
@@ -521,42 +545,48 @@ string_array_t* get_all_names_in_dir(inode_t* dir){
 void create_directory(inode_t* parent_dir, unsigned char* name, unsigned char name_length){
 
     string_array_t* strs_in_parent_dir = get_all_names_in_dir(parent_dir);
-    for (unsigned int i = 0; i < strs_in_parent_dir->length;i++){
-        if(streq(name,strs_in_parent_dir->strings[i].str,name_length)) {error("Directory name already exists in parent directory");return;}
+    if (strs_in_parent_dir){
+        for (unsigned int i = 0; i < strs_in_parent_dir->n_strings;i++){
+            if(streq(name,strs_in_parent_dir->strings[i].str,name_length)) {error("Directory name already exists in parent directory");return;}
+        }
+        free_string_arr(strs_in_parent_dir);
     }
 
-    free_string_arr(strs_in_parent_dir);
 
     if (parent_dir->data_sectors[0] == 0){
         // parent dir was empty before
         parent_dir->data_sectors[0] = allocate_sector();
-        parent_dir->size = sizeof(unsigned int); // entries 
+        log("allocated data sector:");
+        log_uint(parent_dir->data_sectors[0]);
+        parent_dir->size = sizeof(unsigned int); //offset from where to start
 
         read_sectors(ATA_PRIMARY_BUS_IO,1,last_read_sector,parent_dir->data_sectors[0]);
         last_read_sector_idx = parent_dir->data_sectors[0];
-        *(unsigned int*)&last_read_sector[0] = parent_dir->size; // set the size at the first 4 bytes
-        
+        *(unsigned int*)&last_read_sector[0] = 1; // set the size at the first 4 bytes
     }    
     
     
     inode_t* dir = (inode_t*)kmalloc(sizeof(inode_t));
     dir->type = FS_TYPE_DIR;
-    dir->id = allocate_inode_sector();
+    dir->id = allocate_inode_section();
     memset(dir->data_sectors,0,NUM_DATA_SECTORS_PER_FILE * sizeof(unsigned int));
     dir->indirect_sector = 0;
     dir->size = 0;
     vector_append(&inodes,(unsigned int)dir);
 
-    if (!write_directory_entry(parent_dir,dir->id,name,name_length)) {error("Failed to write directory entry");return;};
+    if (!write_directory_entry(parent_dir,dir->id,name,name_length)) {
+        error("Failed to write directory entry");
+        return;
+    }
 
     // cache to memory, TODO: gets cleared automatically after some time
     inode_name_pair_t* name_pair = (inode_name_pair_t*)kmalloc(sizeof(inode_name_pair_t));
-    name_pair->id = dir->id;
+    name_pair->id = dir->id + 1; // since root is id 0 but the sections for the inodes also start at 0, add 1
     name_pair->parent_id = parent_dir->id;
     name_pair->length = name_length;
     name_pair->name = kmalloc(name_length);
     memcpy(name_pair->name,name,name_length);
-    vector_append(&inode_name_pairs,(unsigned int)name_pair);
+    //vector_append(&inode_name_pairs,(unsigned int)name_pair);
 
 }
 
