@@ -11,7 +11,3 @@
 [LOG] 524288
 [LOG] Initialized disk driver
 [LOG] Initialized the filesystem
-[LOG] User returned from shell
-[LOG] Wrote all inodes to disk
-[LOG] Wrote all bitmaps to disk
-[PANIC] The OS has shit itself: This is the end of the world
