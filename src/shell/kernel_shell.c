@@ -106,6 +106,45 @@ void readline(unsigned char* line){
     }
 }
 
+void change_directory(command_t comd){
+    if (streq(comd.args[0].str,"..")){
+        inode_name_pair_t* name_pair = get_name_by_inode_id(active_dir->id);
+        inode_t* inode = get_inode_by_id(name_pair->parent_id);
+        if(!inode) error("Failed to retrieve inode"); // should not happen, therefore log to logs if fails
+        active_dir = inode;
+        return;
+    }
+
+
+    string_array_t* strs = get_all_names_in_dir(active_dir,1);
+    if (!strs) {write_string("The current directory is empty",30);newline();return;}
+
+    for(unsigned int i = 0; i < strs->n_strings;i++){
+        if (!strs->strings[i].str[strs->strings[i].length - 1] == '/'){
+            continue;
+        }
+        unsigned int name_len = strs->strings[i].length - 1; // ignore the '/' because it is not part of the actualy name
+        if(strneq(strs->strings[i].str,comd.args[0].str,name_len,name_len)){
+            log(comd.args[0].str);
+            unsigned int id = get_inode_id_by_name(active_dir->id,comd.args[0].str);
+            log_uint(id);
+            inode_t* inode = get_inode_by_id(id);
+            if(!inode) error("Failed to retrieve inode");
+        
+            active_dir = inode;
+            free_string_arr(strs);
+            return;
+        }
+    }
+
+    free_string_arr(strs);
+    write_string("Target directory was not found",30);
+    newline();
+    return;
+
+
+}
+
 void start_shell(){
     unsigned char* line = kmalloc(SCREEN_COLUMNS + 1);
     newline(); 
@@ -125,14 +164,14 @@ void start_shell(){
         
         if(!comd.command.length) continue; // no need to free or parse what is not there
         
-        if (streq(comd.command.str,"clear",sizeof("clear"))) {
+        if (streq(comd.command.str,"clear")) {
             clear_screen();
         }
-        else if (streq(comd.command.str,"exit",sizeof("exit"))){
+        else if (streq(comd.command.str,"exit")){
             break;
         }
-        else if (streq(comd.command.str,"ls",sizeof("ls"))){
-            string_array_t* names = get_all_names_in_dir(active_dir);
+        else if (streq(comd.command.str,"ls")){
+            string_array_t* names = get_all_names_in_dir(active_dir,1);
 
             if (names) {
 
@@ -145,10 +184,16 @@ void start_shell(){
             } 
 
         }
-        else if (streq(comd.command.str,"mkdir",sizeof("mkdir"))){
+        else if (streq(comd.command.str,"mkdir")){
             if (!comd.args) {write_string("Expected name of directory",26); newline();}
             else{
                 create_directory(active_dir,comd.args[0].str,comd.args[0].length);
+            }
+        }
+        else if (streq(comd.command.str,"cd")){
+            if (!comd.args) {write_string("Expected name of directory",26); newline();}
+            else{
+                change_directory(comd);
             }
         }
         else {
