@@ -10,21 +10,169 @@
 [LOG] 524288
 [LOG] Initialized disk driver
 [LOG] Initialized the filesystem
+[LOG] Vector data in inode id
+[LOG] 3489661615
+[LOG] Address
+[LOG] 3489661615
 [LOG] tested data index
 [LOG] 0
 [LOG] ID:
 [LOG] 0
+[LOG] Vector data in inode id
+[LOG] 3489661615
+[LOG] Address
+[LOG] 3489661615
 [LOG] tested data index
 [LOG] 0
 [LOG] ID:
 [LOG] 0
+[LOG] creating new directory entry
+[LOG] The sector we are writing to:
+[LOG] 1
+[LOG] offset:
+[LOG] 4
+[LOG] Number of dir entries:
+[LOG] 1
+[LOG] Vector data
+[LOG] 3489661615
+[LOG] 3489662016
+[LOG] Vector data in inode id
+[LOG] 3489661615
+[LOG] 3489662016
+[LOG] Address
+[LOG] 3489661615
 [LOG] tested data index
 [LOG] 0
 [LOG] ID:
 [LOG] 0
-[LOG] allocated data sector:
-[LOG] 118
+[LOG] Vector data in inode id
+[LOG] 3489661615
+[LOG] 3489662016
+[LOG] Address
+[LOG] 3489661615
 [LOG] tested data index
 [LOG] 0
 [LOG] ID:
 [LOG] 0
+[LOG] Vector data in inode id
+[LOG] 3489661615
+[LOG] 3489662016
+[LOG] Address
+[LOG] 3489661615
+[LOG] tested data index
+[LOG] 0
+[LOG] ID:
+[LOG] 0
+[LOG] Vector data in inode id
+[LOG] 3489661615
+[LOG] 3489662016
+[LOG] Address
+[LOG] 3489661615
+[LOG] tested data index
+[LOG] 0
+[LOG] ID:
+[LOG] 0
+[LOG] Vector data in inode id
+[LOG] 3489661615
+[LOG] 3489662016
+[LOG] Address
+[LOG] 3489661615
+[LOG] tested data index
+[LOG] 0
+[LOG] ID:
+[LOG] 0
+[LOG] Vector data in inode id
+[LOG] 3489661615
+[LOG] 3489662016
+[LOG] Address
+[LOG] 3489661615
+[LOG] tested data index
+[LOG] 0
+[LOG] ID:
+[LOG] 0
+[LOG] Vector data in inode id
+[LOG] 3489661615
+[LOG] 3489662016
+[LOG] Address
+[LOG] 3489661615
+[LOG] tested data index
+[LOG] 0
+[LOG] ID:
+[LOG] 0
+[LOG] Here
+[LOG] creating new directory entry
+[LOG] The sector we are writing to:
+[LOG] 1
+[LOG] offset:
+[LOG] 13
+[LOG] Number of dir entries:
+[LOG] 2
+[LOG] Vector data
+[LOG] 3489661615
+[LOG] 3489662016
+[LOG] Vector data in inode id
+[LOG] 3489661615
+[LOG] 3489662016
+[LOG] Address
+[LOG] 3489661615
+[LOG] tested data index
+[LOG] 0
+[LOG] ID:
+[LOG] 0
+[LOG] Vector data in inode id
+[LOG] 3489661615
+[LOG] 3489662016
+[LOG] Address
+[LOG] 3489661615
+[LOG] tested data index
+[LOG] 0
+[LOG] ID:
+[LOG] 0
+[LOG] Vector data in inode id
+[LOG] 3489661615
+[LOG] 3489662016
+[LOG] Address
+[LOG] 3489661615
+[LOG] tested data index
+[LOG] 0
+[LOG] ID:
+[LOG] 0
+[LOG] Here
+[LOG] creating new directory entry
+[LOG] The sector we are writing to:
+[LOG] 1
+[LOG] offset:
+[LOG] 21
+[LOG] Number of dir entries:
+[LOG] 3
+[LOG] Vector data
+[LOG] 3489661615
+[LOG] 3489662016
+[LOG] Vector data in inode id
+[LOG] 3489661615
+[LOG] 3489662016
+[LOG] Address
+[LOG] 3489661615
+[LOG] tested data index
+[LOG] 0
+[LOG] ID:
+[LOG] 0
+[LOG] Vector data in inode id
+[LOG] 3489661615
+[LOG] 3489662016
+[LOG] Address
+[LOG] 3489661615
+[LOG] tested data index
+[LOG] 0
+[LOG] Address
+[LOG] 3489662016
+[LOG] tested data index
+[LOG] 1
+[LOG] Address
+[LOG] 3489661819
+[LOG] tested data index
+[LOG] 2
+[LOG] Address
+[LOG] 3489662294
+[LOG] tested data index
+[LOG] 3
