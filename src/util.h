@@ -38,15 +38,27 @@ void* memcpy(void* dest,void* src, unsigned int n);
 
 /**
  * streq:
- * Compares the length of two strings
+ * Compares two null-terminated strings
  * @param str1 A pointer to the first string
  * @param str2 A pointer to the second string
- * @param length The max length of both strings
  * 
  * @return 1 if both strings are equal
- *         0 else 
+ *         0 if they are not equal 
  */
-char streq(const char* str1, const char* str2, unsigned int length);
+unsigned char streq(const char* str1, const char* str2);
+
+/**
+ * strneq: 
+ * Compares two strings
+ * @param str1 A pointer to the first string
+ * @param str2 A pointer to the second string
+ * @param len_1 The length of the first string
+ * @param len_2 The length of the second string
+ * 
+ * @return 1 if both strings are equal
+ *         0 if they are not equal 
+ */
+unsigned char strneq(const char* str1, const char* str2, unsigned int len_1, unsigned int len_2); 
 
 /**
  * strlen: 
