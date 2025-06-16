@@ -36,6 +36,6 @@ void log_uint(unsigned int num){
 }
 
 void panic(const unsigned char* msg){
-    serial_write_with_prefix("[PANIC] The OS has shit itself: ",msg,SERIAL_COM1_BASE);
+    serial_write_with_prefix("[PANIC] ",msg,SERIAL_COM1_BASE);
     while(1){};
 }
