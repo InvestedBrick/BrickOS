@@ -112,8 +112,8 @@ void start_shell(){
     command_t comd;
     while (1){
         memset(line,0x00,SCREEN_COLUMNS + 1);
-        string_t curr_dir = get_active_dir();
         write_string("|-(",3);
+        string_t curr_dir = get_active_dir();
         write_string(curr_dir.str,curr_dir.length);
         write_string(")-> ",4);
 
