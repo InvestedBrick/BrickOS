@@ -22,17 +22,30 @@ void* memcpy(void* dest,void* src, unsigned int n){
     return dest;
 }
 
-char streq(const char* str1, const char* str2, unsigned int length){
-    for (unsigned int i = 0; i < length;i++){
+unsigned char streq(const char* str1, const char* str2){
+    unsigned int i = 0;
+    while(1){
         if (str1[i] != str2[i]) return 0;
 
         if (str1[i] == '\0' && str2[i] == '\0') return 1;
 
+        i++;
     }
 
+    //how did we get here?
+    return 1;
+
+}
+unsigned char strneq(const char* str1, const char* str2, unsigned int len_1, unsigned int len_2){
+    unsigned int max_len = len_1 > len_2 ? len_1 : len_2;
+
+    for (unsigned int i = 0; i < max_len;i++){
+        if (str1[i] != str2[i]) return 0;
+
+        if (str1[i] == '\0' && str2[i] == '\0') return 1;
+    }
     return 1;
 }
-
 unsigned int strlen(unsigned char* str){
     unsigned int len = 0;
     while(str[len] != 0){len++;}
