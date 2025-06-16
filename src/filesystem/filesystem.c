@@ -289,7 +289,6 @@ void build_inodes(inode_t* start_node,unsigned int parent_id){
 
     unsigned char* buffer = (char*)kmalloc((n_sectors + indirect_sectors_count) * ATA_SECTOR_SIZE);
 
-
     // read all the sectors individually, since they might not be continuous
     for (unsigned int i = 0; i < n_sectors + indirect_sectors_count;i++ ){
         // normal sectors
@@ -316,6 +315,7 @@ void build_inodes(inode_t* start_node,unsigned int parent_id){
         pair->id = node_id + 1; // because 0 is root
         pair->length = name_len;
         pair->parent_id = parent_id;
+        pair->name = (unsigned char*)kmalloc(name_len);
         memcpy(pair->name,&buffer[buffer_idx + 1],name_len);
         vector_append(&inode_name_pairs,(unsigned int)pair);
 
@@ -336,7 +336,7 @@ void build_inodes(inode_t* start_node,unsigned int parent_id){
         memcpy((void*)inode,&last_read_sector[sector_offset],sizeof(inode_t));
 
         vector_append(&inodes,(unsigned int)inode);
-        build_inodes(inode,inode->id);
+        build_inodes(inode,inode->id + 1); // we add one becasue while we need the actual id for offsets, the id + 1 is for the name matching
     }
 
     // We are nice today and return our memory
@@ -482,8 +482,6 @@ unsigned char write_directory_entry(inode_t* parent_dir, unsigned int child_inod
     read_sectors(ATA_PRIMARY_BUS_IO,1,last_read_sector,parent_dir->data_sectors[0]);
     last_read_sector_idx = parent_dir->data_sectors[0];
     *(unsigned int*)&last_read_sector[0] = *(unsigned int*)&last_read_sector[0] + 1; // increment the number of entries
-    log("Number of dir entries:");
-    log_uint(*(unsigned int*)&last_read_sector[0]);
     write_sectors(ATA_PRIMARY_BUS_IO,1,last_read_sector,parent_dir->data_sectors[0]); 
 
     return 1;
@@ -582,8 +580,9 @@ void create_directory(inode_t* parent_dir, unsigned char* name, unsigned char na
 
 }
 
-void write_inode_to_disk(inode_t* inode){
-    unsigned int sector_idx = inode->id / 8;
+void write_inode_to_disk(inode_t* inode,unsigned char is_root){
+    unsigned int sector_idx = (inode->id / 8) + (is_root != 1); // add one if it is not root
+
     unsigned int sector_start = (inode->id % 8) * SECTOR_BITMAP_SIZE;
 
     if (last_read_sector_idx != sector_idx){
@@ -605,7 +604,7 @@ void write_inode_to_disk(inode_t* inode){
 
 void write_to_disk(){
     for (unsigned int i = 0; i < inodes.size;i++){
-        write_inode_to_disk((inode_t*)inodes.data[i]);
+        write_inode_to_disk((inode_t*)inodes.data[i], i == 0);
     }
     log("Wrote all inodes to disk");
     write_bitmaps_to_disk();
