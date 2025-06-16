@@ -63,7 +63,7 @@ void* kmalloc(unsigned int size){
 
     memory_block_t* last = head;
     while (last && last->next) last = last->next;
-    block = (memory_block_t*) ((char*)KERNEL_MALLOC_START + heap_allocated);
+    block = (memory_block_t*) ((char*)last + MEMORY_BLOCK_SIZE + last->size);
     block->size = size;
     block->free = 0;
     block->next = 0;
@@ -77,8 +77,8 @@ void* kmalloc(unsigned int size){
 void merge_blocks(memory_block_t* block){
     while (block->next && block->next->free ){
         block->size = block->size + MEMORY_BLOCK_SIZE + block->next->size;
+        heap_allocated -= block->next->size + MEMORY_BLOCK_SIZE;
         block->next = block->next->next;
-        heap_allocated -= block->size + MEMORY_BLOCK_SIZE;
     }
 }
 void kfree(void* addr){
@@ -99,6 +99,12 @@ void init_kmalloc(unsigned int initial_heapsize){
     heap_allocated = 0;
     kmalloc_initialized = 1;
     set_heap_size(initial_heapsize);
+
+    // Initialize the first block
+    head = (memory_block_t*) KERNEL_MALLOC_START;
+    head->size = heap_size - MEMORY_BLOCK_SIZE;
+    head->free = 1;
+    head->next = 0;
 }
 
 void set_heap_size(unsigned int new_size){
