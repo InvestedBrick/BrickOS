@@ -52,7 +52,8 @@ void kmain(multiboot_info_t* boot_info)
     log("Initialized kmalloc");
     
     save_module_binaries(boot_info);
-
+    log("Saved module binaries");
+    
     un_identity_map_first_page_table();
 
     init_user_process_vector();
