@@ -70,7 +70,8 @@ typedef struct {
 // This should be 8
 #define FS_INODES_PER_SECTOR (ATA_SECTOR_SIZE / sizeof(inode_t)) 
 
-
+// make sure that the root dir id is unique and cannot be overwritten by allocated inodes
+#define FS_ROOT_DIR_ID ((RESERVED_INODE_SECTORS * FS_INODES_PER_SECTOR ) + 1)
 /**
  * init_filesystem:
  * Initializes the filesystem
@@ -88,11 +89,18 @@ inode_name_pair_t* get_name_by_inode_id(unsigned int id);
 /**
  * get_inode_id_by_name:
  * @param parent_id The id of the parent directory
- * @param name The name of the direcotry/file
+ * @param name The name of the directory/file
  * 
  */
 unsigned int get_inode_id_by_name(unsigned int parent_id, const char* name);
 
+/**
+ * get_inode_by_id: 
+ * Returns a pointer to an inode with the given id
+ * @param id The id of the inode
+ * @return A pointer to the inode
+ */
+inode_t* get_inode_by_id(unsigned int id);
 /**
  * get_active_dir: 
  * Returns the name of the current active directory
@@ -133,10 +141,11 @@ unsigned int allocate_sector();
  * 
  * IMPORTANT: You need to free the returned strings, the string struct and the returned string array pointer (See free_string_arr() in util.h)
  * @param dir The directory of which to get the entires
+ * @param add_slash A boolean value deciding if directories shuld get an added '/' when being returned
  * @return Array of strings which contain the data
  * 
  */
-string_array_t* get_all_names_in_dir(inode_t* dir);
+string_array_t* get_all_names_in_dir(inode_t* dir,unsigned char add_slash);
 
 /**
  * create_directory:
