@@ -26,13 +26,25 @@ inode_name_pair_t* get_name_by_inode_id(unsigned int id){
 }
 
 unsigned int get_inode_id_by_name(unsigned int parent_id, const char* name){
+    unsigned int len = strlen(name);
     for (unsigned int i = 0; i < inode_name_pairs.size; i++) {
         inode_name_pair_t* pair = (inode_name_pair_t*)inode_name_pairs.data[i];
-        if (pair->parent_id == parent_id && streq(pair->name, name, pair->length)) {
+        if (pair->parent_id == parent_id && strneq(pair->name, name,len,pair->length)) {
             return pair->id;
         }
     }
     return (unsigned int)-1;
+}
+
+inode_t* get_inode_by_id(unsigned int id){
+    for(unsigned int i = 0; i < inodes.size;i++){
+        inode_t* node = (inode_t*)inodes.data[i];
+        if(node->id == id){
+            return node;
+        }
+    }
+
+    return 0;
 }
 string_t get_active_dir(){
     inode_name_pair_t* pair = get_name_by_inode_id(active_dir->id);
@@ -312,14 +324,15 @@ void build_inodes(inode_t* start_node,unsigned int parent_id){
 
         // save the name
         inode_name_pair_t* pair = (inode_name_pair_t*)kmalloc(sizeof(inode_name_pair_t));
-        pair->id = node_id + 1; // because 0 is root
+        pair->id = node_id;
         pair->length = name_len;
         pair->parent_id = parent_id;
         pair->name = (unsigned char*)kmalloc(name_len);
         memcpy(pair->name,&buffer[buffer_idx + 1],name_len);
+        pair->name[name_len] = 0;
         vector_append(&inode_name_pairs,(unsigned int)pair);
 
-        buffer_idx += name_len + 1;
+        buffer_idx += name_len + sizeof(unsigned char);
 
         unsigned int inode_sector =  (node_id / FS_INODES_PER_SECTOR) + 1; // rounded towards 0 and +1 for the root sector
         unsigned int sector_offset = (node_id % FS_INODES_PER_SECTOR) * sizeof(inode_t);        
@@ -336,7 +349,7 @@ void build_inodes(inode_t* start_node,unsigned int parent_id){
         memcpy((void*)inode,&last_read_sector[sector_offset],sizeof(inode_t));
 
         vector_append(&inodes,(unsigned int)inode);
-        build_inodes(inode,inode->id + 1); // we add one becasue while we need the actual id for offsets, the id + 1 is for the name matching
+        build_inodes(inode,inode->id); 
     }
 
     // We are nice today and return our memory
@@ -361,7 +374,7 @@ void init_filesystem(){
     inode_t* root_node = (inode_t*)kmalloc(sizeof(inode_t));
 
     // standard root dir stuff
-    root_node->id = 0;
+    root_node->id = FS_ROOT_DIR_ID;
     root_node->type = FS_TYPE_DIR;
     if(!(last_read_sector[ATA_SECTOR_SIZE - 1] == FS_SECTOR_0_INIT_FLAG)){
         first_time_fs_init = 1;
@@ -411,8 +424,8 @@ void init_filesystem(){
 
     inode_name_pair_t* name_pair = (inode_name_pair_t*)kmalloc(sizeof(inode_name_pair_t));
     name_pair->length = 4;
-    name_pair->id = 0;
-    name_pair->parent_id = 0;
+    name_pair->id = FS_ROOT_DIR_ID;
+    name_pair->parent_id = FS_ROOT_DIR_ID;
     name_pair->name = kmalloc(sizeof(unsigned char) * 5);
     memcpy(name_pair->name,"root",sizeof(unsigned char) * 5);
     vector_append(&inode_name_pairs,(unsigned int)name_pair);
@@ -487,7 +500,7 @@ unsigned char write_directory_entry(inode_t* parent_dir, unsigned int child_inod
     return 1;
 }
 
-string_array_t* get_all_names_in_dir(inode_t* dir){
+string_array_t* get_all_names_in_dir(inode_t* dir, unsigned char add_slash){
 
     unsigned int n_sectors = 0;
     for(unsigned int i = 0; dir->data_sectors[i] != 0 && i < NUM_DATA_SECTORS_PER_FILE; i++) {n_sectors++;}
@@ -512,13 +525,19 @@ string_array_t* get_all_names_in_dir(inode_t* dir){
 
     unsigned int buffer_idx = sizeof(unsigned int);
     for (unsigned int i = 0; i < n_strings;i++){
+        unsigned int id = *(unsigned int*)&buffer[buffer_idx];
         buffer_idx += sizeof(unsigned int); // skip id
         unsigned char str_len = buffer[buffer_idx++];
+        inode_t* node = get_inode_by_id(id);
+        if (!node) error("Invalid node");
+        unsigned char is_dir = node->type == FS_TYPE_DIR;
+        if (is_dir && add_slash) str_len++; // will maybe cause an overflow if your directories are over 255 bytes long, but who has that long dir names
         strings[i].length = str_len;
         strings[i].str = (unsigned char*)kmalloc(str_len + 1);
         strings[i].str[str_len] = 0;
         memcpy(strings[i].str,&buffer[buffer_idx],str_len);
-        buffer_idx += str_len; 
+        if (is_dir && add_slash) {strings[i].str[str_len - 1] = '/';} // add a '/' to signal it is a directory
+        buffer_idx += str_len - is_dir; 
     }
 
     
@@ -532,10 +551,10 @@ string_array_t* get_all_names_in_dir(inode_t* dir){
 
 void create_directory(inode_t* parent_dir, unsigned char* name, unsigned char name_length){
 
-    string_array_t* strs_in_parent_dir = get_all_names_in_dir(parent_dir);
+    string_array_t* strs_in_parent_dir = get_all_names_in_dir(parent_dir,0);
     if (strs_in_parent_dir){
         for (unsigned int i = 0; i < strs_in_parent_dir->n_strings;i++){
-            if(streq(name,strs_in_parent_dir->strings[i].str,name_length)) {
+            if(strneq(name,strs_in_parent_dir->strings[i].str,name_length,strs_in_parent_dir->strings[i].length)) {
                 error("Directory name already exists in parent directory");
                 free_string_arr(strs_in_parent_dir);
                 return;
@@ -571,20 +590,25 @@ void create_directory(inode_t* parent_dir, unsigned char* name, unsigned char na
 
     // cache to memory, TODO: gets cleared automatically after some time
     inode_name_pair_t* name_pair = (inode_name_pair_t*)kmalloc(sizeof(inode_name_pair_t));
-    name_pair->id = dir->id + 1; // since root is id 0 but the sections for the inodes also start at 0, add 1
+    name_pair->id = dir->id;
     name_pair->parent_id = parent_dir->id;
     name_pair->length = name_length;
-    name_pair->name = kmalloc(name_length);
+    name_pair->name = kmalloc(name_length + 1);
     memcpy(name_pair->name,name,name_length);
+    name_pair->name[name_length] = 0;
     vector_append(&inode_name_pairs,(unsigned int)name_pair);
 
 }
 
 void write_inode_to_disk(inode_t* inode,unsigned char is_root){
+    
     unsigned int sector_idx = (inode->id / 8) + (is_root != 1); // add one if it is not root
 
     unsigned int sector_start = (inode->id % 8) * SECTOR_BITMAP_SIZE;
-
+    if (is_root){
+        sector_idx = 0;
+        sector_start = 0;
+    }
     if (last_read_sector_idx != sector_idx){
         read_sectors(ATA_PRIMARY_BUS_IO,1,last_read_sector,sector_idx);
         last_read_sector_idx = sector_idx;
