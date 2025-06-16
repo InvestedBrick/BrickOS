@@ -31,7 +31,7 @@ memory_block_t* find_free_block(unsigned int size){
 
 void split_block(memory_block_t* block, unsigned int size){
     if (block->size > size + MEMORY_BLOCK_SIZE){
-        memory_block_t* new_block = block + MEMORY_BLOCK_SIZE + size;
+        memory_block_t* new_block = (memory_block_t*)((char*)block + MEMORY_BLOCK_SIZE + size);
         new_block->size = block->size - size - MEMORY_BLOCK_SIZE;
         new_block->free = 1;
         new_block->next = block->next;
@@ -86,6 +86,9 @@ void kfree(void* addr){
 
     // I hope you dont start freeing random pointers
     memory_block_t* block = (memory_block_t*)((char*)addr - MEMORY_BLOCK_SIZE);
+    
+    if (block->free) panic("Double free detected");
+    
     block->free = 1;
 
     merge_blocks(block);
