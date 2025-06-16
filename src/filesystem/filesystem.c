@@ -18,6 +18,9 @@ unsigned int last_read_sector_idx;
 
 
 inode_name_pair_t* get_name_by_inode_id(unsigned int id){
+    log("Vector data in inode id");
+    log_uint(inode_name_pairs.data[0]);
+    if (inode_name_pairs.size > 1) log_uint(inode_name_pairs.data[1]);
     for(unsigned int i = 0; i < inode_name_pairs.size;i++){
         log("Address");
         log_uint(inode_name_pairs.data[i]);
@@ -321,7 +324,7 @@ void build_inodes(inode_t* start_node,unsigned int parent_id){
 
         // save the name
         inode_name_pair_t* pair = (inode_name_pair_t*)kmalloc(sizeof(inode_name_pair_t));
-        pair->id = node_id + 1; // bc 0 is root
+        pair->id = node_id + 1; // because 0 is root
         pair->length = name_len;
         pair->parent_id = parent_id;
         memcpy(pair->name,&buffer[buffer_idx + 1],name_len);
@@ -452,6 +455,7 @@ void init_filesystem(){
 
 
 unsigned char write_directory_entry(inode_t* parent_dir, unsigned int child_inode_id, unsigned char* name, unsigned char name_length){
+    log("creating new directory entry");
     unsigned char data_buffer[sizeof(unsigned int) + sizeof(unsigned char) + 256];
     unsigned int data_buffer_size = sizeof(unsigned int) + sizeof(unsigned char) + name_length;
 
@@ -471,6 +475,11 @@ unsigned char write_directory_entry(inode_t* parent_dir, unsigned int child_inod
     }
 
     unsigned int sector = parent_dir->data_sectors[sector_idx];
+    log("The sector we are writing to:");
+    log_uint(sector);
+
+    log("offset:");
+    log_uint(sector_offset);
     if (last_read_sector_idx != sector){
         read_sectors(ATA_PRIMARY_BUS_IO, 1, last_read_sector, sector);
         last_read_sector_idx = sector;
@@ -505,6 +514,14 @@ unsigned char write_directory_entry(inode_t* parent_dir, unsigned int child_inod
         remaining_bytes_in_sector = ATA_SECTOR_SIZE;
     }
 
+    read_sectors(ATA_PRIMARY_BUS_IO,1,last_read_sector,parent_dir->data_sectors[0]);
+    last_read_sector_idx = parent_dir->data_sectors[0];
+    *(unsigned int*)&last_read_sector[0] = *(unsigned int*)&last_read_sector[0] + 1; // increment the number of entries
+    log("Number of dir entries:");
+    log_uint(*(unsigned int*)&last_read_sector[0]);
+    write_sectors(ATA_PRIMARY_BUS_IO,1,last_read_sector,parent_dir->data_sectors[0]); 
+
+    return 1;
 }
 
 string_array_t* get_all_names_in_dir(inode_t* dir){
@@ -513,8 +530,14 @@ string_array_t* get_all_names_in_dir(inode_t* dir){
     for(unsigned int i = 0; dir->data_sectors[i] != 0 && i < NUM_DATA_SECTORS_PER_FILE; i++) {n_sectors++;}
 
     if (!n_sectors) return 0;
-
+    
     unsigned char* buffer = (unsigned char*)kmalloc(n_sectors * ATA_SECTOR_SIZE);
+
+    // assure that size was set
+    if (dir->size < sizeof(unsigned int)) {
+        kfree(buffer);
+        return 0;
+    }
 
     for (unsigned int i = 0; i < n_sectors;i++){
         read_sectors(ATA_PRIMARY_BUS_IO,1,&buffer[i * ATA_SECTOR_SIZE],dir->data_sectors[i]);
@@ -530,7 +553,7 @@ string_array_t* get_all_names_in_dir(inode_t* dir){
         buffer_idx += sizeof(unsigned int); // skip id
         unsigned char str_len = buffer[buffer_idx++];
         strings[i].length = str_len;
-        strings[i].str = (unsigned char*)kmalloc(str_len);
+        strings[i].str = (unsigned char*)kmalloc(str_len + 1);
         strings[i].str[str_len] = 0;
         memcpy(strings[i].str,&buffer[buffer_idx],str_len);
         buffer_idx += str_len; 
@@ -549,23 +572,26 @@ void create_directory(inode_t* parent_dir, unsigned char* name, unsigned char na
     string_array_t* strs_in_parent_dir = get_all_names_in_dir(parent_dir);
     if (strs_in_parent_dir){
         for (unsigned int i = 0; i < strs_in_parent_dir->n_strings;i++){
-            if(streq(name,strs_in_parent_dir->strings[i].str,name_length)) {error("Directory name already exists in parent directory");return;}
+            if(streq(name,strs_in_parent_dir->strings[i].str,name_length)) {
+                error("Directory name already exists in parent directory");
+                free_string_arr(strs_in_parent_dir);
+                return;
+            }
         }
+        log("Here");
         free_string_arr(strs_in_parent_dir);
     }
 
 
     if (parent_dir->data_sectors[0] == 0){
-        // parent dir was empty before
         parent_dir->data_sectors[0] = allocate_sector();
-        log("allocated data sector:");
-        log_uint(parent_dir->data_sectors[0]);
-        parent_dir->size = sizeof(unsigned int); //offset from where to start
-
         read_sectors(ATA_PRIMARY_BUS_IO,1,last_read_sector,parent_dir->data_sectors[0]);
         last_read_sector_idx = parent_dir->data_sectors[0];
-        *(unsigned int*)&last_read_sector[0] = 1; // set the size at the first 4 bytes
-    }    
+        memset(last_read_sector, 0, ATA_SECTOR_SIZE); 
+        *(unsigned int*)&last_read_sector[0] = 0; 
+        write_sectors(ATA_PRIMARY_BUS_IO, 1, last_read_sector, parent_dir->data_sectors[0]);
+        parent_dir->size = sizeof(unsigned int);
+    } 
     
     
     inode_t* dir = (inode_t*)kmalloc(sizeof(inode_t));
@@ -589,6 +615,9 @@ void create_directory(inode_t* parent_dir, unsigned char* name, unsigned char na
     name_pair->name = kmalloc(name_length);
     memcpy(name_pair->name,name,name_length);
     vector_append(&inode_name_pairs,(unsigned int)name_pair);
+    log("Vector data");
+    log_uint(inode_name_pairs.data[0]);
+    log_uint(inode_name_pairs.data[1]);
 
 }
 
