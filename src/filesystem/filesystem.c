@@ -15,21 +15,10 @@ unsigned char first_time_fs_init = 0;
 unsigned char* last_read_sector;
 unsigned int last_read_sector_idx;
 
-
-
 inode_name_pair_t* get_name_by_inode_id(unsigned int id){
-    log("Vector data in inode id");
-    log_uint(inode_name_pairs.data[0]);
-    if (inode_name_pairs.size > 1) log_uint(inode_name_pairs.data[1]);
     for(unsigned int i = 0; i < inode_name_pairs.size;i++){
-        log("Address");
-        log_uint(inode_name_pairs.data[i]);
         inode_name_pair_t* pair = (inode_name_pair_t*)inode_name_pairs.data[i];
-        log("tested data index");
-        log_uint(i);
         if (pair->id == id){
-            log("ID:");
-            log_uint(pair->id);
             return pair;
         }
     }
@@ -396,16 +385,6 @@ void init_filesystem(){
         for (unsigned int i = 0; i < RESERVED_SECTORS;i++){
             allocate_sector();
         }
-        //log("Number of active partially used bitmaps when init");
-        //log_uint(active_partially_used_bitmaps);
-        //unsigned char buf;
-        //log("reserved sectors:");
-        //
-        //for (unsigned int i = 0; i < 512;i++){
-        //    buf = BIT_CHECK(header_data.sector_bitmaps[0],i);
-        //    log_uint(buf > 0);
-        //}
-        
     }else{
         /**
          * 0x00000000: root_id
@@ -426,16 +405,6 @@ void init_filesystem(){
         root_node->indirect_sector = *(unsigned int*)&last_read_sector[0xc];
         memcpy(root_node->data_sectors,&last_read_sector[0x10],NUM_DATA_SECTORS_PER_FILE * sizeof(unsigned int));
         read_bitmaps_from_disk();
-        //log("Number of active big sectors:");
-        //log_uint(active_partially_used_bitmaps);
-        //unsigned char buf;
-        //log("reserved sectors:");
-        //
-        //for (unsigned int i = 0; i < 512;i++){
-        //    buf = BIT_CHECK(header_data.sector_bitmaps[0],i);
-        //    log_uint(buf > 0);
-        //}
-
     }
 
     active_dir = root_node;
@@ -444,8 +413,8 @@ void init_filesystem(){
     name_pair->length = 4;
     name_pair->id = 0;
     name_pair->parent_id = 0;
-    name_pair->name = kmalloc(sizeof(unsigned char) * 4);
-    memcpy(name_pair->name,"root",sizeof(unsigned char) * 4);
+    name_pair->name = kmalloc(sizeof(unsigned char) * 5);
+    memcpy(name_pair->name,"root",sizeof(unsigned char) * 5);
     vector_append(&inode_name_pairs,(unsigned int)name_pair);
 
     vector_append(&inodes,(unsigned int)root_node);
@@ -475,11 +444,7 @@ unsigned char write_directory_entry(inode_t* parent_dir, unsigned int child_inod
     }
 
     unsigned int sector = parent_dir->data_sectors[sector_idx];
-    log("The sector we are writing to:");
-    log_uint(sector);
 
-    log("offset:");
-    log_uint(sector_offset);
     if (last_read_sector_idx != sector){
         read_sectors(ATA_PRIMARY_BUS_IO, 1, last_read_sector, sector);
         last_read_sector_idx = sector;
@@ -532,13 +497,12 @@ string_array_t* get_all_names_in_dir(inode_t* dir){
     if (!n_sectors) return 0;
     
     unsigned char* buffer = (unsigned char*)kmalloc(n_sectors * ATA_SECTOR_SIZE);
-
     // assure that size was set
     if (dir->size < sizeof(unsigned int)) {
         kfree(buffer);
         return 0;
     }
-
+    
     for (unsigned int i = 0; i < n_sectors;i++){
         read_sectors(ATA_PRIMARY_BUS_IO,1,&buffer[i * ATA_SECTOR_SIZE],dir->data_sectors[i]);
     }
@@ -559,6 +523,7 @@ string_array_t* get_all_names_in_dir(inode_t* dir){
         buffer_idx += str_len; 
     }
 
+    
     str_arr->n_strings = n_strings;
     str_arr->strings = strings;
     kfree(buffer);
@@ -578,7 +543,6 @@ void create_directory(inode_t* parent_dir, unsigned char* name, unsigned char na
                 return;
             }
         }
-        log("Here");
         free_string_arr(strs_in_parent_dir);
     }
 
@@ -615,9 +579,6 @@ void create_directory(inode_t* parent_dir, unsigned char* name, unsigned char na
     name_pair->name = kmalloc(name_length);
     memcpy(name_pair->name,name,name_length);
     vector_append(&inode_name_pairs,(unsigned int)name_pair);
-    log("Vector data");
-    log_uint(inode_name_pairs.data[0]);
-    log_uint(inode_name_pairs.data[1]);
 
 }
 
