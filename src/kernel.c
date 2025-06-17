@@ -16,11 +16,11 @@
 #include "shell/kernel_shell.h"
 void kmain(multiboot_info_t* boot_info)
 {   
-    const char* msg = "Hello BrickOS!";
-   
     clear_screen();
-    write_string(msg,15);
-
+    disable_cursor();
+    write_string("Hello BrickOS!",15);
+    newline();
+    write_string("Type 'help' for command list",28);
     // Serial port setup
     serial_configure_baud_rate(SERIAL_COM1_BASE,3);
     serial_configure_line(SERIAL_COM1_BASE);
