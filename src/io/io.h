@@ -9,6 +9,9 @@
 #define FB_HIGH_BYTE_COMMAND            14
 #define FB_LOW_BYTE_COMMAND             15
 
+#define FB_DISABLE_CURSOR_COMMAND 0x0A
+#define FB_DISABLE_CURSOR_DATA 0x20
+
 /* Serial I/O */
 
 #define SERIAL_COM1_BASE                0x3f8
