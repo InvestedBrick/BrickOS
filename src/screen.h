@@ -83,4 +83,10 @@ void newline();
  * Erases one character from the screen
  */
 void erase_one_char();
+
+/**
+ * disable_cursor: 
+ * disables the standard VGA cursor
+ */
+void disable_cursor();
 #endif
