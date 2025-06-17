@@ -92,7 +92,7 @@ inode_name_pair_t* get_name_by_inode_id(unsigned int id);
  * @param name The name of the directory/file
  * 
  */
-unsigned int get_inode_id_by_name(unsigned int parent_id, const char* name);
+unsigned int get_inode_id_by_name(unsigned int parent_id, unsigned char* name);
 
 /**
  * get_inode_by_id: 
@@ -155,7 +155,7 @@ string_array_t* get_all_names_in_dir(inode_t* dir,unsigned char add_slash);
  * @param name The name of the new directory
  * @param name_length The length if the name
  */
-void create_directory(inode_t* parent_dir, unsigned char* name, unsigned char name_length);
+void create_file(inode_t* parent_dir, unsigned char* name, unsigned char name_length,unsigned char file);
 
 /**
  * write_to_disk: 
