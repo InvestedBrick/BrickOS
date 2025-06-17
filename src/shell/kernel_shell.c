@@ -164,7 +164,26 @@ void start_shell(){
         
         if(!comd.command.length) continue; // no need to free or parse what is not there
         
-        if (streq(comd.command.str,"clear")) {
+        if (streq(comd.command.str,"help")){
+            write_string("Shell command list",18);
+            newline();
+            write_string("------------------",18);
+            newline();
+            write_string("clear - Clears the screen",15);
+            newline();
+            write_string("exit - Exits the shell and therefore  shuts down the OS",55);
+            newline();
+            write_string("ls - Lists all entries of the current directory",47);
+            newline();
+            write_string("mkdir [directory name] - Creates a directory",44);
+            newline();
+            write_string("mkf [filename] - Creates a file",31);
+            newline();
+            write_string("cd - Changes directory to a subdirectory or the parent directory (with cd ..)",77);
+            newline();
+
+        }
+        else if (streq(comd.command.str,"clear")) {
             clear_screen();
         }
         else if (streq(comd.command.str,"exit")){
@@ -187,7 +206,13 @@ void start_shell(){
         else if (streq(comd.command.str,"mkdir")){
             if (!comd.args) {write_string("Expected name of directory",26); newline();}
             else{
-                create_directory(active_dir,comd.args[0].str,comd.args[0].length);
+                create_file(active_dir,comd.args[0].str,comd.args[0].length,FS_TYPE_DIR);
+            }
+        }
+        else if (streq(comd.command.str,"mkf")){
+            if (!comd.args) {write_string("Expected name of file",21); newline();}
+            else{
+                create_file(active_dir,comd.args[0].str,comd.args[0].length,FS_TYPE_FILE);
             }
         }
         else if (streq(comd.command.str,"cd")){
