@@ -80,7 +80,10 @@ void newline(){
     }
     fb_set_cursor(g_cursor_pos);
 }
-
+void disable_cursor(){
+	outb(FB_COMMAND_PORT, FB_DISABLE_CURSOR_COMMAND);
+	outb(FB_DATA_PORT, FB_DISABLE_CURSOR_DATA);
+}
 void handle_screen_input(){
     char c;
     if(kb_buffer_pop(&c)){
