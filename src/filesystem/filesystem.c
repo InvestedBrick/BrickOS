@@ -25,7 +25,7 @@ inode_name_pair_t* get_name_by_inode_id(unsigned int id){
     return 0;
 }
 
-unsigned int get_inode_id_by_name(unsigned int parent_id, const char* name){
+unsigned int get_inode_id_by_name(unsigned int parent_id, unsigned char* name){
     unsigned int len = strlen(name);
     for (unsigned int i = 0; i < inode_name_pairs.size; i++) {
         inode_name_pair_t* pair = (inode_name_pair_t*)inode_name_pairs.data[i];
@@ -527,17 +527,18 @@ string_array_t* get_all_names_in_dir(inode_t* dir, unsigned char add_slash){
     for (unsigned int i = 0; i < n_strings;i++){
         unsigned int id = *(unsigned int*)&buffer[buffer_idx];
         buffer_idx += sizeof(unsigned int); // skip id
-        unsigned char str_len = buffer[buffer_idx++];
+        unsigned char raw_len = buffer[buffer_idx++];
         inode_t* node = get_inode_by_id(id);
         if (!node) error("Invalid node");
         unsigned char is_dir = node->type == FS_TYPE_DIR;
-        if (is_dir && add_slash) str_len++; // will maybe cause an overflow if your directories are over 255 bytes long, but who has that long dir names
+        unsigned int str_len = raw_len + (is_dir && add_slash ? 1 : 0);
+
         strings[i].length = str_len;
         strings[i].str = (unsigned char*)kmalloc(str_len + 1);
         strings[i].str[str_len] = 0;
         memcpy(strings[i].str,&buffer[buffer_idx],str_len);
         if (is_dir && add_slash) {strings[i].str[str_len - 1] = '/';} // add a '/' to signal it is a directory
-        buffer_idx += str_len - is_dir; 
+        buffer_idx += raw_len; 
     }
 
     
@@ -549,13 +550,17 @@ string_array_t* get_all_names_in_dir(inode_t* dir, unsigned char add_slash){
 
 }
 
-void create_directory(inode_t* parent_dir, unsigned char* name, unsigned char name_length){
+void create_file(inode_t* parent_dir, unsigned char* name, unsigned char name_length, unsigned char type){
 
     string_array_t* strs_in_parent_dir = get_all_names_in_dir(parent_dir,0);
     if (strs_in_parent_dir){
         for (unsigned int i = 0; i < strs_in_parent_dir->n_strings;i++){
             if(strneq(name,strs_in_parent_dir->strings[i].str,name_length,strs_in_parent_dir->strings[i].length)) {
-                error("Directory name already exists in parent directory");
+                if (type == FS_TYPE_DIR) {
+                    error("Directory name already exists in parent directory");
+                }else{
+                    error("File name already exits in parent directory");
+                }
                 free_string_arr(strs_in_parent_dir);
                 return;
             }
@@ -575,22 +580,22 @@ void create_directory(inode_t* parent_dir, unsigned char* name, unsigned char na
     } 
     
     
-    inode_t* dir = (inode_t*)kmalloc(sizeof(inode_t));
-    dir->type = FS_TYPE_DIR;
-    dir->id = allocate_inode_section();
-    memset(dir->data_sectors,0,NUM_DATA_SECTORS_PER_FILE * sizeof(unsigned int));
-    dir->indirect_sector = 0;
-    dir->size = 0;
-    vector_append(&inodes,(unsigned int)dir);
+    inode_t* file = (inode_t*)kmalloc(sizeof(inode_t));
+    file->type = type;
+    file->id = allocate_inode_section();
+    memset(file->data_sectors,0,NUM_DATA_SECTORS_PER_FILE * sizeof(unsigned int));
+    file->indirect_sector = 0;
+    file->size = 0;
+    vector_append(&inodes,(unsigned int)file);
 
-    if (!write_directory_entry(parent_dir,dir->id,name,name_length)) {
+    if (!write_directory_entry(parent_dir,file->id,name,name_length)) {
         error("Failed to write directory entry");
         return;
     }
 
     // cache to memory, TODO: gets cleared automatically after some time
     inode_name_pair_t* name_pair = (inode_name_pair_t*)kmalloc(sizeof(inode_name_pair_t));
-    name_pair->id = dir->id;
+    name_pair->id = file->id;
     name_pair->parent_id = parent_dir->id;
     name_pair->length = name_length;
     name_pair->name = kmalloc(name_length + 1);
