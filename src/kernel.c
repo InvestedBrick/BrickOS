@@ -64,6 +64,10 @@ void kmain(multiboot_info_t* boot_info)
 
     init_filesystem();
     log("Initialized the filesystem");
+
+    if (first_time_fs_init){
+        create_file(active_dir,"modules",strlen("modules"),FS_TYPE_DIR);
+    }
     //if (module_count > 0){
     //    unsigned int pid = create_user_process((char*)module_binary_structs[0].start,module_binary_structs[0].size);
     //    free_saved_module_binaries();
