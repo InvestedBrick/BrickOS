@@ -26,7 +26,13 @@ unsigned int free_fd(unsigned int fd){
 }
 
 int open(unsigned char* filepath,unsigned char flags){
-    inode_t* inode = get_inode_by_full_file_path(filepath);
+    
+    inode_t* inode;
+    if(dir_contains_name(active_dir,filepath)){
+        inode = get_inode_by_id(get_inode_id_by_name(active_dir,filepath));
+    }else{
+        inode = get_inode_by_full_file_path(filepath);
+    }
     if (!inode) return FILE_OP_FAILED;
 
     open_file_t* file = (open_file_t*)kmalloc(sizeof(open_file_t));
