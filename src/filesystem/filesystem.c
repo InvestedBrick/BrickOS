@@ -3,7 +3,7 @@
 #include "../io/log.h"
 #include "../util.h"
 #include "../memory/kmalloc.h"
-
+#include "file_operations.h"
 vector_t inodes;
 vector_t inode_name_pairs; // Note to self: do not free this with vector free, the names have to be freed too
 sectors_headerdata_t header_data; 
@@ -36,6 +36,16 @@ unsigned int get_inode_id_by_name(unsigned int parent_id, unsigned char* name){
     return (unsigned int)-1;
 }
 
+unsigned char dir_contains_name(inode_t* dir,unsigned char* name){
+    string_array_t* str_arr = get_all_names_in_dir(dir,0);
+    for(unsigned int i = 0; i < str_arr->n_strings;i++){
+        if (streq(str_arr->strings[i].str,name)){
+            return 1;
+        }
+    }
+    return 0;
+}
+
 inode_t* get_inode_by_id(unsigned int id){
     for(unsigned int i = 0; i < inodes.size;i++){
         inode_t* node = (inode_t*)inodes.data[i];
@@ -58,6 +68,31 @@ inode_t* get_parent_inode(inode_t* child){
     inode_name_pair_t* name_pair = get_name_by_inode_id(child->id);
 
     return get_inode_by_id(name_pair->parent_id);
+}
+
+inode_t* get_inode_by_full_file_path(unsigned char* path){
+    unsigned char name_buffer[256 + 1]; // max len of dir name is max of unsigned char + 1 for null terminator
+    
+    unsigned int path_idx = 0;
+    unsigned int buffer_idx;
+    inode_t* inode = get_inode_by_id(FS_ROOT_DIR_ID);
+    
+    while(path[path_idx] != '\0'){
+        memset(name_buffer,0x00,256 + 1);
+        buffer_idx = 0;
+        while(path[path_idx] != '/' && path[path_idx] != '\0'){
+            name_buffer[buffer_idx++] = path[path_idx++];
+        }
+        path_idx++; //skip the newline
+
+        unsigned int id = get_inode_id_by_name(inode->id,name_buffer);
+        if (id == (unsigned int)-1) return 0;
+
+        inode = get_inode_by_id(id);
+
+    }
+
+    return inode;
 }
 
 unsigned int count_partially_used_big_sectors(unsigned int end){
@@ -377,6 +412,7 @@ void init_filesystem(){
 
     init_vector(&inodes);
     init_vector(&inode_name_pairs);
+    init_vector(&fd_vector);
 
     inode_t* root_node = (inode_t*)kmalloc(sizeof(inode_t));
 
