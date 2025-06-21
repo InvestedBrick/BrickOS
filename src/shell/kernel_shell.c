@@ -108,8 +108,7 @@ void readline(unsigned char* line){
 
 void change_directory(command_t comd){
     if (streq(comd.args[0].str,"..")){
-        inode_name_pair_t* name_pair = get_name_by_inode_id(active_dir->id);
-        inode_t* inode = get_inode_by_id(name_pair->parent_id);
+        inode_t* inode = get_parent_inode(active_dir);
         if(!inode) error("Failed to retrieve inode"); // should not happen, therefore log to logs if fails
         active_dir = inode;
         return;
@@ -125,9 +124,7 @@ void change_directory(command_t comd){
         }
         unsigned int name_len = strs->strings[i].length - 1; // ignore the '/' because it is not part of the actualy name
         if(strneq(strs->strings[i].str,comd.args[0].str,name_len,name_len)){
-            log(comd.args[0].str);
             unsigned int id = get_inode_id_by_name(active_dir->id,comd.args[0].str);
-            log_uint(id);
             inode_t* inode = get_inode_by_id(id);
             if(!inode) error("Failed to retrieve inode");
         
@@ -145,6 +142,66 @@ void change_directory(command_t comd){
 
 }
 
+string_t get_full_active_path(){
+    string_array_t* str_arr = (string_array_t*)kmalloc(sizeof(string_array_t));
+    inode_t* inode = active_dir;
+
+    unsigned int str_counter = 0;
+
+    while(1) {
+        str_counter++;
+        inode_t* parent = get_parent_inode(inode);
+        if (parent == inode) break; // we have reached root
+        inode = parent;
+    }
+
+    str_arr->strings = (string_t*)kmalloc(str_counter * sizeof(string_t));
+    str_arr->n_strings = str_counter;
+    inode = active_dir;
+
+    unsigned int str_arr_idx = 0;
+    while (1){
+        inode_name_pair_t* name_pair = get_name_by_inode_id(inode->id);
+        
+        str_arr->strings[str_arr_idx].length = name_pair->length;
+        str_arr->strings[str_arr_idx].str = (unsigned char*)kmalloc(name_pair->length);
+
+        memcpy(str_arr->strings[str_arr_idx].str,name_pair->name,name_pair->length);
+        str_arr_idx++;
+        inode_t* parent = get_parent_inode(inode);
+
+        if (parent == inode) break;
+
+        inode = parent;
+    }
+
+    // str_arr now contains all the strings in reverse order
+
+    unsigned char* path;
+    unsigned int path_size = 0;
+    
+    for (unsigned int i = 0; i < str_counter;i++){
+        path_size += str_arr->strings[i].length + 1; // one more for the '/' 
+    }
+
+    path = (unsigned char*)kmalloc(path_size);
+    
+    unsigned int path_idx = 0;
+    for(int i = str_counter - 1;i >= 0;i--){
+        memcpy(&path[path_idx],str_arr->strings[i].str,str_arr->strings[i].length);
+        path_idx += str_arr->strings[i].length;
+        path[path_idx++] = '/';
+    }
+
+    free_string_arr(str_arr);
+
+    string_t full_path;
+    full_path.length = path_size;
+    full_path.str = path;
+
+    return full_path;
+} 
+
 void start_shell(){
     unsigned char* line = kmalloc(SCREEN_COLUMNS + 1);
     newline(); 
@@ -152,8 +209,9 @@ void start_shell(){
     while (1){
         memset(line,0x00,SCREEN_COLUMNS + 1);
         write_string("|-(",3);
-        string_t curr_dir = get_active_dir();
+        string_t curr_dir = get_full_active_path();
         write_string(curr_dir.str,curr_dir.length);
+        kfree(curr_dir.str);
         write_string(")-> ",4);
 
         readline(line);
