@@ -171,4 +171,24 @@ void write_to_disk();
  * @return The parent inode
 */
 inode_t* get_parent_inode(inode_t* child);
+
+/**
+ * get_inode_by_full_file_path: 
+ * Returns a pointer to the inode which indexes the provided file 
+ * @param path The file path
+ * @return The inode pointer
+ */
+inode_t* get_inode_by_full_file_path(unsigned char* path);
+
+/**
+ * dir_contains_name: 
+ * Returns whether a directory contains a certain file
+ * @param dir The directory
+ * @param name The name of the file
+ * 
+ * @return 1 if the directory contains the name
+ * 
+ *         0 of the directory does not contain the name
+ */
+unsigned char dir_contains_name(inode_t* dir,unsigned char* name);
 #endif
