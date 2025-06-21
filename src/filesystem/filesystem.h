@@ -162,4 +162,13 @@ void create_file(inode_t* parent_dir, unsigned char* name, unsigned char name_le
  * Writes the disk metadata to the disk
  */
 void write_to_disk();
+
+
+/** 
+ * get_parent_inode: 
+ * Returns a pointer to the parent inode of a child
+ * @param child The child inode
+ * @return The parent inode
+*/
+inode_t* get_parent_inode(inode_t* child);
 #endif
