@@ -53,6 +53,13 @@ string_t get_active_dir(){
     str.length = pair->length;
     return str;
 }
+
+inode_t* get_parent_inode(inode_t* child){
+    inode_name_pair_t* name_pair = get_name_by_inode_id(child->id);
+
+    return get_inode_by_id(name_pair->parent_id);
+}
+
 unsigned int count_partially_used_big_sectors(unsigned int end){
     unsigned int partially_used_bitmaps = 0;
     for(unsigned int i = 0; i < end;i++){
@@ -359,7 +366,7 @@ void build_inodes(inode_t* start_node,unsigned int parent_id){
 }
 
 void init_filesystem(){
-    // Check wether the disk driver has been set up
+    // Check whether the disk driver has been set up
     if (!addressable_LBA28_sectors) {error("Disk driver has not been set up");return;}
 
     last_read_sector = kmalloc(ATA_SECTOR_SIZE);
