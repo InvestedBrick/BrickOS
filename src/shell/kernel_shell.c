@@ -273,7 +273,14 @@ void start_shell(){
             if (!comd.args) {write_string("Expected name of file",21); newline();}
             else{
                 int ret_val = create_file(active_dir,comd.args[0].str,comd.args[0].length,FS_TYPE_FILE);
-                if (ret_val < 0) {write_string("Creation of directory failed",28); newline();}
+                if (ret_val < 0) {write_string("Creation of file failed",23); newline();}
+            }
+        }
+        else if (streq(comd.command.str,"rm")){
+            if (!comd.args) {write_string("Expected name of file to remove",31); newline();}
+            else{
+                int ret_val = delete_file(active_dir,comd.args[0].str, comd.args[0].length);
+                if (ret_val < 0){write_string("Deletion of file failed",23); newline();}
             }
         }
         else if (streq(comd.command.str,"cd")){
@@ -283,7 +290,7 @@ void start_shell(){
             }
         }
         else if (streq(comd.command.str, "ftest")){
-            if (!comd.args) {write_string("Expected name of file",21); newline();};
+            if (!comd.args) {write_string("Expected name of file",21); newline();continue;};
             int fd = open(comd.args[0].str,FILE_FLAG_RW);
             unsigned char failed = 0;
             if (fd < 0){
