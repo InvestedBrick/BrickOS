@@ -37,6 +37,16 @@ void* memset(void* dest, int val, unsigned int n);
 void* memcpy(void* dest,void* src, unsigned int n);
 
 /**
+ * memmove: 
+ * Copies bytes from dest to src and ensures that the compiler does not do some weird shenanigans
+ * @param dest The memory destination
+ * @param src The memory source
+ * @param n The number of bytes to copy
+ * 
+ * @return The destination
+ */
+void* memmove(void* dest, void* src, unsigned int n);
+/**
  * streq:
  * Compares two null-terminated strings
  * @param str1 A pointer to the first string
@@ -112,6 +122,14 @@ void init_vector(vector_t* vec);
  * @return The erased item
  */
 unsigned int vector_erase(vector_t* vec,unsigned int idx);
+/** 
+ * vector_find: 
+ * Returns the index of a piece of data in the vector
+ * @param vec The vector
+ * @param data The data 
+ * @return The index of the data in the vector
+*/
+unsigned int vector_find(vector_t* vec, unsigned int data);
 
 /**
  * vector_free:
