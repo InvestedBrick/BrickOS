@@ -30,6 +30,9 @@
 #define BIT_CHECK(bitmap, idx) (bitmap[(idx)/8] & (1 << ((idx)%8)))
 
 
+extern unsigned char* last_read_sector;
+extern unsigned int last_read_sector_idx;
+
 typedef struct{
     unsigned char big_sector_used_map[TOTAL_BIG_SECTORS / 8]; // 128 bytes as 1024-bit bitmap
     unsigned char big_sector_full_map[TOTAL_BIG_SECTORS / 8];
@@ -42,6 +45,10 @@ typedef struct{
 
 #define FS_TYPE_FILE 1
 #define FS_TYPE_DIR 2
+
+#define FS_FILE_CREATION_SUCCESS 0
+#define FS_FILE_CREATION_FAILED -1
+#define FS_FILE_ALREADY_EXISTS -2
 extern unsigned char first_time_fs_init;
 
 // Padding so that the size is 64 and they are sector aligned
@@ -154,8 +161,10 @@ string_array_t* get_all_names_in_dir(inode_t* dir,unsigned char add_slash);
  * @param parent_dir The parent directory inode
  * @param name The name of the new directory
  * @param name_length The length if the name
+ * 
+ * @return whether the file creation was successful (return value == 0) or not (return value < 0)
  */
-void create_file(inode_t* parent_dir, unsigned char* name, unsigned char name_length,unsigned char file);
+int create_file(inode_t* parent_dir, unsigned char* name, unsigned char name_length,unsigned char file);
 
 /**
  * write_to_disk: 
