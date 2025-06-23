@@ -22,6 +22,27 @@ void* memcpy(void* dest,void* src, unsigned int n){
     return dest;
 }
 
+void* memmove(void* dest, void* src, unsigned int n) {
+    if (n == 0) return dest;
+
+    unsigned char* _dest = dest;
+    unsigned char* _src = src;
+
+    if (_dest < _src) {
+        // Forward copy
+        for (unsigned int i = 0; i < n; i++) {
+            _dest[i] = _src[i];
+        }
+    } else if (_dest > _src) {
+        // Backward copy
+        for (unsigned int i = n; i > 0; i--) {
+            _dest[i - 1] = _src[i - 1];
+        }
+    }
+
+    return dest;
+}
+
 unsigned char streq(const char* str1, const char* str2){
     unsigned int i = 0;
     while(1){
@@ -93,6 +114,14 @@ unsigned int vector_erase(vector_t* vec,unsigned int idx){
 
     vec->size--;
     return erased_item;
+}
+
+unsigned int vector_find(vector_t* vec, unsigned int data){
+    for(unsigned int i = 0; i < vec->size;i++){
+        if (vec->data[i] == data) return i;
+    }
+
+    return (unsigned int)-1;
 }
 
 void init_vector(vector_t* vec){
