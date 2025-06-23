@@ -48,7 +48,11 @@ typedef struct{
 
 #define FS_FILE_CREATION_SUCCESS 0
 #define FS_FILE_CREATION_FAILED -1
+
+#define FS_FILE_DELETION_SUCCESS 0
+
 #define FS_FILE_ALREADY_EXISTS -2
+#define FS_FILE_NOT_FOUND -3
 extern unsigned char first_time_fs_init;
 
 // Padding so that the size is 64 and they are sector aligned
@@ -200,4 +204,15 @@ inode_t* get_inode_by_full_file_path(unsigned char* path);
  *         0 of the directory does not contain the name
  */
 unsigned char dir_contains_name(inode_t* dir,unsigned char* name);
+
+
+/**
+ * delete_file:
+ * Deletes a file and frees all the underlying sectors and associated memory
+ * @param parent_dir The parent directory of the file
+ * @param filepath The path to the file / the filename
+ * @param name_length The length of the filepath / name
+ * @return If the deletion was successfule (return value == 0) or not (return value < 0)
+ */
+int delete_file(inode_t* parent_dir,unsigned char* name,unsigned int name_length);
 #endif
