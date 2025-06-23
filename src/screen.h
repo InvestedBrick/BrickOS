@@ -45,7 +45,7 @@ void fb_write_cell(unsigned short i, char c,unsigned char fg, unsigned char bg);
 void clear_screen();
 
 /**
- * write_string_n:
+ * write_string:
  * Writes a string to the OS terminal
  * 
  * @param str The string
