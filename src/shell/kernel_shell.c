@@ -4,6 +4,7 @@
 #include "../drivers/keyboard/keyboard.h"
 #include "../util.h"
 #include "../filesystem/filesystem.h"
+#include "../filesystem/file_operations.h"
 #include "../io/log.h"
 
 void free_command(command_t com){
@@ -227,9 +228,9 @@ void start_shell(){
             newline();
             write_string("------------------",18);
             newline();
-            write_string("clear - Clears the screen",15);
+            write_string("clear - Clears the screen",25);
             newline();
-            write_string("exit - Exits the shell and therefore  shuts down the OS",55);
+            write_string("exit - Exits the shell and therefore shuts down the OS",54);
             newline();
             write_string("ls - Lists all entries of the current directory",47);
             newline();
@@ -264,13 +265,15 @@ void start_shell(){
         else if (streq(comd.command.str,"mkdir")){
             if (!comd.args) {write_string("Expected name of directory",26); newline();}
             else{
-                create_file(active_dir,comd.args[0].str,comd.args[0].length,FS_TYPE_DIR);
+                int ret_val = create_file(active_dir,comd.args[0].str,comd.args[0].length,FS_TYPE_DIR);
+                if (ret_val < 0) {write_string("Creation of directory failed",28); newline();}
             }
         }
         else if (streq(comd.command.str,"mkf")){
             if (!comd.args) {write_string("Expected name of file",21); newline();}
             else{
-                create_file(active_dir,comd.args[0].str,comd.args[0].length,FS_TYPE_FILE);
+                int ret_val = create_file(active_dir,comd.args[0].str,comd.args[0].length,FS_TYPE_FILE);
+                if (ret_val < 0) {write_string("Creation of directory failed",28); newline();}
             }
         }
         else if (streq(comd.command.str,"cd")){
@@ -278,6 +281,45 @@ void start_shell(){
             else{
                 change_directory(comd);
             }
+        }
+        else if (streq(comd.command.str, "ftest")){
+            if (!comd.args) {write_string("Expected name of file",21); newline();};
+            int fd = open(comd.args[0].str,FILE_FLAG_RW);
+            unsigned char failed = 0;
+            if (fd < 0){
+                warn("opening failed");
+                log_uint((unsigned int)fd);
+                failed = 1;
+            }
+            unsigned char buf[] = {"Hello World, I hope this works"};
+            unsigned int buf_size = sizeof("Hello World, I hope this works");
+            int ret = write(fd,buf,buf_size);
+            log("Wrote bytes:");
+            log_uint(ret);
+            if (ret < 0){
+                warn("writing failed");
+                log_uint((unsigned int)ret);
+                failed = 1;
+            }
+            memset(buf,0,buf_size);
+            ret = read(fd,buf,buf_size);
+            if (ret < 0){
+                warn("Reading failed");
+                log_uint((unsigned int)ret);
+                failed = 1;
+            }
+            log(buf);
+            if (!streq(buf,"Hello World, I hope this works")) {
+                warn("data not identical");
+                failed = 1;
+            }
+            ret = close(fd);
+            if (ret < 0){
+                warn("closing failed");
+                log_uint((unsigned int)ret);
+                failed = 1;
+            }
+            if (!failed) log("ftest succeded");
         }
         else {
             write_string("Command '",9);
