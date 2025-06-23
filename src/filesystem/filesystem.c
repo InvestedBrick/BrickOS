@@ -4,6 +4,7 @@
 #include "../util.h"
 #include "../memory/kmalloc.h"
 #include "file_operations.h"
+#include "../screen.h"
 vector_t inodes;
 vector_t inode_name_pairs; // Note to self: do not free this with vector free, the names have to be freed too
 sectors_headerdata_t header_data; 
@@ -593,19 +594,14 @@ string_array_t* get_all_names_in_dir(inode_t* dir, unsigned char add_slash){
 
 }
 
-void create_file(inode_t* parent_dir, unsigned char* name, unsigned char name_length, unsigned char type){
+int create_file(inode_t* parent_dir, unsigned char* name, unsigned char name_length, unsigned char type){
 
     string_array_t* strs_in_parent_dir = get_all_names_in_dir(parent_dir,0);
     if (strs_in_parent_dir){
         for (unsigned int i = 0; i < strs_in_parent_dir->n_strings;i++){
             if(strneq(name,strs_in_parent_dir->strings[i].str,name_length,strs_in_parent_dir->strings[i].length)) {
-                if (type == FS_TYPE_DIR) {
-                    error("Directory name already exists in parent directory");
-                }else{
-                    error("File name already exits in parent directory");
-                }
                 free_string_arr(strs_in_parent_dir);
-                return;
+                return FS_FILE_ALREADY_EXISTS;
             }
         }
         free_string_arr(strs_in_parent_dir);
@@ -632,8 +628,7 @@ void create_file(inode_t* parent_dir, unsigned char* name, unsigned char name_le
     vector_append(&inodes,(unsigned int)file);
 
     if (!write_directory_entry(parent_dir,file->id,name,name_length)) {
-        error("Failed to write directory entry");
-        return;
+        return FS_FILE_CREATION_FAILED;
     }
 
     // cache to memory, TODO: gets cleared automatically after some time
@@ -646,6 +641,7 @@ void create_file(inode_t* parent_dir, unsigned char* name, unsigned char name_le
     name_pair->name[name_length] = 0;
     vector_append(&inode_name_pairs,(unsigned int)name_pair);
 
+    return FS_FILE_CREATION_SUCCESS;
 }
 
 void write_inode_to_disk(inode_t* inode,unsigned char is_root){
