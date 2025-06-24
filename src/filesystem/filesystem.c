@@ -485,8 +485,6 @@ void init_filesystem(){
 }
 
 unsigned char write_directory_entry(inode_t* parent_dir, unsigned int child_inode_id, unsigned char* name, unsigned char name_length){
-    log("creating new directory entry");
-    log(name);
     unsigned char data_buffer[sizeof(unsigned int) + sizeof(unsigned char) + 256];
     unsigned int data_buffer_size = sizeof(unsigned int) + sizeof(unsigned char) + name_length;
 
@@ -656,6 +654,7 @@ void erase_directory_entry(inode_t* dir, unsigned int entry_inode_id){
     memset(&buffer[buffer_offset - data_len],0x00,data_len);
     n_entries--;
     *(unsigned int*)&buffer[0] = n_entries;
+    dir->size -= data_len;
 
     unsigned char last_sector_free = (buffer_offset % ATA_SECTOR_SIZE) < data_len;
     if (write_data_buffer_to_disk(dir,buffer,buffer_offset) != INTERNAL_FUNCTION_SUCCESS){
@@ -664,6 +663,7 @@ void erase_directory_entry(inode_t* dir, unsigned int entry_inode_id){
     kfree(buffer);
     
 }
+
 int delete_file(inode_t* parent_dir,unsigned char* name,unsigned int name_length){
     inode_t* inode;
     if(!dir_contains_name(parent_dir,name)){
