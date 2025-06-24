@@ -11,7 +11,6 @@
 [LOG] 524288
 [LOG] Initialized disk driver
 [LOG] Initialized the filesystem
-[LOG] Wrote bytes:
-[LOG] 31
-[LOG] Hello World, I hope this works
-[LOG] ftest succeded
+[LOG] creating new directory entry
+[LOG] neu
+[ERROR] Failed to retrieve inode
