@@ -67,6 +67,7 @@ void kmain(multiboot_info_t* boot_info)
 
     if (first_time_fs_init){
         create_file(active_dir,"modules",strlen("modules"),FS_TYPE_DIR);
+        create_file(active_dir,"home",strlen("home"),FS_TYPE_DIR);
     }
     //if (module_count > 0){
     //    unsigned int pid = create_user_process((char*)module_binary_structs[0].start,module_binary_structs[0].size);
