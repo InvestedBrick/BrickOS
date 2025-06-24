@@ -120,7 +120,7 @@ void change_directory(command_t comd){
     if (!strs) {write_string("The current directory is empty",30);newline();return;}
 
     for(unsigned int i = 0; i < strs->n_strings;i++){
-        if (!strs->strings[i].str[strs->strings[i].length - 1] == '/'){
+        if (!(strs->strings[i].str[strs->strings[i].length - 1] == '/')){
             continue;
         }
         unsigned int name_len = strs->strings[i].length - 1; // ignore the '/' because it is not part of the actualy name
@@ -128,7 +128,6 @@ void change_directory(command_t comd){
             unsigned int id = get_inode_id_by_name(active_dir->id,comd.args[0].str);
             inode_t* inode = get_inode_by_id(id);
             if(!inode) error("Failed to retrieve inode");
-        
             active_dir = inode;
             free_string_arr(strs);
             return;
