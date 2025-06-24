@@ -53,6 +53,9 @@ typedef struct{
 
 #define FS_FILE_ALREADY_EXISTS -2
 #define FS_FILE_NOT_FOUND -3
+
+#define INTERNAL_FUNCTION_SUCCESS 0
+#define INTERNAL_FUNCTION_FAIL -1
 extern unsigned char first_time_fs_init;
 
 // Padding so that the size is 64 and they are sector aligned
