@@ -567,7 +567,7 @@ string_array_t* get_all_names_in_dir(inode_t* dir, unsigned char add_slash){
         buffer_idx += sizeof(unsigned int); // skip id
         unsigned char raw_len = buffer[buffer_idx++];
         inode_t* node = get_inode_by_id(id);
-        if (!node) error("Invalid node");
+        if (!node) {error("Invalid node"); log_uint(id);}
         unsigned char is_dir = node->type == FS_TYPE_DIR;
         unsigned int str_len = raw_len + (is_dir && add_slash ? 1 : 0);
 
