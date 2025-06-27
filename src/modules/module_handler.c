@@ -80,6 +80,8 @@ void write_module_binaries_to_file(){
         if (ret_code == FILE_INVALID_FD) error("Failed to close module binary file");
 
         change_active_dir(dir_save);
+
+        kfree((void*) name);
     }
 
     kfree((void*)module_binary_structs);
