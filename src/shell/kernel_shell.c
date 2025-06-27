@@ -111,7 +111,7 @@ void change_directory(command_t comd){
     if (streq(comd.args[0].str,"..")){
         inode_t* inode = get_parent_inode(active_dir);
         if(!inode) error("Failed to retrieve inode"); // should not happen, therefore log to logs if fails
-        active_dir = inode;
+        change_active_dir(inode);
         return;
     }
 
@@ -128,7 +128,7 @@ void change_directory(command_t comd){
             unsigned int id = get_inode_id_by_name(active_dir->id,comd.args[0].str);
             inode_t* inode = get_inode_by_id(id);
             if(!inode) error("Failed to retrieve inode");
-            active_dir = inode;
+            change_active_dir(inode);
             free_string_arr(strs);
             return;
         }
