@@ -5,3 +5,4 @@ BrickOS.iso
 .vscode/
 linecounter.py
 hdd.img
+*.bin
