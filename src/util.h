@@ -144,4 +144,16 @@ void vector_free(vector_t* vec, unsigned char ptrs);
  * @param str_arr The string array
  */
 void free_string_arr(string_array_t* str_arr);
+
+/**
+ * find_char: 
+ * Finds the first occurance of a byte in a C-Style string and returns the index of it
+ * @param str The string
+ * @param c The character to find
+ * @return The index of the character;
+ * 
+ *         (unsigned int)-1 of not found
+ */
+
+unsigned int find_char(unsigned char* str,unsigned char c);
 #endif
