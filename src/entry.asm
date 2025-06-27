@@ -55,7 +55,7 @@ higher_half:
     call kmain
 
 halt:
-    halt
+    hlt
     jmp halt
 
 
