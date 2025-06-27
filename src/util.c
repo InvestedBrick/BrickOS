@@ -147,3 +147,10 @@ void free_string_arr(string_array_t* str_arr){
     kfree(str_arr->strings);
     kfree(str_arr);
 }
+
+unsigned int find_char(unsigned char* str,unsigned char c){
+    for(unsigned int i = 0; str[i] != '\0';i++){
+        if (str[i] == c) return i;
+    }
+    return (unsigned int)-1;
+}
