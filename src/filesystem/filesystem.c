@@ -16,6 +16,12 @@ unsigned char first_time_fs_init = 0;
 unsigned char* last_read_sector;
 unsigned int last_read_sector_idx;
 
+inode_t* change_active_dir(inode_t* new_dir){
+    inode_t* dir_save = active_dir;
+    active_dir = new_dir;
+    return dir_save;
+}
+
 inode_name_pair_t* get_name_by_inode_id(unsigned int id){
     for(unsigned int i = 0; i < inode_name_pairs.size;i++){
         inode_name_pair_t* pair = (inode_name_pair_t*)inode_name_pairs.data[i];
@@ -39,6 +45,8 @@ unsigned int get_inode_id_by_name(unsigned int parent_id, unsigned char* name){
 
 unsigned char dir_contains_name(inode_t* dir,unsigned char* name){
     string_array_t* str_arr = get_all_names_in_dir(dir,0);
+    if (!str_arr) return 0;
+    
     for(unsigned int i = 0; i < str_arr->n_strings;i++){
         if (streq(str_arr->strings[i].str,name)){
             return 1;
@@ -85,7 +93,6 @@ inode_t* get_inode_by_full_file_path(unsigned char* path){
             name_buffer[buffer_idx++] = path[path_idx++];
         }
         path_idx++; //skip the newline
-
         unsigned int id = get_inode_id_by_name(inode->id,name_buffer);
         if (id == (unsigned int)-1) return 0;
 
