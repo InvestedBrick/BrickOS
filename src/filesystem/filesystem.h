@@ -92,6 +92,16 @@ typedef struct {
  * 
  */
 void init_filesystem();
+
+
+/**
+ * change_active_dir: 
+ * Changes the currently active directory
+ * 
+ * @param new_dir The new directory
+ * @return The old active directory to save for restoring later
+ */
+inode_t* change_active_dir(inode_t* new_dir);
 /**
  * get_name_by_inode_id:
  *  
@@ -155,7 +165,7 @@ unsigned int allocate_sector();
  * 
  * IMPORTANT: You need to free the returned strings, the string struct and the returned string array pointer (See free_string_arr() in util.h)
  * @param dir The directory of which to get the entires
- * @param add_slash A boolean value deciding if directories shuld get an added '/' when being returned
+ * @param add_slash A boolean value deciding if directories should get an added '/' when being returned
  * @return Array of strings which contain the data
  * 
  */
@@ -168,10 +178,10 @@ string_array_t* get_all_names_in_dir(inode_t* dir,unsigned char add_slash);
  * @param parent_dir The parent directory inode
  * @param name The name of the new directory
  * @param name_length The length if the name
- * 
+ * @param type The type of file to create (FS_TYPE_FILE or FS_TYPE_DIR)
  * @return whether the file creation was successful (return value == 0) or not (return value < 0)
  */
-int create_file(inode_t* parent_dir, unsigned char* name, unsigned char name_length,unsigned char file);
+int create_file(inode_t* parent_dir, unsigned char* name, unsigned char name_length,unsigned char type);
 
 /**
  * write_to_disk: 
