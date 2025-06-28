@@ -237,6 +237,8 @@ void start_shell(){
             newline();
             write_string("mkf [filename] - Creates a file",31);
             newline();
+            write_string("rm [filename] <flags> - Deletes a file, flag -r for directory",61);
+            newline();
             write_string("cd - Changes directory to a subdirectory or the parent directory (with cd ..)",77);
             newline();
 
@@ -278,8 +280,18 @@ void start_shell(){
         else if (streq(comd.command.str,"rm")){
             if (!comd.args) {write_string("Expected name of file to remove",31); newline();}
             else{
-                int ret_val = delete_file(active_dir,comd.args[0].str, comd.args[0].length);
-                if (ret_val < 0){write_string("Deletion of file failed",23); newline();}
+                unsigned char is_dir = 0;
+                if (comd.n_args > 1 && !streq(comd.args[1].str,"-r")) {write_string("Expected '-r' flag for directory",32);newline();}
+                else{
+                    is_dir = 1;
+                }
+                if (is_dir){
+                    int ret_val = delete_dir(active_dir,comd.args[0].str);
+                    if (ret_val < 0) {write_string("Deletion of directory failed",28); newline();}
+                }else{
+                    int ret_val = delete_file(active_dir,comd.args[0].str);
+                    if (ret_val < 0){write_string("Deletion of file failed",23); newline();}
+                }
             }
         }
         else if (streq(comd.command.str,"cd")){
