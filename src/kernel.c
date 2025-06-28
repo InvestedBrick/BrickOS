@@ -53,6 +53,7 @@ void kmain(multiboot_info_t* boot_info)
     save_module_binaries(boot_info);
     log("Saved module binaries");
     
+    // Fully commit to virtual memory now
     un_identity_map_first_page_table();
 
     init_user_process_vector();
@@ -60,7 +61,8 @@ void kmain(multiboot_info_t* boot_info)
     
     init_disk_driver();
     log("Initialized disk driver");
-
+    
+    // set up the filesystem
     init_filesystem();
     log("Initialized the filesystem");
 
@@ -68,7 +70,7 @@ void kmain(multiboot_info_t* boot_info)
         create_file(active_dir,"modules",strlen("modules"),FS_TYPE_DIR);
         create_file(active_dir,"home",strlen("home"),FS_TYPE_DIR);
     }
-
+    // save the modules binaries to "moules/"
     write_module_binaries_to_file();
     log("Wrote module binaries to files in the modules directory");
     //if (module_count > 0){
