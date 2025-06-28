@@ -1,6 +1,7 @@
 #include "file_operations.h"
 #include "filesystem.h"
 #include "../util.h"
+#include "../vector.h"
 #include "../memory/kmalloc.h"
 #include "../screen.h"
 #include "../drivers/ATA_PIO/ata.h"
