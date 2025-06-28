@@ -1,6 +1,7 @@
 #include "user_process.h"
 #include "../memory/memory.h"
 #include "../memory/kmalloc.h"
+#include "../vector.h"
 #include "../util.h"
 #include "../multiboot.h"
 #include "../io/log.h"
