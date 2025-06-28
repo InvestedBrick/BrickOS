@@ -2,8 +2,7 @@
 #ifndef INCLUDE_FILE_OPS
 #define INCLUDE_FILE_OPS
 
-#include "../util.h"
-
+#include "../vector.h"
 typedef struct {
     unsigned char flags;
     unsigned int fd;
