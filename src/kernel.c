@@ -9,7 +9,6 @@
 #include "memory/kmalloc.h"
 #include "user/user_process.h"
 #include "tables/tss.h"
-#include "util.h"
 #include "modules/module_handler.h"
 #include "drivers/ATA_PIO/ata.h"
 #include "filesystem/filesystem.h"
