@@ -45,11 +45,13 @@ typedef struct{
 
 #define FS_TYPE_FILE 1
 #define FS_TYPE_DIR 2
+#define FS_TYPE_ERASED 3
 
 #define FS_FILE_CREATION_SUCCESS 0
 #define FS_FILE_CREATION_FAILED -1
 
 #define FS_FILE_DELETION_SUCCESS 0
+#define FS_FILE_DELETION_FAILED 1
 
 #define FS_FILE_ALREADY_EXISTS -2
 #define FS_FILE_NOT_FOUND -3
@@ -223,9 +225,26 @@ unsigned char dir_contains_name(inode_t* dir,unsigned char* name);
  * delete_file:
  * Deletes a file and frees all the underlying sectors and associated memory
  * @param parent_dir The parent directory of the file
- * @param filepath The path to the file / the filename
- * @param name_length The length of the filepath / name
- * @return If the deletion was successfule (return value == 0) or not (return value < 0)
+ * @param name The filename / the path to the file
+ * @return If the deletion was successful (return value == 0) or not (return value < 0)
  */
-int delete_file(inode_t* parent_dir,unsigned char* name,unsigned int name_length);
+int delete_file(inode_t* parent_dir,unsigned char* name);
+
+/**
+ * delete_dir:
+ * Deletes a directory and all of its sub-directories and files
+ * @param parent_dir The parent directory of the file
+ * @param name The name of the directory / path to the directory
+ * @return If the deletion was successful (return value == 0) or not (return value < 0)
+ */
+int delete_dir(inode_t* parent_dir,unsigned char* name);
+
+/**
+ * delete_file_by_inode: 
+ * Deletes a file
+ * @param parent_dir The parent directory
+ * @param inode The child file 
+ * @return If the deletion was successful (return value == 0) or not (return value < 0)
+ */
+int delete_file_by_inode(inode_t* parent_dir,inode_t* inode);
 #endif
