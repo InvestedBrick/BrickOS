@@ -671,15 +671,52 @@ void erase_directory_entry(inode_t* dir, unsigned int entry_inode_id){
     
 }
 
-int delete_file(inode_t* parent_dir,unsigned char* name,unsigned int name_length){
-    inode_t* inode;
-    if(!dir_contains_name(parent_dir,name)){
-        return FS_FILE_NOT_FOUND;
-    }
+
+inode_t* get_file_if_exists(inode_t* parent_dir,unsigned char* name){
     
-    inode = get_inode_by_id(get_inode_id_by_name(parent_dir->id,name));
+    if(dir_contains_name(parent_dir,name)){
+        return get_inode_by_id(get_inode_id_by_name(parent_dir->id,name));
+    }else{
+        return get_inode_by_full_file_path(name);
+    }
+}
+int delete_dir_recursive(inode_t* parent_dir, inode_t* dir){
+    string_array_t* names = get_all_names_in_dir(dir,0);
+    for(unsigned int i = 0; i < names->n_strings;i++){
+        unsigned int id = get_inode_id_by_name(dir->id,names->strings[i].str);
+        inode_t* inode = get_inode_by_id(id);
+        if (!inode) return FILE_INVALID_FD;
+
+        if (inode->type == FS_TYPE_FILE) {
+            if (delete_file_by_inode(dir,inode) != FS_FILE_DELETION_SUCCESS) return FS_FILE_DELETION_FAILED;
+        }else{
+            if (delete_dir_recursive(dir,inode) != FS_FILE_DELETION_SUCCESS) return FS_FILE_DELETION_FAILED;
+        }
+    }
+    free_string_arr(names);
+    dir->type = FS_TYPE_ERASED;
+    if (delete_file_by_inode(parent_dir,dir) != FS_FILE_DELETION_SUCCESS) return FS_FILE_DELETION_FAILED;
+    return FS_FILE_DELETION_SUCCESS;
+}
+
+int delete_dir(inode_t* parent_dir,unsigned char* name){
+    // get dir
+    inode_t* dir = get_file_if_exists(parent_dir,name);
+    if (!dir) return FS_FILE_NOT_FOUND;
+
+    if (dir->type != FS_TYPE_DIR) return FILE_INVALID_TARGET;
+
+    return delete_dir_recursive(parent_dir,dir);
+}
+int delete_file(inode_t* parent_dir,unsigned char* name){
+    inode_t* inode = get_file_if_exists(parent_dir,name);
+    if(!inode) return FS_FILE_NOT_FOUND;
 
     if(inode->type == FS_TYPE_DIR) return FILE_INVALID_TARGET;
+    return delete_file_by_inode(parent_dir,inode);
+}
+
+int delete_file_by_inode(inode_t* parent_dir,inode_t* inode){
 
     if (inode->indirect_sector){
         read_sectors(ATA_PRIMARY_BUS_IO,1,last_read_sector,inode->indirect_sector);
