@@ -60,7 +60,7 @@ void write_module_binaries_to_file(){
         unsigned int len = strlen(name);
         if (dir_contains_name(module_dir,name)){
             // if it is already here, remove it
-            delete_file(module_dir,name,len);
+            delete_file(module_dir,name);
         }
 
         int ret_code = create_file(module_dir,name,len,FS_TYPE_FILE);
