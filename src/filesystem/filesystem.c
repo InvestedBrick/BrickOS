@@ -680,22 +680,36 @@ inode_t* get_file_if_exists(inode_t* parent_dir,unsigned char* name){
         return get_inode_by_full_file_path(name);
     }
 }
+
+int erase_empty_dir(inode_t* parent_dir, inode_t* dir){
+    dir->type = FS_TYPE_ERASED;
+    return delete_file_by_inode(parent_dir,dir);
+}
+
 int delete_dir_recursive(inode_t* parent_dir, inode_t* dir){
     string_array_t* names = get_all_names_in_dir(dir,0);
+    if (!names) {
+        if (erase_empty_dir(parent_dir,dir) != FS_FILE_DELETION_SUCCESS) 
+            return FS_FILE_DELETION_FAILED;
+        return FS_FILE_DELETION_SUCCESS;
+    }
     for(unsigned int i = 0; i < names->n_strings;i++){
         unsigned int id = get_inode_id_by_name(dir->id,names->strings[i].str);
         inode_t* inode = get_inode_by_id(id);
         if (!inode) return FILE_INVALID_FD;
-
+        int result;
         if (inode->type == FS_TYPE_FILE) {
-            if (delete_file_by_inode(dir,inode) != FS_FILE_DELETION_SUCCESS) return FS_FILE_DELETION_FAILED;
+            result = delete_file_by_inode(dir,inode);
         }else{
-            if (delete_dir_recursive(dir,inode) != FS_FILE_DELETION_SUCCESS) return FS_FILE_DELETION_FAILED;
+            result = delete_dir_recursive(dir,inode);
         }
+
+        if (result != FS_FILE_DELETION_SUCCESS) return FS_FILE_DELETION_FAILED;
     }
     free_string_arr(names);
-    dir->type = FS_TYPE_ERASED;
-    if (delete_file_by_inode(parent_dir,dir) != FS_FILE_DELETION_SUCCESS) return FS_FILE_DELETION_FAILED;
+    if (erase_empty_dir(parent_dir,dir) != FS_FILE_DELETION_SUCCESS) 
+        return FS_FILE_DELETION_FAILED;
+    
     return FS_FILE_DELETION_SUCCESS;
 }
 
@@ -703,8 +717,9 @@ int delete_dir(inode_t* parent_dir,unsigned char* name){
     // get dir
     inode_t* dir = get_file_if_exists(parent_dir,name);
     if (!dir) return FS_FILE_NOT_FOUND;
-
+    
     if (dir->type != FS_TYPE_DIR) return FILE_INVALID_TARGET;
+    
 
     return delete_dir_recursive(parent_dir,dir);
 }
