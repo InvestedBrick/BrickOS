@@ -10,12 +10,14 @@ C_SOURCES = \
     src/io/*.c \
     src/tables/*.c \
     src/drivers/keyboard/*.c \
+    src/drivers/timer/*.c \
     src/memory/*.c \
     src/user/*.c \
     src/modules/*.c \
 	src/drivers/ATA_PIO/*.c \
     src/filesystem/*c \
     src/shell/*.c 
+
 
 ASM_SOURCES := $(wildcard $(ASM_SOURCES))
 C_SOURCES := $(wildcard $(C_SOURCES))
