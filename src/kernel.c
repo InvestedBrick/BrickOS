@@ -13,6 +13,7 @@
 #include "drivers/ATA_PIO/ata.h"
 #include "filesystem/filesystem.h"
 #include "shell/kernel_shell.h"
+#include "drivers/timer/pit.h"
 void kmain(multiboot_info_t* boot_info)
 {   
     clear_screen();
@@ -27,6 +28,11 @@ void kmain(multiboot_info_t* boot_info)
     serial_configure_modem(SERIAL_COM1_BASE);
 
     log("Set up serial port");
+
+    // Initialize the PIT to 10 Hz
+    init_pit(10);
+    log("Initialized the PIT");
+
     // Set up global descriptor table
     init_gdt();
     log("Initialized the GDT");
