@@ -1,6 +1,6 @@
 
 #ifndef INCLUDE_SCREEN_H
-#define INCLUDE_SCREEM_H
+#define INCLUDE_SCREEN_H
 
 #define VIDEO_MEMORY_START 0xc00b8000 // need to remap due to allocated memory pages
 
