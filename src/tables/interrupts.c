@@ -9,6 +9,8 @@ extern void* idt_code_table[];
 
 static idt_t idt;
 
+unsigned int ticks;
+
 void set_idt_entry(unsigned char num,void* offset,unsigned char attributes){
     idt_entries[num].offset_low = ((unsigned int)offset & 0xffff);
     idt_entries[num].segment_selector = 0x08; // Kernel code segment from the gdt
@@ -41,6 +43,7 @@ void interrupt_handler(interrupt_stack_frame_t* stack_frame) {
         return;
     }
     else if (stack_frame->interrupt_number == INT_TIMER){
+        ticks++;
         acknowledge_PIC(stack_frame->interrupt_number);
         return;
     }
