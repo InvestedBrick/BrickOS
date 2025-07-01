@@ -1,25 +1,165 @@
 [LOG] Set up serial port
 [LOG] Initialized the PIT
 [LOG] Initialized the GDT
+[LOG] Set up serial port
+[LOG] Initialized the PIT
+[LOG] Initialized the GDT
 [LOG] Initialited the IDT
 [LOG] Initialized keyboard
 [LOG] Initialized paged memory
 [LOG] Initialized kmalloc
 [LOG] Saved module binaries
 [LOG] Initialized user process vector
+[LOG] Initialized the scheduler
 [LOG] Selected Drive supports LBA48
 [LOG] Number of addressable LBA28 sectors: 
 [LOG] 524288
 [LOG] Initialized disk driver
 [LOG] Initialized the filesystem
 [LOG] Wrote module binaries to files in the modules directory
-[LOG] 100 ticks passed
-[LOG] 100 ticks passed
-[LOG] 100 ticks passed
-[LOG] 100 ticks passed
-[LOG] 100 ticks passed
-[LOG] 100 ticks passed
-[LOG] User returned from shell
-[LOG] Wrote all inodes to disk
-[LOG] Wrote all bitmaps to disk
-[PANIC] This is the end of the world
+[LOG] Switching task
+[LOG] Switching from page dir
+[LOG] 0
+[LOG] to
+[LOG] 0
+[LOG] Switching task
+[LOG] Switching from page dir
+[LOG] 0
+[LOG] to
+[LOG] 0
+[LOG] Switching task
+[LOG] Switching from page dir
+[LOG] 0
+[LOG] to
+[LOG] 0
+[LOG] Switching task
+[LOG] Switching from page dir
+[LOG] 0
+[LOG] to
+[LOG] 0
+[LOG] Switching task
+[LOG] Switching from page dir
+[LOG] 0
+[LOG] to
+[LOG] 0
+[LOG] Switching task
+[LOG] Switching from page dir
+[LOG] 0
+[LOG] to
+[LOG] 0
+[LOG] Switching task
+[LOG] Switching from page dir
+[LOG] 0
+[LOG] to
+[LOG] 0
+[LOG] Switching task
+[LOG] Switching from page dir
+[LOG] 0
+[LOG] to
+[LOG] 0
+[LOG] Switching task
+[LOG] Switching from page dir
+[LOG] 0
+[LOG] to
+[LOG] 0
+[LOG] Switching task
+[LOG] Switching from page dir
+[LOG] 0
+[LOG] to
+[LOG] 0
+[LOG] Switching task
+[LOG] Switching from page dir
+[LOG] 0
+[LOG] to
+[LOG] 0
+[LOG] Switching task
+[LOG] Switching from page dir
+[LOG] 0
+[LOG] to
+[LOG] 0
+[LOG] Switching task
+[LOG] Switching from page dir
+[LOG] 0
+[LOG] to
+[LOG] 0
+[LOG] Switching task
+[LOG] Switching from page dir
+[LOG] 0
+[LOG] to
+[LOG] 0
+[LOG] Switching task
+[LOG] Switching from page dir
+[LOG] 0
+[LOG] to
+[LOG] 0
+[LOG] Switching task
+[LOG] Switching from page dir
+[LOG] 0
+[LOG] to
+[LOG] 0
+[LOG] Switching task
+[LOG] Switching from page dir
+[LOG] 0
+[LOG] to
+[LOG] 0
+[LOG] Switching task
+[LOG] Switching from page dir
+[LOG] 0
+[LOG] to
+[LOG] 0
+[LOG] Switching task
+[LOG] Switching from page dir
+[LOG] 0
+[LOG] to
+[LOG] 0
+[LOG] Switching task
+[LOG] Switching from page dir
+[LOG] 0
+[LOG] to
+[LOG] 0
+[LOG] Switching task
+[LOG] Switching from page dir
+[LOG] 0
+[LOG] to
+[LOG] 0
+[LOG] Switching task
+[LOG] Switching from page dir
+[LOG] 0
+[LOG] to
+[LOG] 0
+[LOG] Switching task
+[LOG] Switching from page dir
+[LOG] 0
+[LOG] to
+[LOG] 0
+[LOG] Switching task
+[LOG] Switching from page dir
+[LOG] 0
+[LOG] to
+[LOG] 0
+[LOG] Switching task
+[LOG] Switching from page dir
+[LOG] 0
+[LOG] to
+[LOG] 0
+[LOG] Switching task
+[LOG] Switching from page dir
+[LOG] 0
+[LOG] to
+[LOG] 0
+[LOG] Switching task
+[LOG] Switching from page dir
+[LOG] 0
+[LOG] to
+[LOG] 0
+[LOG] Switching task
+[LOG] Switching from page dir
+[LOG] 0
+[LOG] to
+[LOG] 0
+[LOG] Switching task
+[LOG] Switching from page dir
+[LOG] 0
+[LOG] to
+[LOG] 2417159
+[LOG] NOT SYSCALL 1
