@@ -1,6 +1,7 @@
 #include "interrupts.h"
 #include "../io/log.h"
 #include "../drivers/keyboard/keyboard.h"
+#include "../processes/scheduler.h"
 
 static idt_entry_t idt_entries[IDT_MAX_ENTRIES] __attribute__((aligned(0x10)));
 static int enabled_idt[IDT_MAX_ENTRIES] = {0};
@@ -9,7 +10,7 @@ extern void* idt_code_table[];
 
 static idt_t idt;
 
-unsigned int ticks;
+unsigned int ticks = 0;
 
 void set_idt_entry(unsigned char num,void* offset,unsigned char attributes){
     idt_entries[num].offset_low = ((unsigned int)offset & 0xffff);
@@ -44,12 +45,15 @@ void interrupt_handler(interrupt_stack_frame_t* stack_frame) {
     }
     else if (stack_frame->interrupt_number == INT_TIMER){
         ticks++;
+        if (ticks % TASK_SWITCH_TICKS == 0) {
+            switch_task(stack_frame);
+        }
         acknowledge_PIC(stack_frame->interrupt_number);
         return;
     }
     else if(stack_frame->interrupt_number == INT_SOFTWARE){
         if (stack_frame->eax == 1){
-            log("SYSCALL 1");
+            setup_kernel_process(stack_frame);
         }else{
             log("NOT SYSCALL 1");
         }
