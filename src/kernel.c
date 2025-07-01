@@ -7,13 +7,14 @@
 #include "multiboot.h"
 #include "memory/memory.h"
 #include "memory/kmalloc.h"
-#include "user/user_process.h"
-#include "tables/tss.h"
+#include "processes/user_process.h"
 #include "modules/module_handler.h"
 #include "drivers/ATA_PIO/ata.h"
 #include "filesystem/filesystem.h"
 #include "shell/kernel_shell.h"
 #include "drivers/timer/pit.h"
+#include "processes/scheduler.h"
+
 void kmain(multiboot_info_t* boot_info)
 {   
     clear_screen();
@@ -29,8 +30,7 @@ void kmain(multiboot_info_t* boot_info)
 
     log("Set up serial port");
 
-    // Initialize the PIT to 10 Hz
-    init_pit(10);
+    init_pit(DESIRED_STANDARD_FREQ);
     log("Initialized the PIT");
 
     // Set up global descriptor table
@@ -65,6 +65,9 @@ void kmain(multiboot_info_t* boot_info)
     init_user_process_vector();
     log("Initialized user process vector");
     
+    init_scheduler();
+    log("Initialized the scheduler");
+
     init_disk_driver();
     log("Initialized disk driver");
     
@@ -73,20 +76,13 @@ void kmain(multiboot_info_t* boot_info)
     log("Initialized the filesystem");
 
     if (first_time_fs_init){
-        create_file(active_dir,"modules",strlen("modules"),FS_TYPE_DIR);
-        create_file(active_dir,"home",strlen("home"),FS_TYPE_DIR);
+        create_file(active_dir,"modules",strlen("modules"),FS_TYPE_DIR, FS_FILE_PERM_NONE);
+        create_file(active_dir,"home",strlen("home"),FS_TYPE_DIR, FS_FILE_PERM_NONE);
     }
-    // save the modules binaries to "moules/"
+    
+    // save the modules binaries to "modules/"
     write_module_binaries_to_file();
     log("Wrote module binaries to files in the modules directory");
-    //if (module_count > 0){
-    //    unsigned int pid = create_user_process((char*)module_binary_structs[0].start,module_binary_structs[0].size);
-    //    free_saved_module_binaries();
-    //    user_process_t* process = get_user_process_by_pid(pid);
-    //    set_kernel_stack(process->kernel_stack + MEMORY_PAGE_SIZE);
-    //    enter_user_mode(); // we are never getting out of here
-    //    restore_kernel_memory_page_dir();
-    //} 
 
     //get input
     start_shell();
