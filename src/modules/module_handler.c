@@ -41,13 +41,6 @@ void save_module_binaries(multiboot_info_t* boot_info){
 
 }
 
-void free_saved_module_binaries(){
-    for (unsigned int i = 0; i < module_count;i++){
-        kfree((void*)module_binary_structs[i].start);
-    }
-    kfree((void*)module_binary_structs);
-}
-
 void write_module_binaries_to_file(){
     for (unsigned int i = 0; i < module_count;i++){
         inode_t* module_dir = get_inode_by_full_file_path("root/modules/");
@@ -63,12 +56,12 @@ void write_module_binaries_to_file(){
             delete_file(module_dir,name);
         }
 
-        int ret_code = create_file(module_dir,name,len,FS_TYPE_FILE);
+        int ret_code = create_file(module_dir,name,len,FS_TYPE_FILE,FS_FILE_PERM_WRITABLE | FS_FILE_PERM_READABLE);
         if (ret_code < 0) 
             {error("Failed to create module binary file"); continue;}
 
         int fd = open(name,FILE_FLAG_WRITE);
-        if (fd == FILE_OP_FAILED) 
+        if (fd < 0) 
             {error("Failed to open module binary file"); continue;}
 
         ret_code = write(fd,(unsigned char*)module_binary_structs[i].start,module_binary_structs[i].size);
@@ -78,6 +71,8 @@ void write_module_binaries_to_file(){
         
         ret_code = close(fd);
         if (ret_code == FILE_INVALID_FD) error("Failed to close module binary file");
+
+        change_file_permissions(get_inode_by_id(get_inode_id_by_name(module_dir->id,name)), FS_FILE_PERM_EXECUTABLE | FS_FILE_PERM_READABLE);
 
         change_active_dir(dir_save);
 
