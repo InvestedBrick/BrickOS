@@ -3,7 +3,7 @@ ASM_SOURCES = \
     src/io/*.asm \
     src/tables/*.asm \
     src/memory/*.asm \
-    src/user/*.asm
+    src/processes/*.asm
 
 C_SOURCES = \
     src/*.c \
@@ -12,7 +12,7 @@ C_SOURCES = \
     src/drivers/keyboard/*.c \
     src/drivers/timer/*.c \
     src/memory/*.c \
-    src/user/*.c \
+    src/processes/*.c \
     src/modules/*.c \
 	src/drivers/ATA_PIO/*.c \
     src/filesystem/*c \
