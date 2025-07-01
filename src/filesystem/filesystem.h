@@ -58,6 +58,12 @@ typedef struct{
 
 #define INTERNAL_FUNCTION_SUCCESS 0
 #define INTERNAL_FUNCTION_FAIL -1
+
+#define FS_FILE_PERM_NONE 0x0
+#define FS_FILE_PERM_READABLE 0x1
+#define FS_FILE_PERM_WRITABLE 0x2
+#define FS_FILE_PERM_EXECUTABLE 0x4
+
 extern unsigned char first_time_fs_init;
 
 // Padding so that the size is 64 and they are sector aligned
@@ -65,7 +71,7 @@ typedef struct {
     unsigned int id;
     unsigned int size;
     unsigned char type;
-    unsigned char unused_flag_one;
+    unsigned char perms;
     unsigned char unused_flag_two;
     unsigned char unused_flag_three;
     unsigned int indirect_sector;
@@ -174,16 +180,17 @@ unsigned int allocate_sector();
 string_array_t* get_all_names_in_dir(inode_t* dir,unsigned char add_slash);
 
 /**
- * create_directory:
- * Creates a directory in a given parent directory
+ * create_file:
+ * Creates a file in a given parent directory
  * 
  * @param parent_dir The parent directory inode
- * @param name The name of the new directory
+ * @param name The name of the new file
  * @param name_length The length if the name
  * @param type The type of file to create (FS_TYPE_FILE or FS_TYPE_DIR)
+ * @param perms The permissions of the file
  * @return whether the file creation was successful (return value == 0) or not (return value < 0)
  */
-int create_file(inode_t* parent_dir, unsigned char* name, unsigned char name_length,unsigned char type);
+int create_file(inode_t* parent_dir, unsigned char* name, unsigned char name_length,unsigned char type,unsigned char perms);
 
 /**
  * write_to_disk: 
@@ -247,4 +254,25 @@ int delete_dir(inode_t* parent_dir,unsigned char* name);
  * @return If the deletion was successful (return value == 0) or not (return value < 0)
  */
 int delete_file_by_inode(inode_t* parent_dir,inode_t* inode);
+
+
+/**
+ * get_file_if_exists:
+ * Returns a file, tests both if it exists in the active directory or if the name is the full path
+ * 
+ * @param parent_dir The parent directory of the file
+ * @param name The name of full file path of the file
+ * 
+ * @return A pointer to the file inode
+ */
+inode_t* get_file_if_exists(inode_t* parent_dir,unsigned char* name);
+
+
+/**
+ * change_file_permissions:
+ * Changes the permissions of a file
+ * @param file The file
+ * @param perms The new permissions
+ */
+void change_file_permissions(inode_t* file,unsigned char perms);
 #endif
