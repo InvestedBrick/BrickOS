@@ -89,6 +89,9 @@ int open(unsigned char* filepath,unsigned char flags){
     }
     if (!inode) return FILE_OP_FAILED;
 
+    if ((!(inode->perms & FS_FILE_PERM_READABLE)) && (flags & FILE_FLAG_READ)) return FILE_INVALID_PERMISSIONS;
+    if ((!(inode->perms & FS_FILE_PERM_WRITABLE)) && (flags & FILE_FLAG_WRITE)) return FILE_INVALID_PERMISSIONS;
+
     open_file_t* file = (open_file_t*)kmalloc(sizeof(open_file_t));
     file->fd = get_fd();
     if (!file->fd) return FILE_OP_FAILED;
