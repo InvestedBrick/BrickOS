@@ -6,7 +6,8 @@
 #include "../filesystem/filesystem.h"
 #include "../filesystem/file_operations.h"
 #include "../io/log.h"
-
+#include "../processes/user_process.h"
+#include "../memory/memory.h"
 void free_command(command_t com){
     kfree(com.command.str);
     for (unsigned int i = 0; i < com.n_args;i++){
@@ -142,6 +143,32 @@ void change_directory(command_t comd){
 
 }
 
+void run_file(command_t comd){
+    inode_t* file = get_file_if_exists(active_dir,comd.args[0].str);
+    if (!file) {write_string("File was not found",18);newline();return;}
+
+    if (!(file->perms & FS_FILE_PERM_EXECUTABLE)) {write_string("File is not executable",22); newline();return;}
+
+    unsigned char* binary = (unsigned char*)kmalloc(file->size);
+    
+    int fd = open(comd.args[0].str,FILE_FLAG_READ);
+
+    int ret_val = read(fd,binary,file->size);
+    if (ret_val < 0){
+        warn("Failed to read executable file");
+        return;
+    }
+    
+    close(fd);
+    
+    unsigned int pid = create_user_process(binary,file->size,comd.args[0].str);
+    
+    dispatch_user_process(pid);
+    
+    restore_kernel_memory_page_dir();
+    kfree(binary);
+}
+
 string_t get_full_active_path(){
     string_array_t* str_arr = (string_array_t*)kmalloc(sizeof(string_array_t));
     inode_t* inode = active_dir;
@@ -239,7 +266,9 @@ void start_shell(){
             newline();
             write_string("rm [filename] <flags> - Deletes a file, flag -r for directory",61);
             newline();
-            write_string("cd - Changes directory to a subdirectory or the parent directory (with cd ..)",77);
+            write_string("cd - Changes directory to a subdirectory (or the parent directory with cd ..)",77);
+            newline();
+            write_string("run [filename] - Runs an executable file",40);
             newline();
 
         }
@@ -266,14 +295,14 @@ void start_shell(){
         else if (streq(comd.command.str,"mkdir")){
             if (!comd.args) {write_string("Expected name of directory",26); newline();}
             else{
-                int ret_val = create_file(active_dir,comd.args[0].str,comd.args[0].length,FS_TYPE_DIR);
+                int ret_val = create_file(active_dir,comd.args[0].str,comd.args[0].length,FS_TYPE_DIR,FS_FILE_PERM_NONE);
                 if (ret_val < 0) {write_string("Creation of directory failed",28); newline();}
             }
         }
         else if (streq(comd.command.str,"mkf")){
             if (!comd.args) {write_string("Expected name of file",21); newline();}
             else{
-                int ret_val = create_file(active_dir,comd.args[0].str,comd.args[0].length,FS_TYPE_FILE);
+                int ret_val = create_file(active_dir,comd.args[0].str,comd.args[0].length,FS_TYPE_FILE, FS_FILE_PERM_READABLE | FS_FILE_PERM_WRITABLE);
                 if (ret_val < 0) {write_string("Creation of file failed",23); newline();}
             }
         }
@@ -338,6 +367,12 @@ void start_shell(){
                 failed = 1;
             }
             if (!failed) log("ftest succeded");
+        }
+        else if (streq(comd.command.str,"run")){
+            if (!comd.args) {write_string("Expected name of file to run",28); newline();}
+            else{
+                run_file(comd);
+            }
         }
         else {
             write_string("Command '",9);
