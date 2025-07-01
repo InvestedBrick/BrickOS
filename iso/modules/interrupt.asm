@@ -5,7 +5,4 @@ section .text
     mov ecx, 5
     int 0x30
 
-    xor eax, eax
-    inc eax
-    int 0x30
     jmp $
