@@ -468,7 +468,7 @@ void init_filesystem(){
         root_node->id = *(unsigned int*)&last_read_sector[0x00];
         root_node->size = *(unsigned int*)&last_read_sector[0x04];
         root_node->type = last_read_sector[0x08];
-        root_node->unused_flag_one = last_read_sector[0x09];
+        root_node->perms = last_read_sector[0x09];
         root_node->unused_flag_two = last_read_sector[0x0a];
         root_node->unused_flag_three = last_read_sector[0x0b];
         root_node->indirect_sector = *(unsigned int*)&last_read_sector[0xc];
@@ -768,7 +768,7 @@ int delete_file_by_inode(inode_t* parent_dir,inode_t* inode){
     return FS_FILE_DELETION_SUCCESS;
 }
 
-int create_file(inode_t* parent_dir, unsigned char* name, unsigned char name_length, unsigned char type){
+int create_file(inode_t* parent_dir, unsigned char* name, unsigned char name_length, unsigned char type,unsigned char perms){
 
     string_array_t* strs_in_parent_dir = get_all_names_in_dir(parent_dir,0);
     if (strs_in_parent_dir){
@@ -794,6 +794,7 @@ int create_file(inode_t* parent_dir, unsigned char* name, unsigned char name_len
     
     
     inode_t* file = (inode_t*)kmalloc(sizeof(inode_t));
+    file->perms = perms;
     file->type = type;
     file->id = allocate_inode_section();
     memset(file->data_sectors,0,NUM_DATA_SECTORS_PER_FILE * sizeof(unsigned int));
@@ -816,6 +817,11 @@ int create_file(inode_t* parent_dir, unsigned char* name, unsigned char name_len
     vector_append(&inode_name_pairs,(unsigned int)name_pair);
 
     return FS_FILE_CREATION_SUCCESS;
+}
+
+void change_file_permissions(inode_t* file,unsigned char perms){
+    if (file->type != FS_TYPE_FILE) return;
+    file->perms = perms; 
 }
 
 void write_inode_to_disk(inode_t* inode,unsigned char is_root){
