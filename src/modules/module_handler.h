@@ -21,12 +21,6 @@ extern unsigned int module_count;
 void save_module_binaries(multiboot_info_t* boot_info);
 
 /**
- * free_saved_module_binaries: 
- * Frees the allocated memory used for the "module_binary_structs" array
- */
-void free_saved_module_binaries();
-
-/**
  * write_module_binaries_to_file: 
  * Writes the module binaries to files in the modules/ folders
  * IMPORTANT: This function frees the binaries from memory, so the struct pointer becomes invalid
