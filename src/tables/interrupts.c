@@ -2,7 +2,7 @@
 #include "../io/log.h"
 #include "../drivers/keyboard/keyboard.h"
 #include "../processes/scheduler.h"
-
+#include "../memory/memory.h"
 static idt_entry_t idt_entries[IDT_MAX_ENTRIES] __attribute__((aligned(0x10)));
 static int enabled_idt[IDT_MAX_ENTRIES] = {0};
 
@@ -36,6 +36,11 @@ void init_idt(){
     remap_PIC(PIC1_START_INTERRUPT,PIC2_START_INTERRUPT); // [32; 39] and [40;47]
 
 }
+
+int breakpoint(int num){
+    return num + 1;
+}
+
 void interrupt_handler(interrupt_stack_frame_t* stack_frame) {
 
     if (stack_frame->interrupt_number == INT_KEYBOARD){
@@ -46,7 +51,11 @@ void interrupt_handler(interrupt_stack_frame_t* stack_frame) {
     else if (stack_frame->interrupt_number == INT_TIMER){
         ticks++;
         if (ticks % TASK_SWITCH_TICKS == 0) {
+            unsigned int* old_pd = mem_get_current_page_dir();
             switch_task(stack_frame);
+            if (old_pd != mem_get_current_page_dir()){
+                int x = breakpoint(3);
+            }
         }
         acknowledge_PIC(stack_frame->interrupt_number);
         return;
