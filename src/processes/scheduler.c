@@ -38,11 +38,12 @@ void setup_kernel_process(interrupt_stack_frame_t* regs){
     p_queue->next = 0;
     current_proc = p_queue;
     locked = 1;
+    log("Set up kernel process");
 }
 
 void add_process_state(unsigned int* page_dir){
     if (!p_queue) {
-        error("Process queue not initialied");
+        error("Process queue not initialized");
         return;
     }
     process_state_t* proc = (process_state_t*)kmalloc(sizeof(process_state_t));
@@ -59,7 +60,7 @@ void add_process_state(unsigned int* page_dir){
 void switch_task(interrupt_stack_frame_t* regs){
     // only switch when the scheduler was set up 
     if (!locked) return;
-
+    unsigned int interrupt_code = regs->interrupt_number;
     log("Switching task");
     log("Switching from page dir");
     log_uint(*current_proc->pd);
@@ -71,6 +72,7 @@ void switch_task(interrupt_stack_frame_t* regs){
     log_uint(*current_proc->pd);
     mem_change_page_dir(current_proc->pd);
     memcpy(regs,&current_proc->regs,sizeof(interrupt_stack_frame_t));
+    regs->interrupt_number = interrupt_code; 
 }
 
 void remove_process_state(process_state_t* proc){
