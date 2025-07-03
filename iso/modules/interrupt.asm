@@ -5,4 +5,8 @@ section .text
     mov ecx, 5
     int 0x30
 
+    mov edx, 6
+    pushfd              ; Push EFLAGS onto the stack
+    pop eax             ; Pop into EAX
+
     jmp $
