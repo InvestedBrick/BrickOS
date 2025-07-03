@@ -23,7 +23,7 @@ ASM_SOURCES := $(wildcard $(ASM_SOURCES))
 C_SOURCES := $(wildcard $(C_SOURCES))
 
 LD_SCRIPT = link.ld
-LD_ARGS = -m elf_i386
+LD_ARGS = -m elf_i386 -g 
 
 ASM_OBJS = $(ASM_SOURCES:.asm=.o)
 C_OBJS = $(C_SOURCES:.c=.o)
@@ -31,12 +31,12 @@ TARGET = kernel.elf
 ISO = BrickOS.iso
 
 CC = gcc
-CFLAGS = -ffreestanding -m32 -nostdlib -nostdinc -fno-builtin -fno-stack-protector -fno-exceptions
+CFLAGS = -ffreestanding -m32 -nostdlib -nostdinc -fno-builtin -fno-stack-protector -fno-exceptions -g
 
 all: $(TARGET)
 
 %.o: %.asm
-	nasm -f elf32 $< -o $@
+	nasm -g -f elf32 $< -o $@
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
