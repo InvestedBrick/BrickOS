@@ -1,15 +1,13 @@
 [LOG] Set up serial port
 [LOG] Initialized the PIT
 [LOG] Initialized the GDT
-[LOG] Set up serial port
-[LOG] Initialized the PIT
-[LOG] Initialized the GDT
 [LOG] Initialited the IDT
 [LOG] Initialized keyboard
 [LOG] Initialized paged memory
 [LOG] Initialized kmalloc
 [LOG] Saved module binaries
 [LOG] Initialized user process vector
+[LOG] Set up kernel process
 [LOG] Initialized the scheduler
 [LOG] Selected Drive supports LBA48
 [LOG] Number of addressable LBA28 sectors: 
@@ -81,85 +79,134 @@
 [LOG] Switching from page dir
 [LOG] 0
 [LOG] to
-[LOG] 0
+[LOG] 2482695
 [LOG] Switching task
 [LOG] Switching from page dir
-[LOG] 0
+[LOG] 2482727
 [LOG] to
 [LOG] 0
 [LOG] Switching task
 [LOG] Switching from page dir
 [LOG] 0
 [LOG] to
-[LOG] 0
+[LOG] 2482727
 [LOG] Switching task
 [LOG] Switching from page dir
-[LOG] 0
+[LOG] 2482727
 [LOG] to
 [LOG] 0
 [LOG] Switching task
 [LOG] Switching from page dir
 [LOG] 0
 [LOG] to
-[LOG] 0
+[LOG] 2482727
 [LOG] Switching task
 [LOG] Switching from page dir
-[LOG] 0
+[LOG] 2482727
 [LOG] to
 [LOG] 0
 [LOG] Switching task
 [LOG] Switching from page dir
 [LOG] 0
 [LOG] to
-[LOG] 0
+[LOG] 2482727
 [LOG] Switching task
 [LOG] Switching from page dir
-[LOG] 0
+[LOG] 2482727
 [LOG] to
 [LOG] 0
 [LOG] Switching task
 [LOG] Switching from page dir
 [LOG] 0
 [LOG] to
-[LOG] 0
+[LOG] 2482727
 [LOG] Switching task
 [LOG] Switching from page dir
-[LOG] 0
+[LOG] 2482727
 [LOG] to
 [LOG] 0
 [LOG] Switching task
 [LOG] Switching from page dir
 [LOG] 0
 [LOG] to
-[LOG] 0
+[LOG] 2482727
 [LOG] Switching task
 [LOG] Switching from page dir
-[LOG] 0
+[LOG] 2482727
 [LOG] to
 [LOG] 0
 [LOG] Switching task
 [LOG] Switching from page dir
 [LOG] 0
 [LOG] to
-[LOG] 0
+[LOG] 2482727
 [LOG] Switching task
 [LOG] Switching from page dir
-[LOG] 0
+[LOG] 2482727
 [LOG] to
 [LOG] 0
 [LOG] Switching task
 [LOG] Switching from page dir
 [LOG] 0
 [LOG] to
-[LOG] 0
+[LOG] 2482727
 [LOG] Switching task
 [LOG] Switching from page dir
-[LOG] 0
+[LOG] 2482727
 [LOG] to
 [LOG] 0
 [LOG] Switching task
 [LOG] Switching from page dir
 [LOG] 0
 [LOG] to
-[LOG] 2417159
-[LOG] NOT SYSCALL 1
+[LOG] 2482727
+[LOG] Switching task
+[LOG] Switching from page dir
+[LOG] 2482727
+[LOG] to
+[LOG] 0
+[LOG] Switching task
+[LOG] Switching from page dir
+[LOG] 0
+[LOG] to
+[LOG] 2482727
+[LOG] Switching task
+[LOG] Switching from page dir
+[LOG] 2482727
+[LOG] to
+[LOG] 0
+[LOG] Switching task
+[LOG] Switching from page dir
+[LOG] 0
+[LOG] to
+[LOG] 2482727
+[LOG] Switching task
+[LOG] Switching from page dir
+[LOG] 2482727
+[LOG] to
+[LOG] 0
+[LOG] Switching task
+[LOG] Switching from page dir
+[LOG] 0
+[LOG] to
+[LOG] 2482727
+[LOG] Switching task
+[LOG] Switching from page dir
+[LOG] 2482727
+[LOG] to
+[LOG] 0
+[LOG] Switching task
+[LOG] Switching from page dir
+[LOG] 0
+[LOG] to
+[LOG] 2482727
+[LOG] Switching task
+[LOG] Switching from page dir
+[LOG] 2482727
+[LOG] to
+[LOG] 0
+[LOG] Switching task
+[LOG] Switching from page dir
+[LOG] 0
+[LOG] to
+[LOG] 2482727
