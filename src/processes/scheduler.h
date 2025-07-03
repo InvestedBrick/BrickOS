@@ -11,7 +11,7 @@ typedef struct process_state_struct{
     struct process_state_struct* next;
 } process_state_t;
 
-#define TASK_SWITCH_DELAY_MS 1000
+#define TASK_SWITCH_DELAY_MS 20
 #define TASK_SWITCH_TICKS ((TASK_SWITCH_DELAY_MS * DESIRED_STANDARD_FREQ) / 1000)
 
 /**
