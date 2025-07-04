@@ -1,5 +1,5 @@
 #include "io.h"
-
+#include "../tables/interrupts.h"
 void serial_configure_baud_rate(unsigned short com, unsigned short divisor){
     outb(SERIAL_LINE_COMMAND_PORT(com), SERIAL_LINE_ENABLE_DLAB);
     outb(SERIAL_DATA_PORT(com), (divisor >> 8) & 0x00ff);
@@ -38,9 +38,12 @@ int serial_is_transmit_fifo_empty(unsigned int com){
 }
 
 void serial_write(const unsigned char* data, unsigned short com){
+    unsigned char old_int = get_interrupt_status();
+    disable_interrupts();
     for(unsigned int i = 0; data[i] != '\0';++i){
         // wait until transmit FIFO is empty
         while(!serial_is_transmit_fifo_empty(com));
         outb(SERIAL_DATA_PORT(com),data[i]);
     }
+    set_interrupt_status(old_int);
 }
