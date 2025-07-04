@@ -8,8 +8,59 @@ load_idt:
     sti  ; enable interrupts
     ret
 
+
+; inserts esp and ss into the stack so that the alignment works with the interrupt struct
+insert_mode_regs:
+    push eax
+
+    mov eax, dword [esp + 12] ; cs
+    and eax, 0x3
+    cmp eax, 0 ; check for priv level 0
+    jne .return ; if priv level not equal to kernel priv -> ss and esp are already pushed
+
+
+    ; [esp + 16] eflags
+    ; [esp + 12] cs
+    ; [esp + 8] eip
+    ; [esp + 4] return address
+    ; [esp    ] eax
+    sub esp, 8
+
+    ; eax
+    mov eax, dword [esp + 8]
+    mov dword [esp], eax
+
+    ; return address
+    mov eax, dword [esp + 12]
+    mov dword [esp + 4], eax
+
+    ; eip
+    mov eax, dword [esp + 16]
+    mov dword [esp + 8], eax
+
+    ; cs
+    mov eax, dword [esp + 20]
+    mov dword [esp + 12], eax
+
+    ;eflags
+    mov eax, dword [esp + 24]
+    mov dword [esp + 16], eax
+
+    ; could I have used a loop for this => yes!
+    ; did I want to deal with another variable => no!
+
+    mov dword [esp + 20], esp
+    xor eax,eax
+    mov ax, ss
+    mov dword [esp + 24], eax
+.return:
+    pop eax
+    ret
+
+
 %macro no_error_code_interrupt_handler 1
 interrupt_handler_%+%1:
+    call insert_mode_regs
     push dword 0    ; push 0 as error code
     push dword %1    ; push the interrupt number
     jmp common_interrupt_handler
@@ -17,10 +68,44 @@ interrupt_handler_%+%1:
 
 %macro error_code_interrupt_handler 1
 interrupt_handler_%+%1:
+    call insert_mode_regs
     push dword %1        ; push interrupt number
     jmp common_interrupt_handler
 %endmacro
 extern interrupt_handler
+
+
+adjust_smaller_stack:
+    push eax
+    ; [esp + 24] ss
+    ; [esp + 20] esp
+    ; [esp + 16] eflags
+    ; [esp + 12] cs
+    ; [esp + 8] eip
+    ; [esp + 4] ret val
+    ; [esp    ] eax
+    ;eflags
+    mov eax, dword [esp + 16]
+    mov dword [esp + 24], eax
+    
+    ;cs 
+    mov eax, dword [esp + 12]
+    mov dword [esp + 20], eax
+
+    ; eip
+    mov eax, dword [esp + 8]
+    mov dword [esp + 16], eax
+    
+    ; return address
+    mov eax, dword [esp + 4]
+    mov dword [esp + 12], eax
+
+    pop eax
+
+    add esp, 8 ; set the stack pointer to the return address
+
+    ret
+
 
 common_interrupt_handler:
     push eax
@@ -45,6 +130,8 @@ common_interrupt_handler:
 
 
     ; Stack
+    ;   [esp + idek]        ss 
+    ;   [esp + idek]        esp
     ;   [esp + 0x2c + 0x10] eflags
     ;   [esp + 0x28 + 0x10] cs
     ;   [esp + 0x24 + 0x10] eip
@@ -79,7 +166,18 @@ common_interrupt_handler:
     pop ebx
     pop eax
 
-    add esp, 8
+    add esp, 4 ; interrupt number
+
+    ; test the error code for the magic values we defined in scheduler.h
+    cmp dword [esp], 0xffffffff
+    je .smaller
+    add esp, 4
+    jmp .return
+.smaller:
+    add esp, 4
+    call adjust_smaller_stack ; iret does not require ss and esp since no context switch -> remove them
+.return:
+
     iret
 
 ; with error codes are 8, 10, 11, 12, 13, 14, 17 and 30 (but we start at 0)
