@@ -1,7 +1,7 @@
 #include "ata.h"
 #include "../../io/io.h"
 #include "../../io/log.h"
-
+#include "../../tables/interrupts.h"
 
 unsigned int addressable_LBA28_sectors = 0;
 void await_bsy_clear(unsigned short bus){
@@ -17,7 +17,8 @@ void ata_poll(unsigned short bus){
     await_drq_set(bus);
 }
 void init_disk_driver(){
-
+    unsigned char old_int_status = get_interrupt_status();
+    disable_interrupts();
     unsigned short identify_info[(ATA_SECTOR_SIZE / 2)];
     // select drive 0
     outb(ATA_DRIVE_SELECT_PORT(ATA_PRIMARY_BUS_IO),ATA_INIT_DRIVE_ONE);
@@ -61,11 +62,13 @@ void init_disk_driver(){
     addressable_LBA28_sectors |= identify_info[60];
     log("Number of addressable LBA28 sectors: ");
     log_uint(addressable_LBA28_sectors);
+    set_interrupt_status(old_int_status);
 
 }
 
 void read_sectors(unsigned short bus,unsigned char n_sectors, unsigned char* buf, unsigned int lba){
-
+    unsigned char old_int_status = get_interrupt_status();
+    disable_interrupts();
     outb(ATA_DRIVE_SELECT_PORT(bus), ATA_SELECT_DRIVE_ONE | ((lba >> 24) & 0x0f));
     outb(ATA_FEATURE_PORT(bus),0x00); // waste of CPU time
     outb(ATA_SECTOR_COUNT_PORT(bus),n_sectors);
@@ -85,10 +88,12 @@ void read_sectors(unsigned short bus,unsigned char n_sectors, unsigned char* buf
     
     unsigned char errors = inb(ATA_STATUS_PORT(bus));
     if (errors & 0x1) warn("An error has occured during reading a disk sector");
-
+    set_interrupt_status(old_int_status);
 }
 
 void write_sectors(unsigned short bus, unsigned char n_sectors, unsigned char* buf,unsigned int lba){
+    unsigned char old_int_status = get_interrupt_status();
+    disable_interrupts();
     outb(ATA_DRIVE_SELECT_PORT(bus), ATA_SELECT_DRIVE_ONE | ((lba >> 24) & 0x0f));
     outb(ATA_FEATURE_PORT(bus),0x00); // waste of CPU time
     outb(ATA_SECTOR_COUNT_PORT(bus),n_sectors);
@@ -116,4 +121,5 @@ void write_sectors(unsigned short bus, unsigned char n_sectors, unsigned char* b
 
     unsigned char errors = inb(ATA_STATUS_PORT(bus));
     if (errors & 0x1) warn("An error has occured during write or flush of a disj sector");
+    set_interrupt_status(old_int_status);
 }
