@@ -99,4 +99,22 @@ void remap_PIC(unsigned int offset1, unsigned int offset2);
  * @param interrupt The number of the interrupt
  */
 void acknowledge_PIC(unsigned int interrupt);
+
+
+void enable_interrupts();
+
+void disable_interrupts();
+
+/**
+ * get_interrupt_status:
+ * @return whether interrupts are enabled (return val 1) or not (return val 0)
+ */
+unsigned char get_interrupt_status();
+
+/**
+ * set_interrupt_status:
+ * Enbales or disables interrupts based on whether int_enable > 0
+ * @param int_enable A boolean to determine if interrupts should be enabled or not
+ */
+void set_interrupt_status(unsigned char int_enable);
 #endif
