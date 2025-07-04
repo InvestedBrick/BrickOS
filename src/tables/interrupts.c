@@ -11,7 +11,28 @@ extern void* idt_code_table[];
 static idt_t idt;
 
 unsigned int ticks = 0;
+unsigned char interrupts_enabled = 1;
+void enable_interrupts(){
+    asm volatile ("sti");
+    interrupts_enabled = 1;
+}
 
+void disable_interrupts(){
+    asm volatile ("cli");
+    interrupts_enabled = 0;
+}
+
+unsigned char get_interrupt_status(){
+    return interrupts_enabled;
+}
+
+void set_interrupt_status(unsigned char int_enable){
+    if (int_enable){
+        enable_interrupts();
+    }else{
+        disable_interrupts();
+    }
+}
 void set_idt_entry(unsigned char num,void* offset,unsigned char attributes){
     idt_entries[num].offset_low = ((unsigned int)offset & 0xffff);
     idt_entries[num].segment_selector = 0x08; // Kernel code segment from the gdt
@@ -37,28 +58,20 @@ void init_idt(){
 
 }
 
-int breakpoint(int num){
-    return num + 1;
-}
 
 void interrupt_handler(interrupt_stack_frame_t* stack_frame) {
 
     if (stack_frame->interrupt_number == INT_KEYBOARD){
         handle_keyboard_interrupt();
         acknowledge_PIC(stack_frame->interrupt_number);
-        return;
     }
     else if (stack_frame->interrupt_number == INT_TIMER){
         ticks++;
         if (ticks % TASK_SWITCH_TICKS == 0) {
-            unsigned int* old_pd = mem_get_current_page_dir();
             switch_task(stack_frame);
-            if (old_pd != mem_get_current_page_dir()){
-                int x = breakpoint(3);
-            }
         }
+
         acknowledge_PIC(stack_frame->interrupt_number);
-        return;
     }
     else if(stack_frame->interrupt_number == INT_SOFTWARE){
         if (stack_frame->eax == 1){
@@ -66,8 +79,10 @@ void interrupt_handler(interrupt_stack_frame_t* stack_frame) {
         }else{
             log("NOT SYSCALL 1");
         }
-        return;
     }
+
+    // if we return to kernel -> esp and ss not needed
+    if ((stack_frame->cs & 0x3) == 0) stack_frame->error_code = RETURN_SMALLER_STACK;
 }
 
 void remap_PIC(unsigned int offset1, unsigned int offset2){
