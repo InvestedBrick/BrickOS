@@ -56,22 +56,30 @@ void add_process_state(unsigned int* page_dir){
 
     last->next = proc;
 }
-
+int breakpoint(int num){
+    return num + 1;
+}
 void switch_task(interrupt_stack_frame_t* regs){
     // only switch when the scheduler was set up 
     if (!locked) return;
+    unsigned int* old_pd = mem_get_current_page_dir();
+
     unsigned int interrupt_code = regs->interrupt_number;
-    log("Switching task");
-    log("Switching from page dir");
-    log_uint(*current_proc->pd);
     memcpy(&current_proc->regs, regs,sizeof(interrupt_stack_frame_t));
+
     if (current_proc->next) current_proc = current_proc->next;
     else current_proc = p_queue;
 
-    log("to");
-    log_uint(*current_proc->pd);
+    if (current_proc->pd != old_pd){
+        int x = breakpoint(3);
+    }
+
+    // if we return to the kernel, we dont need esp and ss
+    unsigned int cpy_size = sizeof(interrupt_stack_frame_t) -
+                                ((current_proc->regs.cs & 0x3 == 0) ? sizeof(unsigned int) * 2 : 0 ); 
+
     mem_change_page_dir(current_proc->pd);
-    memcpy(regs,&current_proc->regs,sizeof(interrupt_stack_frame_t));
+    memcpy(regs,&current_proc->regs,cpy_size);
     regs->interrupt_number = interrupt_code; 
 }
 
