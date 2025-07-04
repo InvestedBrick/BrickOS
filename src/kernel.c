@@ -68,6 +68,7 @@ void kmain(multiboot_info_t* boot_info)
     init_scheduler();
     log("Initialized the scheduler");
 
+    disable_interrupts(); // there is a lot of I/O and disk operations going on so it is better to disable interrupts now
     init_disk_driver();
     log("Initialized disk driver");
     
@@ -84,6 +85,8 @@ void kmain(multiboot_info_t* boot_info)
     write_module_binaries_to_file();
     log("Wrote module binaries to files in the modules directory");
 
+    enable_interrupts();
+    
     //get input
     start_shell();
     log("User returned from shell");
