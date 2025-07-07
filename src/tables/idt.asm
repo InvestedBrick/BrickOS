@@ -12,18 +12,19 @@ load_idt:
 ; inserts esp and ss into the stack so that the alignment works with the interrupt struct
 insert_mode_regs:
     push eax
+    ; stack state:
+    ; [esp + 20] eflags
+    ; [esp + 16] cs
+    ; [esp + 12] eip
+    ; [esp + 8] error code
+    ; [esp + 4] return address
+    ; [esp    ] eax
 
-    mov eax, dword [esp + 12] ; cs
+    mov eax, dword [esp + 16] ; cs
     and eax, 0x3
     cmp eax, 0 ; check for priv level 0
     jne .return ; if priv level not equal to kernel priv -> ss and esp are already pushed
 
-
-    ; [esp + 16] eflags
-    ; [esp + 12] cs
-    ; [esp + 8] eip
-    ; [esp + 4] return address
-    ; [esp    ] eax
     sub esp, 8
 
     ; eax
@@ -34,40 +35,58 @@ insert_mode_regs:
     mov eax, dword [esp + 12]
     mov dword [esp + 4], eax
 
-    ; eip
+    ; error code
     mov eax, dword [esp + 16]
     mov dword [esp + 8], eax
 
-    ; cs
+    ; eip
     mov eax, dword [esp + 20]
     mov dword [esp + 12], eax
 
-    ;eflags
+    ; cs
     mov eax, dword [esp + 24]
     mov dword [esp + 16], eax
+
+    ;eflags
+    mov eax, dword [esp + 28]
+    mov dword [esp + 20], eax
 
     ; could I have used a loop for this => yes!
     ; did I want to deal with another variable => no!
 
-    mov dword [esp + 20], esp
+    mov dword [esp + 24], esp
     xor eax,eax
     mov ax, ss
-    mov dword [esp + 24], eax
+    mov dword [esp + 28], eax
 .return:
+    pop eax
+    ret
+
+clear_IOPL:
+    push eax
+    ; Clear IOPL in EFLAGS (set to 0)
+    pushfd
+    pop eax
+    and eax, 0xcfff   ; Clear bits 12 and 13 (IOPL)
+    push eax
+    popfd
     pop eax
     ret
 
 
 %macro no_error_code_interrupt_handler 1
 interrupt_handler_%+%1:
-    call insert_mode_regs
+    call clear_IOPL
     push dword 0    ; push 0 as error code
+    call insert_mode_regs
     push dword %1    ; push the interrupt number
     jmp common_interrupt_handler
 %endmacro
 
 %macro error_code_interrupt_handler 1
 interrupt_handler_%+%1:
+break_%+%1:
+    call clear_IOPL
     call insert_mode_regs
     push dword %1        ; push interrupt number
     jmp common_interrupt_handler
@@ -177,7 +196,7 @@ common_interrupt_handler:
     add esp, 4
     call adjust_smaller_stack ; iret does not require ss and esp since no context switch -> remove them
 .return:
-
+    sti
     iret
 
 ; with error codes are 8, 10, 11, 12, 13, 14, 17 and 30 (but we start at 0)
