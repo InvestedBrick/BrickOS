@@ -60,6 +60,7 @@ void init_idt(){
 
 
 void interrupt_handler(interrupt_stack_frame_t* stack_frame) {
+    interrupts_enabled = 0; // to stop other functions from copying a wrong value
 
     if (stack_frame->interrupt_number == INT_KEYBOARD){
         handle_keyboard_interrupt();
@@ -83,6 +84,8 @@ void interrupt_handler(interrupt_stack_frame_t* stack_frame) {
 
     // if we return to kernel -> esp and ss not needed
     if ((stack_frame->cs & 0x3) == 0) stack_frame->error_code = RETURN_SMALLER_STACK;
+
+    interrupts_enabled = 1; // the interrupts only actually get enabled in the iret
 }
 
 void remap_PIC(unsigned int offset1, unsigned int offset2){
