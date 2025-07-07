@@ -7,6 +7,7 @@
 #include "../io/log.h"
 #include "scheduler.h"
 #include "../tables/tss.h"
+#include "../tables/interrupts.h"
 
 vector_t user_process_vector;
 static unsigned char pid_used[MAX_PIDS] = {0};
@@ -32,6 +33,8 @@ void free_pid(unsigned int pid){
 
 
 unsigned int create_user_process(unsigned char* binary, unsigned int size,unsigned char* process_name) {
+    unsigned int int_save = get_interrupt_status();
+    disable_interrupts();
 // To setup a user process:
   /**
    * create_user_page_dir()
@@ -89,9 +92,13 @@ unsigned int create_user_process(unsigned char* binary, unsigned int size,unsign
     
 
     return process->process_id;
+
+    set_interrupt_status(int_save);
 }
 
 void load_registers(){
+    unsigned int int_save = get_interrupt_status();
+    disable_interrupts();
     // we do a little pretending here so that when the scheduler returns with these values, everything starts
     process_state_t* state = get_process_state_by_page_dir(mem_get_current_page_dir());
     const unsigned int user_mode_data_segment_selector = (0x20 | 0x3);
@@ -106,6 +113,7 @@ void load_registers(){
     state->regs.eip = USER_CODE_DATA_VMEMORY_START;
     state->regs.esp = USER_STACK_VMEMORY_START;
     state->regs.ss = user_mode_data_segment_selector;
+    set_interrupt_status(int_save);
 }
 
 void dispatch_user_process(unsigned int pid){
