@@ -8,6 +8,8 @@
 #include "../io/log.h"
 #include "../processes/user_process.h"
 #include "../memory/memory.h"
+#include "../tables/interrupts.h"
+
 void free_command(command_t com){
     kfree(com.command.str);
     for (unsigned int i = 0; i < com.n_args;i++){
@@ -161,9 +163,12 @@ void run_file(command_t comd){
     
     close(fd);
     
+    disable_interrupts();
     unsigned int pid = create_user_process(binary,file->size,comd.args[0].str);
     
     dispatch_user_process(pid);
+    enable_interrupts();
+
     
     restore_kernel_memory_page_dir();
     kfree(binary);
