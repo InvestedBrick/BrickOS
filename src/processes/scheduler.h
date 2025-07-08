@@ -4,11 +4,12 @@
 
 #include "../tables/interrupts.h"
 #include "../drivers/timer/pit.h"
-
+#include "user_process.h"
 typedef struct process_state_struct{
     interrupt_stack_frame_t regs;
     unsigned int* pd;
     struct process_state_struct* next;
+    unsigned int kernel_stack_top;
 } process_state_t;
 
 #define TASK_SWITCH_DELAY_MS 20
@@ -39,9 +40,9 @@ void switch_task(interrupt_stack_frame_t* regs);
 /**
  * add_process_state:
  * Adds a process to the process state linked list
- * @param page_dir The page directory of the process
+ * @param usr_proc The user process struct
  */
-void add_process_state(unsigned int* page_dir);
+void add_process_state(user_process_t* usr_proc);
 
 /**
  * remove_process_state:
