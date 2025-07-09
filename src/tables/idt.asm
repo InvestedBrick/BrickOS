@@ -53,8 +53,9 @@ insert_mode_regs:
 
     ; could I have used a loop for this => yes!
     ; did I want to deal with another variable => no!
-
-    mov dword [esp + 24], esp
+    mov eax, esp
+    add eax, 32
+    mov dword [esp + 24], eax ; make esp point to the last data before the interrupt data, so that we can return to there
     xor eax,eax
     mov ax, ss
     mov dword [esp + 28], eax
