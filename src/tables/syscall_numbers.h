@@ -1,0 +1,10 @@
+
+#ifndef INCLUDE_SYSCALL_NUMBERS_H
+#define INCLUDE_SYSCALL_NUMBERS_H
+
+#define SYS_READ 0x2
+#define SYS_WRITE 0x3
+#define SYS_OPEN 0x4
+#define SYS_CLOSE 0x5
+
+#endif
