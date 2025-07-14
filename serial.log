@@ -15,4 +15,3 @@
 [LOG] Initialized disk driver
 [LOG] Initialized the filesystem
 [LOG] Wrote module binaries to files in the modules directory
-[LOG] NOT SYSCALL 1
