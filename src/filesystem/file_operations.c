@@ -8,12 +8,14 @@
 
 vector_t fd_vector;
 static unsigned char fd_used[MAX_FDS] = {0};
-static unsigned int next_fd = 1;
+#define MIN_FD 3 // reserve 0, 1 and 2 for stdout, stdin and stderr
+static unsigned int next_fd = 3;
 
 unsigned int get_fd(){
     for (unsigned int i = 0; i < MAX_FDS; ++i) {
         unsigned int fd = next_fd;
         next_fd = (next_fd % MAX_FDS) + 1;
+        if(next_fd < MIN_FD) next_fd = MIN_FD;
         if (!fd_used[fd]) {
             fd_used[fd] = 1;
             return fd;
@@ -23,6 +25,7 @@ unsigned int get_fd(){
 }
 
 void free_fd(unsigned int fd){
+    if (fd < MIN_FD) return; // dont close stdout, stdin and stderr
     if (fd > 0 && fd < MAX_FDS){
         fd_used[fd] = 0;
     }
