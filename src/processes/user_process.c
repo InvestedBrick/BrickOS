@@ -62,7 +62,7 @@ unsigned int create_user_process(unsigned char* binary, unsigned int size,unsign
     unsigned int* pd = create_user_page_dir();
     
     process->page_dir = pd;
-    add_process_state(pd);
+    add_process_state(process);
     
     unsigned int code_data_pages = CEIL_DIV(size,MEMORY_PAGE_SIZE);
     for (unsigned int i = 0; i < code_data_pages;i++){
