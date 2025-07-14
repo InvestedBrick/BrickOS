@@ -3,6 +3,8 @@
 #include "../drivers/keyboard/keyboard.h"
 #include "../processes/scheduler.h"
 #include "../memory/memory.h"
+#include "syscall_numbers.h"
+#include "../filesystem/file_operations.h"
 static idt_entry_t idt_entries[IDT_MAX_ENTRIES] __attribute__((aligned(0x10)));
 static int enabled_idt[IDT_MAX_ENTRIES] = {0};
 
@@ -58,6 +60,25 @@ void init_idt(){
 
 }
 
+void handle_software_interrupt(interrupt_stack_frame_t* stack_frame){
+    switch (stack_frame->eax)
+    {
+    case 0x1:
+        {
+            setup_kernel_process(stack_frame);
+            break;
+        }
+    case SYS_WRITE:
+        {
+            write(stack_frame->ebx,(unsigned char*)stack_frame->ecx,stack_frame->edx) ;
+            break;  
+        }
+    default:
+        break;
+    }
+
+}
+
 
 void interrupt_handler(interrupt_stack_frame_t* stack_frame) {
     interrupts_enabled = 0; // to stop other functions from copying a wrong value
@@ -75,11 +96,7 @@ void interrupt_handler(interrupt_stack_frame_t* stack_frame) {
         acknowledge_PIC(stack_frame->interrupt_number);
     }
     else if(stack_frame->interrupt_number == INT_SOFTWARE){
-        if (stack_frame->eax == 1){
-            setup_kernel_process(stack_frame);
-        }else{
-            log("NOT SYSCALL 1");
-        }
+        handle_software_interrupt(stack_frame);
     }
 
     // if we return to kernel -> esp and ss not needed
