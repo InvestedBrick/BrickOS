@@ -8,12 +8,13 @@
 #include "scheduler.h"
 #include "../tables/tss.h"
 #include "../tables/interrupts.h"
+#include "../filesystem/vfs/vfs.h"
 
 vector_t user_process_vector;
 static unsigned char pid_used[MAX_PIDS] = {0};
 static unsigned int next_pid = 1;
 
-unsigned int get_pid(){
+int get_pid(){
     for (unsigned int i = 0; i < MAX_PIDS; ++i) {
         unsigned int pid = next_pid;
         next_pid = (next_pid % MAX_PIDS) + 1;
@@ -22,7 +23,25 @@ unsigned int get_pid(){
             return pid;
         }
     }
-    return 0;
+    return -1;
+}
+
+int assign_fd(user_process_t* proc,generic_file_t* file){
+    for (int i = 3; i < MAX_FDS; ++i) {
+        if (proc->fd_table[i] == 0) {
+            proc->fd_table[i] = file;
+            return i;
+        }
+    }
+    return -1; 
+}
+
+void free_fd(user_process_t* proc, generic_file_t* file){
+    for (int i = 3; i < MAX_FDS; ++i) {
+        if (proc->fd_table[i] == file) {
+            proc->fd_table[i] = 0;
+        }
+    }
 }
 
 void free_pid(unsigned int pid){
@@ -51,18 +70,24 @@ unsigned int create_user_process(unsigned char* binary, unsigned int size,unsign
     unsigned int kernel_stack = (unsigned int)kmalloc(MEMORY_PAGE_SIZE);
 
     user_process_t* process = (user_process_t*)kmalloc(sizeof(user_process_t));
+    memset(process->fd_table,0,MAX_FDS);
     process->running = 0;
     process->kernel_stack = kernel_stack;
     unsigned int name_len = strlen(process_name);
     process->process_name = (unsigned char*)kmalloc(name_len + 1);
     memcpy(process->process_name,process_name,name_len + 1);
 
-    vector_append(&user_process_vector,(unsigned int)process); // too lazy to implement a vector for structs
+    int pid = get_pid();
+    if (pid == -1) return 0;
+    process->process_id = pid;
 
+    vector_append(&user_process_vector,(unsigned int)process); // too lazy to implement a vector for structs
+    
     unsigned int* pd = create_user_page_dir();
     
     process->page_dir = pd;
     add_process_state(process);
+    
     
     unsigned int code_data_pages = CEIL_DIV(size,MEMORY_PAGE_SIZE);
     for (unsigned int i = 0; i < code_data_pages;i++){
@@ -85,15 +110,10 @@ unsigned int create_user_process(unsigned char* binary, unsigned int size,unsign
     unsigned int stack_mem = pmm_alloc_page_frame();
     mem_map_page_in_dir(process->page_dir,USER_STACK_VMEMORY_START,stack_mem,PAGE_FLAG_WRITE | PAGE_FLAG_USER);
     
-    
-    unsigned int pid = get_pid();
-    if (pid == 0) return 0;
-    process->process_id = pid;
-    
+    set_interrupt_status(int_save);
 
     return process->process_id;
 
-    set_interrupt_status(int_save);
 }
 
 void load_registers(){
