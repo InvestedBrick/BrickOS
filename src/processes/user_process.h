@@ -2,12 +2,17 @@
 #ifndef INCLUDE_USER_PROCESS_H
 #define INCLUDE_USER_PROCESS_H
 
+#include "../filesystem/vfs/vfs.h"
+
+#define MAX_FDS 512
+
 typedef struct {
     unsigned int process_id;
     unsigned int* page_dir;
     unsigned int kernel_stack;
     unsigned char* process_name;
     unsigned char running;
+    generic_file_t* fd_table[MAX_FDS];
 } __attribute__((packed)) user_process_t;
 
 #define USER_CODE_DATA_VMEMORY_START 0x00000000
