@@ -5,7 +5,9 @@
 #include "../tables/interrupts.h"
 #include "../drivers/timer/pit.h"
 #include "user_process.h"
+
 typedef struct process_state_struct{
+    unsigned int pid;
     interrupt_stack_frame_t regs;
     unsigned int* pd;
     struct process_state_struct* next;
