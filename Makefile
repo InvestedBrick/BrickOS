@@ -16,6 +16,7 @@ C_SOURCES = \
     src/modules/*.c \
 	src/drivers/ATA_PIO/*.c \
     src/filesystem/*c \
+    src/filesystem/vfs/*.c \
     src/shell/*.c 
 
 
