@@ -3,6 +3,7 @@
 #define INCLUDE_FILE_OPS
 
 #include "../vector.h"
+#include "vfs/vfs.h"
 typedef struct {
     unsigned char flags;
     unsigned int fd;
@@ -10,7 +11,7 @@ typedef struct {
     unsigned int rw_pointer; //TODO: implement lseek and get_file_size 
 }open_file_t;
 
-#define MAX_FDS 32768
+#define MAX_FDS 256
 #define FILE_FLAG_READ 0x1
 #define FILE_FLAG_WRITE 0x2
 #define FILE_FLAG_RW (FILE_FLAG_READ | FILE_FLAG_WRITE)
@@ -31,37 +32,37 @@ extern vector_t fd_vector;
 #define MAX_FILE_SECTORS (NUM_DATA_SECTORS_PER_FILE + ATA_SECTOR_SIZE / sizeof(unsigned int))
 
 /**
- * open:
+ * fs_open:
  * Opens a file and returns a file descriptor to it
  * @param filepath The path to the file
  * @param flags flags for the file (R/W/A/C)
  * @return The file desciptor
  */
-int open(unsigned char* filepath,unsigned char flags);
+generic_file_t* fs_open(unsigned char* filepath,unsigned char flags);
 
 
 /**
- * write:
+ * fs_write:
  * Writes to a file descriptor
  * @param fd The file descriptor to write to
  * @param buffer The buffer to write into the fd
  * @param size The number of bytes to write
  * @return The number of bytes written
  */
-int write(unsigned int fd, unsigned char* buffer,unsigned int size);
+int fs_write(generic_file_t* file, unsigned char* buffer,unsigned int size);
 
 /**
- * close: 
+ * fs_close: 
  * Closes a file descriptor
  * @param fd The filde descriptor to close
  * @return 0 if successful
  * 
  *         -1 if invalid fd
  */
-int close(unsigned int fd);
+int fs_close(generic_file_t* file);
 
 /**
- * read: 
+ * fs_read: 
  * Reads from a file descriptor into a buffer
  * @param fd The file descriptor
  * @param buffer The buffer to read into
@@ -69,6 +70,7 @@ int close(unsigned int fd);
  * 
  * @return The number of bytes read
  */
-int read(unsigned int fd, unsigned char* buffer, unsigned int size);
+int fs_read(generic_file_t* file, unsigned char* buffer, unsigned int size);
+
 
 #endif
