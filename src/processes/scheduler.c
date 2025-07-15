@@ -52,6 +52,7 @@ void add_process_state(user_process_t* usr_proc){
     proc->pd = usr_proc->page_dir;
     proc->next = 0;
     proc->kernel_stack_top = usr_proc->kernel_stack + MEMORY_PAGE_SIZE;
+    proc->pid = usr_proc->process_id;
     process_state_t* last = p_queue;
 
     while(last->next) {last = last->next;}
