@@ -6,10 +6,16 @@
 #include "../screen.h"
 #include "../drivers/ATA_PIO/ata.h"
 
-vector_t fd_vector;
 static unsigned char fd_used[MAX_FDS] = {0};
 #define MIN_FD 3 // reserve 0, 1 and 2 for stdout, stdin and stderr
 static unsigned int next_fd = 3;
+
+vfs_handlers_t fs_ops = {
+    .open = fs_open,
+    .close = fs_close,
+    .write = fs_write,
+    .read = fs_read
+};
 
 unsigned int get_fd(){
     for (unsigned int i = 0; i < MAX_FDS; ++i) {
@@ -71,18 +77,7 @@ unsigned int get_sector_for_rw(inode_t* inode, unsigned int sector_idx, unsigned
     return sector;
 }
 
-
-open_file_t* get_open_file_by_fd(unsigned int fd){
-    for(unsigned int i = 0; i < fd_vector.size;i++){
-        open_file_t* file = (open_file_t*)fd_vector.data[i];
-        if(file->fd == fd){
-            return file;
-        }
-    }
-    return 0;
-}
-
-int open(unsigned char* filepath,unsigned char flags){
+generic_file_t* fs_open(unsigned char* filepath,unsigned char flags){
     
     inode_t* inode;
     if(dir_contains_name(active_dir,filepath)){
@@ -90,40 +85,43 @@ int open(unsigned char* filepath,unsigned char flags){
     }else{
         inode = get_inode_by_full_file_path(filepath);
     }
-    if (!inode) return FILE_OP_FAILED;
+    if (!inode) {
+        if (flags & FILE_FLAG_CREATE){
+            create_file(active_dir,filepath,strlen(filepath),FS_TYPE_FILE,FS_FILE_PERM_READABLE | FS_FILE_PERM_WRITABLE);
+            inode = get_inode_by_id(get_inode_id_by_name(active_dir->id,filepath));
+        }else{
+            return FILE_OP_FAILED;
+        }
+    }
 
     if ((!(inode->perms & FS_FILE_PERM_READABLE)) && (flags & FILE_FLAG_READ)) return FILE_INVALID_PERMISSIONS;
     if ((!(inode->perms & FS_FILE_PERM_WRITABLE)) && (flags & FILE_FLAG_WRITE)) return FILE_INVALID_PERMISSIONS;
 
-    open_file_t* file = (open_file_t*)kmalloc(sizeof(open_file_t));
-    file->fd = get_fd();
-    if (!file->fd) return FILE_OP_FAILED;
-    file->inode_id = inode->id;
-    file->flags = flags;
-    file->rw_pointer = 0;
+    open_file_t* open_file = (open_file_t*)kmalloc(sizeof(open_file_t));
+    open_file->fd = get_fd();
+    if (!open_file->fd) return FILE_OP_FAILED;
+    open_file->inode_id = inode->id;
+    open_file->flags = flags;
+    open_file->rw_pointer = 0;
 
-    vector_append(&fd_vector,(unsigned int)file);
-    return file->fd;
+    generic_file_t* gen_file = (generic_file_t*)kmalloc(sizeof(generic_file_t)); 
+    gen_file->ops = &fs_ops;
+    gen_file->generic_data = (void*)open_file;
+    return gen_file;
 }
 
-int close(unsigned int fd){
-    for(unsigned int i = 0; i < fd_vector.size;++i){
-        open_file_t* file = (open_file_t*)fd_vector.data[i];
-        if (file->fd == fd){
-            free_fd(fd);
-            vector_erase(&fd_vector,i);
-            kfree(file);
-            return FILE_OP_SUCCESS;
-        }
-    }
+int fs_close(generic_file_t* f){
 
-    return FILE_INVALID_FD;
+    open_file_t* file = (open_file_t*)f->generic_data;
+    if (!file) return FILE_OP_FAILED;
+    kfree(file);
+    return FILE_OP_SUCCESS;
 }
 
-int write(unsigned int fd, unsigned char* buffer,unsigned int size){
+int fs_write(generic_file_t* f, unsigned char* buffer,unsigned int size){
 
     
-    open_file_t* file = get_open_file_by_fd(fd);
+    open_file_t* file = (open_file_t*)f->generic_data;
     
     if (!file) return FILE_INVALID_FD;
     if (!(file->flags & FILE_FLAG_WRITE)) return FILE_INVALID_PERMISSIONS;
@@ -170,8 +168,9 @@ int write(unsigned int fd, unsigned char* buffer,unsigned int size){
     return bytes_written;
 }
 
-int read(unsigned int fd, unsigned char* buffer, unsigned int size){
-    open_file_t* file = get_open_file_by_fd(fd);
+int fs_read(generic_file_t* f, unsigned char* buffer, unsigned int size){
+    
+    open_file_t* file = (open_file_t*)f->generic_data;
     
     if (!file) return FILE_INVALID_FD;
     if (!(file->flags & FILE_FLAG_READ)) return FILE_INVALID_PERMISSIONS;
