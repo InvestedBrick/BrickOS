@@ -1,6 +1,7 @@
 #include "screen.h"
 #include "io/io.h"
 #include "drivers/keyboard/keyboard.h"
+#include "filesystem/vfs/vfs.h"
 
 unsigned short g_cursor_pos = 0;
 unsigned char cursor_prev_idx;
@@ -8,6 +9,16 @@ unsigned char cursor_prev_idx;
 char* const g_fb = (char*)VIDEO_MEMORY_START;
 
 #define CURSOR_MAX ((SCREEN_ROWS * SCREEN_COLUMNS) - 1)
+
+vfs_handlers_t screen_ops = {
+
+    //TODO: Implement
+};
+
+generic_file_t screen_file = {
+    .ops = &screen_ops,
+    .generic_data = 0
+};
 
 void clamp_cursor() {
     if (g_cursor_pos > CURSOR_MAX) g_cursor_pos = CURSOR_MAX;
