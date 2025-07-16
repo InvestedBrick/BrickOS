@@ -1,5 +1,5 @@
 #include "syscalls.h"
-#include "../../../src/tables/syscall_numbers.h"
+#include "../../../src/tables/syscalls.h"
 
 void interrupt(){
     asm volatile ("int 0x30");
