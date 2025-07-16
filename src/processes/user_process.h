@@ -58,4 +58,9 @@ user_process_t* get_user_process_by_pid(unsigned int pid);
  * @param pid The process id
  */
 void dispatch_user_process(unsigned int pid);
+
+int assign_fd(user_process_t* proc,generic_file_t* file);
+
+void free_fd(user_process_t* proc, generic_file_t* file);
+
 #endif
