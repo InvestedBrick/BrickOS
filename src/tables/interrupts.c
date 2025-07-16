@@ -3,7 +3,7 @@
 #include "../drivers/keyboard/keyboard.h"
 #include "../processes/scheduler.h"
 #include "../memory/memory.h"
-#include "syscall_numbers.h"
+#include "syscalls.h"
 #include "../filesystem/file_operations.h"
 static idt_entry_t idt_entries[IDT_MAX_ENTRIES] __attribute__((aligned(0x10)));
 static int enabled_idt[IDT_MAX_ENTRIES] = {0};
