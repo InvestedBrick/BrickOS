@@ -15,7 +15,7 @@ typedef struct {
 #define FILE_FLAG_READ 0x1
 #define FILE_FLAG_WRITE 0x2
 #define FILE_FLAG_RW (FILE_FLAG_READ | FILE_FLAG_WRITE)
-#define FILE_FLAG_CREATE 0x4 //TODO: implement
+#define FILE_FLAG_CREATE 0x4
 #define FILE_FLAG_APPEND 0x8
 
 #define FILE_OP_FAILED -1
@@ -27,8 +27,6 @@ typedef struct {
 #define FILE_INVALID_PERMISSIONS -6
 
 #define FILE_READ_ALL (unsigned int)-1
-extern vector_t fd_vector;
-
 #define MAX_FILE_SECTORS (NUM_DATA_SECTORS_PER_FILE + ATA_SECTOR_SIZE / sizeof(unsigned int))
 
 /**
