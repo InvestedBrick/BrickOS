@@ -1,14 +1,9 @@
 #include "file_operations.h"
 #include "filesystem.h"
 #include "../util.h"
-#include "../vector.h"
 #include "../memory/kmalloc.h"
 #include "../screen.h"
 #include "../drivers/ATA_PIO/ata.h"
-
-static unsigned char fd_used[MAX_FDS] = {0};
-#define MIN_FD 3 // reserve 0, 1 and 2 for stdout, stdin and stderr
-static unsigned int next_fd = 3;
 
 vfs_handlers_t fs_ops = {
     .open = fs_open,
@@ -16,26 +11,6 @@ vfs_handlers_t fs_ops = {
     .write = fs_write,
     .read = fs_read
 };
-
-unsigned int get_fd(){
-    for (unsigned int i = 0; i < MAX_FDS; ++i) {
-        unsigned int fd = next_fd;
-        next_fd = (next_fd % MAX_FDS) + 1;
-        if(next_fd < MIN_FD) next_fd = MIN_FD;
-        if (!fd_used[fd]) {
-            fd_used[fd] = 1;
-            return fd;
-        }
-    }
-    return 0;
-}
-
-void free_fd(unsigned int fd){
-    if (fd < MIN_FD) return; // dont close stdout, stdin and stderr
-    if (fd > 0 && fd < MAX_FDS){
-        fd_used[fd] = 0;
-    }
-}
 
 unsigned int get_sector_for_rw(inode_t* inode, unsigned int sector_idx, unsigned char is_write) {
     unsigned int sector;
@@ -98,8 +73,6 @@ generic_file_t* fs_open(unsigned char* filepath,unsigned char flags){
     if ((!(inode->perms & FS_FILE_PERM_WRITABLE)) && (flags & FILE_FLAG_WRITE)) return FILE_INVALID_PERMISSIONS;
 
     open_file_t* open_file = (open_file_t*)kmalloc(sizeof(open_file_t));
-    open_file->fd = get_fd();
-    if (!open_file->fd) return FILE_OP_FAILED;
     open_file->inode_id = inode->id;
     open_file->flags = flags;
     open_file->rw_pointer = 0;
