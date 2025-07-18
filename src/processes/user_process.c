@@ -14,6 +14,25 @@ vector_t user_process_vector;
 static unsigned char pid_used[MAX_PIDS] = {0};
 static unsigned int next_pid = 1;
 
+
+user_process_t* get_user_process_by_pid(unsigned int pid){
+    for (unsigned i = 0; i < user_process_vector.size;i++){
+        if (((user_process_t*)(user_process_vector.data[i]))->process_id == pid){
+            return (user_process_t*)(user_process_vector.data[i]);
+        }
+    }
+    return 0;
+}
+
+user_process_t* get_current_user_process(){
+    process_state_t* state = get_current_process_state();
+
+    unsigned int curr_pid = state->pid;
+
+    return get_user_process_by_pid(curr_pid);
+
+}
+
 int get_pid(){
     for (unsigned int i = 0; i < MAX_PIDS; ++i) {
         unsigned int pid = next_pid;
@@ -146,14 +165,6 @@ void dispatch_user_process(unsigned int pid){
     load_registers();
 }
 
-user_process_t* get_user_process_by_pid(unsigned int pid){
-    for (unsigned i = 0; i < user_process_vector.size;i++){
-        if (((user_process_t*)(user_process_vector.data[i]))->process_id == pid){
-            return (user_process_t*)(user_process_vector.data[i]);
-        }
-    }
-    return 0;
-}
 
 void init_user_process_vector(){
     init_vector(&user_process_vector);
