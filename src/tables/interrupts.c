@@ -60,23 +60,27 @@ void init_idt(){
 
 }
 
-void handle_software_interrupt(interrupt_stack_frame_t* stack_frame){
+int handle_software_interrupt(interrupt_stack_frame_t* stack_frame){
     switch (stack_frame->eax)
     {
     case 0x1:
         {
             setup_kernel_process(stack_frame);
-            break;
+           break;
         }
+    case SYS_OPEN:
+        return sys_open(get_current_user_process(),(unsigned char*)stack_frame->ebx,(unsigned char)stack_frame->ecx);
+    case SYS_CLOSE:
+        return sys_close(get_current_user_process(),stack_frame->ebx);
+    case SYS_READ:
+        return sys_read(get_current_user_process(),stack_frame->ebx,(unsigned char*)stack_frame->ecx,stack_frame->edx);
     case SYS_WRITE:
-        {
-            write(stack_frame->ebx,(unsigned char*)stack_frame->ecx,stack_frame->edx) ;
-            break;  
-        }
+        return sys_write(get_current_user_process(),stack_frame->ebx,(unsigned char*)stack_frame->ecx,stack_frame->edx);
     default:
         break;
     }
 
+    return 0;
 }
 
 
@@ -96,7 +100,7 @@ void interrupt_handler(interrupt_stack_frame_t* stack_frame) {
         acknowledge_PIC(stack_frame->interrupt_number);
     }
     else if(stack_frame->interrupt_number == INT_SOFTWARE){
-        handle_software_interrupt(stack_frame);
+       stack_frame->eax = handle_software_interrupt(stack_frame);
     }
 
     // if we return to kernel -> esp and ss not needed
