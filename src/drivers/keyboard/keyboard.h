@@ -19,7 +19,9 @@
 #define KB_UPPER 1
 #define KB_ALT_GR 2
 
-#define KB_BUFFER_SIZE 128
+#define KB_BUFFER_SIZE 256
+
+extern generic_file_t kb_file;
 /**
  * read_scan_code:
  * Reads a scancode from the keyboard
