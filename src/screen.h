@@ -27,6 +27,7 @@
 #define SCREEN_PIXELS (SCREEN_ROWS * SCREEN_COLUMNS)
 #define CURSOR_MAX (SCREEN_PIXELS - 1)
 #define INVALID_ARGUMENT -1
+#include "filesystem/vfs/vfs.h"
 
 extern unsigned short g_cursor_pos;
 extern generic_file_t screen_file;
@@ -48,15 +49,6 @@ void fb_write_cell(unsigned short i, char c,unsigned char fg, unsigned char bg);
 *
 */
 void clear_screen();
-
-/**
- * write_string:
- * Writes a string to the OS terminal
- * 
- * @param str The string
- * @param len The length of the string
- */
-void write_string(const char* str, const unsigned int len);
 
 /**
  * fb_move_cursor:
