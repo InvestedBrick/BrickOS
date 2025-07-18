@@ -20,7 +20,7 @@
 #define KB_ALT_GR 2
 
 #define KB_BUFFER_SIZE 256
-
+#include "../../filesystem/vfs/vfs.h"
 extern generic_file_t kb_file;
 /**
  * read_scan_code:
