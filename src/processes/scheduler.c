@@ -5,11 +5,16 @@
 #include "../io/log.h"
 #include "user_process.h"
 #include "../tables/tss.h"
+#include "../kernel_process.h"
 process_state_t* p_queue;
 process_state_t* current_proc;
 unsigned char locked = 0;
 extern unsigned int stack_top;
 extern void kernel_process_init();
+
+process_state_t* get_current_process_state(){
+    return current_proc;
+}
 
 void init_scheduler(){
     p_queue = 0;
@@ -36,6 +41,7 @@ void setup_kernel_process(interrupt_stack_frame_t* regs){
     p_queue = (process_state_t*)kmalloc(sizeof(process_state_t));
     p_queue->pd = mem_get_current_page_dir();
     memcpy(&p_queue->regs,regs,sizeof(interrupt_stack_frame_t));
+    p_queue->pid = global_kernel_process.process_id;
     p_queue->kernel_stack_top = stack_top;
     p_queue->next = 0;
     current_proc = p_queue;
