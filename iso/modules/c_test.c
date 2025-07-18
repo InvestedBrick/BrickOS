@@ -5,5 +5,4 @@ void main(){
     int x = 5;
     x++;
 
-    test();
 }
