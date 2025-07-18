@@ -65,12 +65,12 @@ generic_file_t* fs_open(unsigned char* filepath,unsigned char flags){
             create_file(active_dir,filepath,strlen(filepath),FS_TYPE_FILE,FS_FILE_PERM_READABLE | FS_FILE_PERM_WRITABLE);
             inode = get_inode_by_id(get_inode_id_by_name(active_dir->id,filepath));
         }else{
-            return FILE_OP_FAILED;
+            return nullptr;
         }
     }
 
-    if ((!(inode->perms & FS_FILE_PERM_READABLE)) && (flags & FILE_FLAG_READ)) return FILE_INVALID_PERMISSIONS;
-    if ((!(inode->perms & FS_FILE_PERM_WRITABLE)) && (flags & FILE_FLAG_WRITE)) return FILE_INVALID_PERMISSIONS;
+    if ((!(inode->perms & FS_FILE_PERM_READABLE)) && (flags & FILE_FLAG_READ)) return nullptr;
+    if ((!(inode->perms & FS_FILE_PERM_WRITABLE)) && (flags & FILE_FLAG_WRITE)) return nullptr;
 
     open_file_t* open_file = (open_file_t*)kmalloc(sizeof(open_file_t));
     open_file->inode_id = inode->id;
