@@ -29,11 +29,15 @@ int kb_buffer_pop(char* c){
 int kb_read(generic_file_t* f, unsigned char* buffer, unsigned int size){
     if (size > KB_BUFFER_SIZE) size = KB_BUFFER_SIZE;
 
+    int read_bytes = 0;
     for (unsigned int i = 0; i < size; i++){
-      kb_buffer_pop(&buffer[i]);
+      if (!kb_buffer_pop(&buffer[i])){
+        break;
+      }
+      read_bytes++;
     }
 
-    return size;
+    return read_bytes;
 }
 
 vfs_handlers_t kb_ops = {
