@@ -3,8 +3,12 @@
 #define INCLUDE_USER_PROCESS_H
 
 #include "../filesystem/vfs/vfs.h"
-
+#include "../vector.h"
 #define MAX_FDS 512
+
+#define FD_STDIN 0x0
+#define FD_STDOUT 0x1
+#define FD_STDERR 0x2
 
 typedef struct {
     unsigned int process_id;
@@ -17,6 +21,8 @@ typedef struct {
 
 #define USER_CODE_DATA_VMEMORY_START 0x00000000
 #define USER_STACK_VMEMORY_START     0xbffffffb
+
+extern vector_t user_process_vector;
 
 #define MAX_PIDS 32768
 /**
@@ -63,4 +69,9 @@ int assign_fd(user_process_t* proc,generic_file_t* file);
 
 void free_fd(user_process_t* proc, generic_file_t* file);
 
+user_process_t* get_current_user_process();
+
+int get_pid();
+
+void free_pid(unsigned int pid);
 #endif
