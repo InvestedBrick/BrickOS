@@ -3,7 +3,9 @@
 #include "../util.h"
 #include "../filesystem/filesystem.h"
 #include "../filesystem/file_operations.h"
+#include "../tables/syscalls.h"
 #include "../io/log.h"
+#include "../kernel_process.h"
 module_binary_t* module_binary_structs;
 unsigned int module_count;
 
@@ -60,16 +62,15 @@ void write_module_binaries_to_file(){
         if (ret_code < 0) 
             {error("Failed to create module binary file"); continue;}
 
-        int fd = open(name,FILE_FLAG_WRITE);
+        int fd = sys_open(&global_kernel_process,name,FILE_FLAG_WRITE);
         if (fd < 0) 
             {error("Failed to open module binary file"); continue;}
 
-        ret_code = write(fd,(unsigned char*)module_binary_structs[i].start,module_binary_structs[i].size);
-
+        ret_code = sys_write(&global_kernel_process,fd,(unsigned char*)module_binary_structs[i].start,module_binary_structs[i].size);
         if (ret_code < 0) 
             {error("Failed to write to module binary file"); continue;}
         
-        ret_code = close(fd);
+        ret_code = sys_close(&global_kernel_process,fd);
         if (ret_code == FILE_INVALID_FD) error("Failed to close module binary file");
 
         change_file_permissions(get_inode_by_id(get_inode_id_by_name(module_dir->id,name)), FS_FILE_PERM_EXECUTABLE | FS_FILE_PERM_READABLE);
