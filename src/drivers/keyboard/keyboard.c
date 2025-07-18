@@ -1,5 +1,6 @@
 #include "keyboard.h"
 #include "../../io/io.h"
+#include "../../filesystem/vfs/vfs.h"
 unsigned char read_scan_code(){
     return inb(KEYBOARD_DATA_PORT);
 }
@@ -24,6 +25,29 @@ int kb_buffer_pop(char* c){
   kb_tail = (kb_tail + 1) % KB_BUFFER_SIZE;
   return 1;
 }
+
+int kb_read(generic_file_t* f, unsigned char* buffer, unsigned int size){
+    if (size > KB_BUFFER_SIZE) size = KB_BUFFER_SIZE;
+
+    for (unsigned int i = 0; i < size; i++){
+      kb_buffer_pop(&buffer[i]);
+    }
+
+    return size;
+}
+
+vfs_handlers_t kb_ops = {
+  .close = 0,
+  .open = 0,
+  .read = kb_read,
+  .write = 0,
+};
+
+generic_file_t kb_file = {
+  .ops = &kb_ops,
+  .generic_data = 0,
+};
+
 unsigned int KB_STATUS = KB_LOWER; 
 // IMPORTANT: This keyboard map is for a full german keyboard layout, you will need to change it if you have a different layout
 // Umlaute have been replaced by their regular counterpart
@@ -148,7 +172,7 @@ unsigned char decode_scan_code(unsigned char scan_code){
 
 void handle_keyboard_interrupt(){
   unsigned char key = decode_scan_code(read_scan_code());
-  if (key != 0){
+  if (key){
     kb_buffer_push(key);
   }
 }
