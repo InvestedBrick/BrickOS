@@ -60,4 +60,6 @@ void remove_process_state(process_state_t* proc);
  */
 process_state_t* get_process_state_by_page_dir(unsigned int* page_dir);
 
+
+process_state_t* get_current_process_state();
 #endif
