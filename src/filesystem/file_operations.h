@@ -2,7 +2,6 @@
 #ifndef INCLUDE_FILE_OPS
 #define INCLUDE_FILE_OPS
 
-#include "../vector.h"
 #include "vfs/vfs.h"
 typedef struct {
     unsigned char flags;
@@ -11,7 +10,6 @@ typedef struct {
     unsigned int rw_pointer; //TODO: implement lseek and get_file_size 
 }open_file_t;
 
-#define MAX_FDS 256
 #define FILE_FLAG_READ 0x1
 #define FILE_FLAG_WRITE 0x2
 #define FILE_FLAG_RW (FILE_FLAG_READ | FILE_FLAG_WRITE)
@@ -29,6 +27,7 @@ typedef struct {
 #define FILE_READ_ALL (unsigned int)-1
 #define MAX_FILE_SECTORS (NUM_DATA_SECTORS_PER_FILE + ATA_SECTOR_SIZE / sizeof(unsigned int))
 
+#define nullptr 0
 /**
  * fs_open:
  * Opens a file and returns a file descriptor to it
