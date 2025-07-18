@@ -61,7 +61,7 @@ void erase_one_char(){
 
 void newline(){
     fb_write_cell(g_cursor_pos,' ',COLOR_BLACK,COLOR_BLACK);//remove current cell
-    if (g_cursor_pos < (SCREEN_COLUMNS -1) * SCREEN_ROWS){
+    if (g_cursor_pos < (SCREEN_COLUMNS - 1) * SCREEN_ROWS){
         g_cursor_pos += (SCREEN_COLUMNS - (g_cursor_pos % SCREEN_COLUMNS));
         clamp_cursor();
     }
@@ -82,9 +82,6 @@ void handle_screen_char_input(unsigned char c){
         case '\n':{
             newline();
             break;
-        }
-        case '\c': { // special character for screen clearing
-            clear_screen();
         }
         case '\t':{
             if (g_cursor_pos < SCREEN_ROWS * SCREEN_COLUMNS - 4){
