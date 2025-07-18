@@ -24,7 +24,12 @@
 #define COLOR_LIGHT_BROWN 0xe
 #define COLOR_WHITE 0xf
 
+#define SCREEN_PIXELS (SCREEN_ROWS * SCREEN_COLUMNS)
+#define CURSOR_MAX (SCREEN_PIXELS - 1)
+#define INVALID_ARGUMENT -1
+
 extern unsigned short g_cursor_pos;
+extern generic_file_t screen_file;
 /**
 *  fb_write_cell:
 *  writes a char with given foreground and background color to position i in the framebuffer
@@ -67,12 +72,6 @@ void fb_set_cursor(unsigned short pos);
  */
 void scroll_screen_up();
 
-/**
- * handle_screen_input:
- * Prints a character from the keyboard buffer to the screen
- * 
- */
-void handle_screen_input();
 /**
  * newline: 
  * Prints a newline
