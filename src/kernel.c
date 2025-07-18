@@ -11,17 +11,34 @@
 #include "modules/module_handler.h"
 #include "drivers/ATA_PIO/ata.h"
 #include "filesystem/filesystem.h"
-#include "shell/kernel_shell.h"
+// #include "shell/kernel_shell.h"
 #include "drivers/timer/pit.h"
 #include "processes/scheduler.h"
+#include "tables/syscalls.h"
+user_process_t global_kernel_process;
+extern unsigned int stack_top;
+
+void create_kernel_process(){
+    memset(global_kernel_process.fd_table,0,MAX_FDS);
+    
+    global_kernel_process.fd_table[FD_STDIN] = &kb_file;
+    global_kernel_process.fd_table[FD_STDOUT] = &screen_file;
+
+    global_kernel_process.kernel_stack = stack_top;
+    global_kernel_process.page_dir = mem_get_current_page_dir();
+    global_kernel_process.process_id = get_pid();
+    global_kernel_process.process_name = kmalloc(sizeof(unsigned char) * 5);
+    
+    memcpy(global_kernel_process.process_name,"root",sizeof("root"));
+    global_kernel_process.running = 1;
+
+    vector_append(&user_process_vector,(unsigned int)&global_kernel_process);
+}
 
 void kmain(multiboot_info_t* boot_info)
 {   
-    clear_screen();
     disable_cursor();
-    write_string("Hello BrickOS!",15);
-    newline();
-    write_string("Type 'help' for command list",28);
+    clear_screen();
     // Serial port setup
     serial_configure_baud_rate(SERIAL_COM1_BASE,3);
     serial_configure_line(SERIAL_COM1_BASE);
@@ -55,7 +72,10 @@ void kmain(multiboot_info_t* boot_info)
     // Set up kernel malloc
     init_kmalloc(MEMORY_PAGE_SIZE);
     log("Initialized kmalloc");
-    
+
+    create_kernel_process();
+    log("Set up kernel process");
+
     save_module_binaries(boot_info);
     log("Saved module binaries");
     
@@ -87,8 +107,22 @@ void kmain(multiboot_info_t* boot_info)
 
     enable_interrupts();
     
+    // Everything is now set up
+    
+    sys_write(&global_kernel_process,FD_STDOUT,"Hello BrickOS!\n",15);
+    sys_write(&global_kernel_process,FD_STDOUT,"Type 'help' for command list\n",29);
+
+    unsigned char kb_buffer[KB_BUFFER_SIZE];
+    while(1){
+        int bytes_read = sys_read(&global_kernel_process,FD_STDIN,kb_buffer,KB_BUFFER_SIZE);
+        if (bytes_read > 0){
+            sys_write(&global_kernel_process,FD_STDOUT,kb_buffer,bytes_read);     
+        }
+    }
+
+    panic("Not set up beyond here");
     //get input
-    start_shell();
+    //start_shell();
     log("User returned from shell");
     // write the data to disk when the user exits
     write_to_disk();
