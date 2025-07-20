@@ -45,11 +45,12 @@ void save_module_binaries(multiboot_info_t* boot_info){
 
 void write_module_binaries_to_file(){
     for (unsigned int i = 0; i < module_count;i++){
-        inode_t* module_dir = get_inode_by_full_file_path("root/modules/");
+        inode_t* module_dir = get_inode_by_full_file_path("modules/");
         
-        inode_t* dir_save = change_active_dir(module_dir);
         if (!module_dir) 
             {error("Modules directory was not initialized"); return; }
+        
+        inode_t* dir_save = change_active_dir(module_dir);
         
         unsigned char* name = module_binary_structs[i].cmdline;
         unsigned int len = strlen(name);
