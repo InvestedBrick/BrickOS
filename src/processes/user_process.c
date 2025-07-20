@@ -9,7 +9,8 @@
 #include "../tables/tss.h"
 #include "../tables/interrupts.h"
 #include "../filesystem/vfs/vfs.h"
-
+#include "../drivers/keyboard/keyboard.h"
+#include "../screen.h"
 vector_t user_process_vector;
 static unsigned char pid_used[MAX_PIDS] = {0};
 static unsigned int next_pid = 1;
@@ -90,6 +91,9 @@ unsigned int create_user_process(unsigned char* binary, unsigned int size,unsign
 
     user_process_t* process = (user_process_t*)kmalloc(sizeof(user_process_t));
     memset(process->fd_table,0,MAX_FDS);
+    process->fd_table[FD_STDIN] = &kb_file; 
+    process->fd_table[FD_STDOUT] = &screen_file;
+    
     process->running = 0;
     process->kernel_stack = kernel_stack;
     unsigned int name_len = strlen(process_name);
