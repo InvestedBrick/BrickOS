@@ -2,7 +2,6 @@
 
 
 void main(){
-    int x = 5;
-    x++;
-
+    
+    write(FD_STDOUT,"\nHello from module",18);
 }
