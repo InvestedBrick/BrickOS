@@ -11,6 +11,7 @@
 #include "modules/module_handler.h"
 #include "drivers/ATA_PIO/ata.h"
 #include "filesystem/filesystem.h"
+#include "filesystem/file_operations.h"
 // #include "shell/kernel_shell.h"
 #include "drivers/timer/pit.h"
 #include "processes/scheduler.h"
@@ -111,6 +112,36 @@ void kmain(multiboot_info_t* boot_info)
     
     sys_write(&global_kernel_process,FD_STDOUT,"Hello BrickOS!\n",15);
     sys_write(&global_kernel_process,FD_STDOUT,"Type 'help' for command list\n",29);
+
+
+    // running module
+    unsigned char* filepath = "c_test.bin";
+    inode_t* module_dir = get_inode_by_full_file_path("modules/");
+
+    change_active_dir(module_dir);
+    inode_t* file = get_file_if_exists(active_dir,filepath);
+    //inode_t* file = get_file_if_exists(active_dir,filepath);
+    if (!file) warn("File does not exist");
+    unsigned char* binary = (unsigned char*)kmalloc(file->size);
+    int fd = sys_open(&global_kernel_process,filepath,FILE_FLAG_READ);
+
+    if (fd < 0){
+        panic("FD failed");
+    }
+
+    int ret_val = sys_read(&global_kernel_process,fd,binary,file->size);
+    if (ret_val < 0){
+        panic("Failed to read executable file");
+        return;
+    }
+
+    sys_close(&global_kernel_process,fd);
+
+    disable_interrupts();
+    unsigned int pid = create_user_process(binary,file->size,filepath);
+
+    dispatch_user_process(pid);
+    enable_interrupts();
 
     unsigned char kb_buffer[KB_BUFFER_SIZE];
     while(1){
