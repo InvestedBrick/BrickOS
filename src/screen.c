@@ -83,6 +83,10 @@ void handle_screen_char_input(unsigned char c){
             newline();
             break;
         }
+        case '\e': { // just an esc char that gcc does not complain about
+            clear_screen();
+            break;
+        }
         case '\t':{
             if (g_cursor_pos < SCREEN_ROWS * SCREEN_COLUMNS - 4){
                 g_cursor_pos += 4;
