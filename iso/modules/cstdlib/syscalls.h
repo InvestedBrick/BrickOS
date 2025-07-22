@@ -6,6 +6,10 @@
 #define FD_STDOUT 0x1
 #define FD_STDERR 0x2
 
-void write(unsigned int fd, const char* buffer, unsigned int count);
+int write(unsigned int fd, const char* buffer, unsigned int count);
+int read(unsigned int fd, const char* buffer, unsigned int count);
+
+int open(const char* pathname, unsigned char flags);
+int close(unsigned int fd);
 
 #endif
