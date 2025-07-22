@@ -74,4 +74,12 @@ user_process_t* get_current_user_process();
 int get_pid();
 
 void free_pid(unsigned int pid);
+
+/**
+ * run:
+ * Executes a user process
+ * @param filepath The path to the executable
+ */
+void run(char* filepath);
+
 #endif
