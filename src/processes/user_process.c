@@ -8,9 +8,13 @@
 #include "scheduler.h"
 #include "../tables/tss.h"
 #include "../tables/interrupts.h"
+#include "../tables/syscalls.h"
 #include "../filesystem/vfs/vfs.h"
 #include "../drivers/keyboard/keyboard.h"
 #include "../screen.h"
+#include "../filesystem/filesystem.h"
+#include "../filesystem/file_operations.h"
+#include "../kernel_process.h"
 vector_t user_process_vector;
 static unsigned char pid_used[MAX_PIDS] = {0};
 static unsigned int next_pid = 1;
@@ -192,4 +196,41 @@ void kill_user_process(unsigned int pid){
     kfree((void*)process->kernel_stack);
     kfree(process);
     free_pid(pid);
+}
+
+
+void run(char* filepath){
+    inode_t* file = get_inode_by_full_file_path(filepath);
+
+    if (!file){
+        error("Fetching file failed");
+        return;
+    }
+
+    unsigned char* binary = (unsigned char*)kmalloc(file->size);
+    int fd = sys_open(&global_kernel_process,filepath,FILE_FLAG_READ);
+
+    if (fd < 0){
+        error("FD failed");
+        return;
+    }
+
+    int ret_val = sys_read(&global_kernel_process,fd,binary,file->size);
+    if (ret_val < 0){
+        panic("Failed to read executable file");
+        return;
+    }
+
+    disable_interrupts();
+
+    unsigned int pid = create_user_process(binary,file->size,filepath);
+
+    if (!pid) {
+        error("Creating user process failed");
+        return;
+    }
+
+    dispatch_user_process(pid);
+    enable_interrupts();
+
 }
