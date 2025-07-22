@@ -89,12 +89,14 @@ inode_t* get_inode_by_full_file_path(unsigned char* path){
     inode_t* inode = get_inode_by_id(FS_ROOT_DIR_ID);
     
     while(path[path_idx] != '\0'){
+        
         memset(name_buffer,0x00,256 + 1);
         buffer_idx = 0;
         while(buffer_idx <= 256 && path[path_idx] != '/' && path[path_idx] != '\0'){
             name_buffer[buffer_idx++] = path[path_idx++];
         }
-        path_idx++; //skip the slash
+        if (path[path_idx] == '/') path_idx++;
+        name_buffer[buffer_idx] = '\0';
         unsigned int id = get_inode_id_by_name(inode->id,name_buffer);
         if (id == (unsigned int)-1) return 0;
 
