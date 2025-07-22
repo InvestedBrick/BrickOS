@@ -1,7 +1,5 @@
-#include "cstdlib/syscalls.h"
-
+#include "cstdlib/stdio.h"
 
 void main(){
-    
-    write(FD_STDOUT,"\nHello from module",18);
+    print("\nHello from module");
 }
