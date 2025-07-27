@@ -5,7 +5,7 @@ global load_idt
 load_idt:
     mov  eax, [esp + 4];
     lidt [eax]
-    sti  ; enable interrupts
+    ;sti  ; enable interrupts
     ret
 
 
@@ -94,39 +94,6 @@ break_%+%1:
 %endmacro
 extern interrupt_handler
 
-
-adjust_smaller_stack:
-    push eax
-    ; [esp + 24] ss
-    ; [esp + 20] esp
-    ; [esp + 16] eflags
-    ; [esp + 12] cs
-    ; [esp + 8] eip
-    ; [esp + 4] ret val
-    ; [esp    ] eax
-    ;eflags
-    mov eax, dword [esp + 16]
-    mov dword [esp + 24], eax
-    
-    ;cs 
-    mov eax, dword [esp + 12]
-    mov dword [esp + 20], eax
-
-    ; eip
-    mov eax, dword [esp + 8]
-    mov dword [esp + 16], eax
-    
-    ; return address
-    mov eax, dword [esp + 4]
-    mov dword [esp + 12], eax
-
-    pop eax
-
-    add esp, 8 ; set the stack pointer to the return address
-
-    ret
-
-
 common_interrupt_handler:
     push eax
     push ebx
@@ -186,17 +153,8 @@ common_interrupt_handler:
     pop ebx
     pop eax
 
-    add esp, 4 ; interrupt number
+    add esp, 8 ; interrupt number
 
-    ; test the error code for the magic values we defined in scheduler.h
-    cmp dword [esp], 0xffffffff
-    je .smaller
-    add esp, 4
-    jmp .return
-.smaller:
-    add esp, 4
-    call adjust_smaller_stack ; iret does not require ss and esp since no context switch -> remove them
-.return:
     sti
     iret
 
