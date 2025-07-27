@@ -103,9 +103,6 @@ void interrupt_handler(interrupt_stack_frame_t* stack_frame) {
        stack_frame->eax = handle_software_interrupt(stack_frame);
     }
 
-    // if we return to kernel -> esp and ss not needed
-    if ((stack_frame->cs & 0x3) == 0) stack_frame->error_code = RETURN_SMALLER_STACK;
-
     interrupts_enabled = 1; // the interrupts only actually get enabled in the iret
 }
 
