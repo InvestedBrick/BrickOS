@@ -18,9 +18,6 @@ typedef struct process_state_struct{
 #define TASK_SWITCH_TICKS ((TASK_SWITCH_DELAY_MS * DESIRED_STANDARD_FREQ) / 1000)
 
 
-// route: user -> int handler (kernel) -> kernel 
-#define RETURN_SMALLER_STACK 0xffffffff
-
 /**
  * init_scheduler:
  * Initializes the scheduler
