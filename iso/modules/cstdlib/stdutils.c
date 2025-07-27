@@ -5,3 +5,7 @@ unsigned int strlen(const char* str){
     while(str[len] != 0){len++;}
     return len;
 }
+
+void loop(){
+    while(1){};
+}
