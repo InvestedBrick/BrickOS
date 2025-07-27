@@ -6,21 +6,35 @@
 #include "user_process.h"
 #include "../tables/tss.h"
 #include "../kernel_process.h"
+#include "../tables/syscalls.h"
 process_state_t* p_queue;
 process_state_t* current_proc;
 unsigned char locked = 0;
+unsigned char first_switch = 1;
 extern unsigned int stack_top;
-extern void kernel_process_init();
+extern void kernel_process_init(); //TODO: REMOVE
 
 process_state_t* get_current_process_state(){
     return current_proc;
 }
 
 void init_scheduler(){
-    p_queue = 0;
+    p_queue = (process_state_t*)kmalloc(sizeof(process_state_t));
+    p_queue->next = 0;
     current_proc = 0;
-    
-    kernel_process_init();
+
+    run("modules/loop.bin");
+    disable_interrupts();
+    restore_kernel_memory_page_dir();
+
+
+    // since the endless proc got attached to p_queue->next, we need to re-arrange this
+    process_state_t* old_p_queue = p_queue;
+    p_queue = p_queue->next;
+    kfree(old_p_queue);
+    current_proc = p_queue;
+    locked = 1;
+    log("Set up endless process");
 }
 
 process_state_t* get_process_state_by_page_dir(unsigned int* page_dir){
@@ -65,27 +79,29 @@ void add_process_state(user_process_t* usr_proc){
 
     last->next = proc;
 }
-int breakpoint(int num){
-    return num + 1;
+
+int breakpoint(unsigned char* str){
+    return (int)str[0];
 }
+
 void switch_task(interrupt_stack_frame_t* regs){
     // only switch when the scheduler was set up 
     if (!locked) return;
     unsigned int* old_pd = mem_get_current_page_dir();
-
     unsigned int interrupt_code = regs->interrupt_number;
-    memcpy(&current_proc->regs, regs,sizeof(interrupt_stack_frame_t));
+
+    int x = breakpoint("A");
+    if (!first_switch){
+        // first switch is from kernel -> shell, but we dont want our loop process to contain the kernels code
+        memcpy(&current_proc->regs, regs,sizeof(interrupt_stack_frame_t));
+    }else{
+        first_switch = 0;
+    }
 
     if (current_proc->next) current_proc = current_proc->next;
     else current_proc = p_queue;
 
-    if (current_proc->pd != old_pd){
-        int x = breakpoint(3);
-    }
-
-    if (current_proc != p_queue){
-        set_kernel_stack(current_proc->kernel_stack_top);
-    }
+    set_kernel_stack(current_proc->kernel_stack_top);
 
     mem_change_page_dir(current_proc->pd);
     memcpy(regs,&current_proc->regs,sizeof(interrupt_stack_frame_t));
