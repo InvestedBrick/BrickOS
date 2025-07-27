@@ -6,3 +6,4 @@ kernel /boot/kernel.elf
 module /modules/interrupt.bin
 module /modules/module_two.bin
 module /modules/c_test.bin
+module /modules/loop.bin
