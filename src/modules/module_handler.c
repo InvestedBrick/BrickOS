@@ -37,7 +37,7 @@ void save_module_binaries(multiboot_info_t* boot_info){
         module_binary_structs[i].start = (unsigned int)kmalloc(module_binary_structs[i].size);
 
         // copy the module binary for future use
-        memcpy((char*)module_binary_structs[i].start,(char*)modules[i].mod_start,module_binary_structs[i].size);
+        memcpy((unsigned char*)module_binary_structs[i].start,(unsigned char*)modules[i].mod_start,module_binary_structs[i].size);
 
     }
 
