@@ -54,42 +54,39 @@ void kmain(multiboot_info_t* boot_info)
     // Set up global descriptor table
     init_gdt();
     log("Initialized the GDT");
-
+    
     //Set up Interrupt descriptor table
     init_idt();
     log("Initialited the IDT");
-
+    
     //Initialize keyboard
     init_keyboard();
     log("Initialized keyboard");
-
+    
     // calculate memory region
     unsigned int mod1 = *(unsigned int*) (boot_info->mods_addr + 4);
     unsigned int physical_alloc_start = (mod1 + 0xfff) & ~ 0xfff;
-
     init_memory(physical_alloc_start ,boot_info->mem_upper * 1024);
     log("Initialized paged memory");
     
     // Set up kernel malloc
     init_kmalloc(MEMORY_PAGE_SIZE);
     log("Initialized kmalloc");
-
+    
     create_kernel_process();
     log("Set up kernel process");
-
+    
     save_module_binaries(boot_info);
     log("Saved module binaries");
     
     // Fully commit to virtual memory now
     un_identity_map_first_page_table();
-
+    
     init_user_process_vector();
     log("Initialized user process vector");
     
-    init_scheduler();
-    log("Initialized the scheduler");
-
-    disable_interrupts(); // there is a lot of I/O and disk operations going on so it is better to disable interrupts now
+    disable_interrupts(); // We dont want interrupts right now, since we cant correctly return to kernel land once we interrupt
+    
     init_disk_driver();
     log("Initialized disk driver");
     
@@ -106,25 +103,25 @@ void kmain(multiboot_info_t* boot_info)
     write_module_binaries_to_file();
     log("Wrote module binaries to files in the modules directory");
 
-    enable_interrupts();
+    init_scheduler();
+    log("Initialized the scheduler");
     
     // Everything is now set up
     
     sys_write(&global_kernel_process,FD_STDOUT,"Hello BrickOS!\n",15);
     sys_write(&global_kernel_process,FD_STDOUT,"Type 'help' for command list\n",29);
-
-
+    
     // running module
     run("modules/c_test.bin");
 
-    unsigned char kb_buffer[KB_BUFFER_SIZE];
-    while(1){
-        int bytes_read = sys_read(&global_kernel_process,FD_STDIN,kb_buffer,KB_BUFFER_SIZE);
-        if (bytes_read > 0){
-            sys_write(&global_kernel_process,FD_STDOUT,kb_buffer,bytes_read);     
-        }
-    }
-
+    //unsigned char kb_buffer[KB_BUFFER_SIZE];
+    //while(1){
+    //    int bytes_read = sys_read(&global_kernel_process,FD_STDIN,kb_buffer,KB_BUFFER_SIZE);
+    //    if (bytes_read > 0){
+        //        sys_write(&global_kernel_process,FD_STDOUT,kb_buffer,bytes_read);     
+    //    }
+    //}
+    while(1){};
     panic("Not set up beyond here");
     //get input
     //start_shell();
