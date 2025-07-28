@@ -6,13 +6,4 @@
 [LOG] Initialized paged memory
 [LOG] Initialized kmalloc
 [LOG] Set up kernel process
-[LOG] Saved module binaries
-[LOG] Initialized user process vector
-[LOG] Set up kernel process
-[LOG] Initialized the scheduler
-[LOG] Selected Drive supports LBA48
-[LOG] Number of addressable LBA28 sectors: 
-[LOG] 524288
-[LOG] Initialized disk driver
-[LOG] Initialized the filesystem
-[LOG] Wrote module binaries to files in the modules directory
+[LOG] [LOG] Set up serial port
