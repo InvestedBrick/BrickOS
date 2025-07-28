@@ -114,13 +114,6 @@ void kmain(multiboot_info_t* boot_info)
     // running module
     run("modules/c_test.bin");
 
-    //unsigned char kb_buffer[KB_BUFFER_SIZE];
-    //while(1){
-    //    int bytes_read = sys_read(&global_kernel_process,FD_STDIN,kb_buffer,KB_BUFFER_SIZE);
-    //    if (bytes_read > 0){
-        //        sys_write(&global_kernel_process,FD_STDOUT,kb_buffer,bytes_read);     
-    //    }
-    //}
     while(1){};
     panic("Not set up beyond here");
     //get input
