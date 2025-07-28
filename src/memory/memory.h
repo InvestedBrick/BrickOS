@@ -19,9 +19,6 @@
 #define NUM_PAGE_DIRS 256
 #define NUM_PAGE_FRAMES (0x20000000 / 0x1000 / 0x8)
 
-// has to match with the number of identity mapped page tables in entry.asm
-#define RESERVED_PAGE_TABLES 1
-
 extern unsigned int initial_page_dir[1024];
 
 /**
