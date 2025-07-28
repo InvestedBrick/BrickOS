@@ -228,15 +228,12 @@ unsigned int pmm_alloc_page_frame() {
 }
 
 void un_identity_map_first_page_table(){
-    for (unsigned int i = 0;i < RESERVED_PAGE_TABLES;i++){
-        initial_page_dir[i] = 0;
-        invalidate(i << 22);
-    }
+    initial_page_dir[0] = 0;
+    invalidate(0);
 }
 
 void init_memory(unsigned int physical_alloc_start, unsigned int mem_high){
     mem_number_vpages = 0;
-    
     initial_page_dir[1023] = ((unsigned int)initial_page_dir - KERNEL_START) | PAGE_FLAG_PRESENT | PAGE_FLAG_WRITE ;
     invalidate(0xfffff000);
 
