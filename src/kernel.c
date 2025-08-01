@@ -114,7 +114,6 @@ void kmain(multiboot_info_t* boot_info)
     // running module
     run("modules/c_test.bin");
 
-    while(1){};
     panic("Not set up beyond here");
     //get input
     //start_shell();
