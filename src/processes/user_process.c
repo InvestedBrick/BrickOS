@@ -220,7 +220,7 @@ void run(char* filepath){
         panic("Failed to read executable file");
         return;
     }
-
+    unsigned char old_int_status = get_interrupt_status();
     disable_interrupts();
 
     unsigned int pid = create_user_process(binary,file->size,filepath);
@@ -231,6 +231,6 @@ void run(char* filepath){
     }
 
     dispatch_user_process(pid);
-    enable_interrupts();
+    set_interrupt_status(old_int_status);
 
 }
