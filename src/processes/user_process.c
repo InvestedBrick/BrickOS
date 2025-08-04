@@ -14,7 +14,7 @@
 #include "../screen.h"
 #include "../filesystem/filesystem.h"
 #include "../filesystem/file_operations.h"
-#include "../kernel_process.h"
+#include "../kernel_header.h"
 vector_t user_process_vector;
 static unsigned char pid_used[MAX_PIDS] = {0};
 static unsigned int next_pid = 1;
