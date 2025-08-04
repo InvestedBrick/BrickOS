@@ -12,12 +12,25 @@
 #include "drivers/ATA_PIO/ata.h"
 #include "filesystem/filesystem.h"
 #include "filesystem/file_operations.h"
-// #include "shell/kernel_shell.h"
 #include "drivers/timer/pit.h"
 #include "processes/scheduler.h"
 #include "tables/syscalls.h"
 user_process_t global_kernel_process;
 extern unsigned int stack_top;
+
+
+unsigned int calc_phys_alloc_start(multiboot_info_t* boot_info){
+    multiboot_module_t* mods = (multiboot_module_t*) boot_info->mods_addr;
+    unsigned int highest_mod_end = 0;
+
+    for (unsigned int i = 0; i < boot_info->mods_count;i++){
+        if (mods[i].mod_end > highest_mod_end){
+            highest_mod_end = mods[i].mod_end;
+        }
+    }
+
+    return (highest_mod_end + 0xfff) & ~ 0xfff;
+}
 
 void create_kernel_process(){
     memset(global_kernel_process.fd_table,0,MAX_FDS);
@@ -34,6 +47,15 @@ void create_kernel_process(){
     global_kernel_process.running = 1;
 
     vector_append(&user_process_vector,(unsigned int)&global_kernel_process);
+}
+
+void shutdown(){
+
+    restore_kernel_memory_page_dir();
+    
+    write_to_disk();
+
+    panic("This is the end of the world");
 }
 
 void kmain(multiboot_info_t* boot_info)
@@ -63,9 +85,7 @@ void kmain(multiboot_info_t* boot_info)
     init_keyboard();
     log("Initialized keyboard");
     
-    // calculate memory region
-    unsigned int mod1 = *(unsigned int*) (boot_info->mods_addr + 4);
-    unsigned int physical_alloc_start = (mod1 + 0xfff) & ~ 0xfff;
+    unsigned int physical_alloc_start = calc_phys_alloc_start(boot_info);
     init_memory(physical_alloc_start ,boot_info->mem_upper * 1024);
     log("Initialized paged memory");
     
@@ -114,13 +134,9 @@ void kmain(multiboot_info_t* boot_info)
     // running module
     run("modules/c_test.bin");
 
+    // need to manually enable since run just restores whatever was before that
+    enable_interrupts();
+    
     panic("Not set up beyond here");
-    //get input
-    //start_shell();
-    log("User returned from shell");
-    // write the data to disk when the user exits
-    write_to_disk();
 
-    panic("This is the end of the world");
-    return;
 }
