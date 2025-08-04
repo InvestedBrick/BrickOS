@@ -5,7 +5,7 @@
 #include "../filesystem/file_operations.h"
 #include "../tables/syscalls.h"
 #include "../io/log.h"
-#include "../kernel_process.h"
+#include "../kernel_header.h"
 module_binary_t* module_binary_structs;
 unsigned int module_count;
 
