@@ -36,3 +36,12 @@ int close(unsigned int fd){
         : "memory"
     );
 }
+
+int exit(unsigned int error_code){
+    asm volatile (
+        "int $0x30"
+        :
+        : "a"(SYS_EXIT), "b"(error_code)
+        : "memory"
+    );
+}
