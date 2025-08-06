@@ -8,6 +8,7 @@
 #define SYS_WRITE 0x3
 #define SYS_OPEN 0x4
 #define SYS_CLOSE 0x5
+#define SYS_EXIT 0x1
 
 #define SYSCALL_FAIL -1
 
