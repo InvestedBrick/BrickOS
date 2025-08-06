@@ -178,8 +178,8 @@ void init_user_process_vector(){
     init_vector(&user_process_vector);
 }
 
-void kill_user_process(unsigned int pid){
-    if (!(pid > 0 && pid < MAX_PIDS && pid_used[pid])) return;
+int kill_user_process(unsigned int pid){
+    if (!(pid > 0 && pid < MAX_PIDS && pid_used[pid])) return SYSCALL_FAIL;
     user_process_t* process;
     for (unsigned i = 0; i < user_process_vector.size;i++){
         if (((user_process_t*)(user_process_vector.data[i]))->process_id == pid){
@@ -189,15 +189,16 @@ void kill_user_process(unsigned int pid){
         }
     }
     process_state_t* proc_state = get_process_state_by_page_dir(process->page_dir);
-    if (!proc_state) panic("Getting process state failed");
+    if (!proc_state) {error("Getting process state failed"); return SYSCALL_FAIL;};
     remove_process_state(proc_state);
     free_user_page_dir(process->page_dir);
     kfree(process->process_name);
     kfree((void*)process->kernel_stack);
     kfree(process);
     free_pid(pid);
-}
 
+    return 0;
+}
 
 void run(char* filepath){
     inode_t* file = get_inode_by_full_file_path(filepath);
