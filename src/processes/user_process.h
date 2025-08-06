@@ -43,8 +43,9 @@ void init_user_process_vector();
 /**
  * kill_user_process:
  * Neutralizes the user process
+ * @return Returns how successful the killing was
  */
-void kill_user_process(unsigned int pid);
+int kill_user_process(unsigned int pid);
 
 void enter_user_mode();
 
