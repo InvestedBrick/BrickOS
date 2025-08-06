@@ -11,5 +11,6 @@ int read(unsigned int fd, const char* buffer, unsigned int count);
 
 int open(const char* pathname, unsigned char flags);
 int close(unsigned int fd);
+int exit(unsigned int error_code);
 
 #endif
