@@ -63,10 +63,14 @@ void init_idt(){
 int handle_software_interrupt(interrupt_stack_frame_t* stack_frame){
     switch (stack_frame->eax)
     {
-    case 0x1:
+    case SYS_EXIT: 
         {
-            setup_kernel_process(stack_frame);
-           break;
+            process_state_t* state = get_current_process_state();
+            unsigned int pid = state->pid;
+            log("Process exited with error code");
+            log_uint(stack_frame->ebx);
+            switch_task(stack_frame);
+            return kill_user_process(pid);
         }
     case SYS_OPEN:
         return sys_open(get_current_user_process(),(unsigned char*)stack_frame->ebx,(unsigned char)stack_frame->ecx);
@@ -100,7 +104,10 @@ void interrupt_handler(interrupt_stack_frame_t* stack_frame) {
         acknowledge_PIC(stack_frame->interrupt_number);
     }
     else if(stack_frame->interrupt_number == INT_SOFTWARE){
-       stack_frame->eax = handle_software_interrupt(stack_frame);
+        int ret_val = handle_software_interrupt(stack_frame);
+        if (ret_val != 0){
+            stack_frame->eax = ret_val;
+        }
     }
 
     interrupts_enabled = 1; // the interrupts only actually get enabled in the iret
