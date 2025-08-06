@@ -6,4 +6,18 @@
 [LOG] Initialized paged memory
 [LOG] Initialized kmalloc
 [LOG] Set up kernel process
-[LOG] [LOG] Set up serial port
+[LOG] Saved module binaries
+[LOG] Initialized user process vector
+[LOG] Selected Drive supports LBA48
+[LOG] Number of addressable LBA28 sectors: 
+[LOG] 524288
+[LOG] Initialized disk driver
+[LOG] Initialized the filesystem
+[LOG] Wrote module binaries to files in the modules directory
+[LOG] Set up endless process
+[LOG] Initialized the scheduler
+[LOG] Process exited with error code
+[LOG] 1
+[LOG] Wrote all inodes to disk
+[LOG] Wrote all bitmaps to disk
+[PANIC] This is the end of the world
