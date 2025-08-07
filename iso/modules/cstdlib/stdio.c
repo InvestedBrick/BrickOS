@@ -8,20 +8,32 @@ void print(const char* str){
     write(FD_STDOUT,str,str_len);
 }
 
-int read_input(char* buffer,unsigned int buffer_size){
-    int read_chars = 0;
-    char c;
-    while(1){
-        if (read(FD_STDIN,&c,1) == 1){
-            if (read_chars >= buffer_size || c == '\n')
-                break;
+int read_input(char* buffer, unsigned int buffer_size) {
+    char temp_buf[TEMP_BUF_SIZE];
+    int total_read = 0;
 
-            buffer[read_chars++] = c;
+    while (total_read < buffer_size) {
+        int max_read = (buffer_size - total_read < TEMP_BUF_SIZE)
+                       ? (buffer_size - total_read)
+                       : TEMP_BUF_SIZE;
 
-            write(FD_STDOUT,&c,1);
+        int bytes_read = read(FD_STDIN, temp_buf, max_read);
+        if (bytes_read <= 0)
+            break;
+
+        for (int i = 0; i < bytes_read && total_read < buffer_size; ++i) {
+            char c = temp_buf[i];
+
+            if (c == '\n') {
+                write(FD_STDOUT, &c, 1); 
+                return total_read;
+            }
+
+            buffer[total_read++] = c;
+
+            write(FD_STDOUT, &c, 1);
         }
     }
 
-    return read_chars;
-    
+    return total_read;
 }
