@@ -2,6 +2,13 @@
 #include "cstdlib/stdutils.h"
 #include "cstdlib/syscalls.h"
 void main(){
-    print("\nHello from module");
+    print("\nHello from module\n");
+    print("What is your name?: ");
+    char input_buffer[33];
+    int bytes_read = read_input(input_buffer,32);
+    input_buffer[bytes_read] = 0;
+    print("\nHello ");
+    print(input_buffer);
+    print("\n");
     exit(1);
 }
