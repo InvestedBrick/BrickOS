@@ -4,4 +4,5 @@
 
 void print(const char* str);
 
+int read_input(char* buffer,unsigned int buffer_size);
 #endif
