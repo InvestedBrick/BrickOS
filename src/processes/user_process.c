@@ -15,6 +15,7 @@
 #include "../filesystem/filesystem.h"
 #include "../filesystem/file_operations.h"
 #include "../kernel_header.h"
+#include "../tables/syscall_defines.h"
 vector_t user_process_vector;
 static unsigned char pid_used[MAX_PIDS] = {0};
 static unsigned int next_pid = 1;
@@ -117,6 +118,7 @@ unsigned int create_user_process(unsigned char* binary, unsigned int size,unsign
     
     
     unsigned int code_data_pages = CEIL_DIV(size,MEMORY_PAGE_SIZE);
+    process->page_alloc_start = code_data_pages * MEMORY_PAGE_SIZE;
     for (unsigned int i = 0; i < code_data_pages;i++){
         unsigned int code_data_mem = pmm_alloc_page_frame();
         // some weird kernel mapping stuff because if I change the current page directory too early the OS shits itself
