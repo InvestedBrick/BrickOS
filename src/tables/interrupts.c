@@ -64,14 +64,7 @@ int handle_software_interrupt(interrupt_stack_frame_t* stack_frame){
     switch (stack_frame->eax)
     {
     case SYS_EXIT: 
-        {
-            process_state_t* state = get_current_process_state();
-            unsigned int pid = state->pid;
-            log("Process exited with error code");
-            log_uint(stack_frame->ebx);
-            switch_task(stack_frame);
-            return kill_user_process(pid);
-        }
+        return sys_exit(get_current_user_process(),stack_frame);
     case SYS_OPEN:
         return sys_open(get_current_user_process(),(unsigned char*)stack_frame->ebx,(unsigned char)stack_frame->ecx);
     case SYS_CLOSE:
