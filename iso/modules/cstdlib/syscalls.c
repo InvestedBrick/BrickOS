@@ -1,5 +1,5 @@
 #include "syscalls.h"
-#include "../../../src/tables/syscalls.h"
+#include "../../../src/tables/syscall_defines.h"
 
 int write(unsigned int fd, const char* buffer, unsigned int count){
     asm volatile (
@@ -42,6 +42,15 @@ int exit(unsigned int error_code){
         "int $0x30"
         :
         : "a"(SYS_EXIT), "b"(error_code)
+        : "memory"
+    );
+}
+
+void* alloc_page(){
+    asm volatile (
+        "int $0x30"
+        :
+        : "a"(SYS_ALLOC_PAGE)
         : "memory"
     );
 }
