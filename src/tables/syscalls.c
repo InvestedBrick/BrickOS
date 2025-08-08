@@ -2,7 +2,7 @@
 #include "../filesystem/vfs/vfs.h"
 #include "../processes/user_process.h"
 #include "../filesystem/file_operations.h"
-
+#include "interrupts.h"
 int sys_write(user_process_t* p,unsigned int fd, unsigned char* buf, unsigned int size){
     if (fd >= MAX_FDS) return SYSCALL_FAIL;
 
@@ -40,4 +40,12 @@ int sys_close(user_process_t* p, unsigned int fd){
     free_fd(p,file);
 
     return file->ops->close(file);
+}
+
+int sys_exit(user_process_t* p,interrupt_stack_frame_t* stack_frame){
+    unsigned int pid = p->process_id;
+    log("Process exited with error code");
+    log_uint(stack_frame->ebx);
+    switch_task(stack_frame);
+    return kill_user_process(pid);
 }
