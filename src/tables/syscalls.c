@@ -1,8 +1,12 @@
 #include "syscalls.h"
+#include "syscall_defines.h"
 #include "../filesystem/vfs/vfs.h"
 #include "../processes/user_process.h"
 #include "../filesystem/file_operations.h"
 #include "interrupts.h"
+#include "../memory/memory.h"
+#include "../io/log.h"
+#include "../processes/scheduler.h"
 int sys_write(user_process_t* p,unsigned int fd, unsigned char* buf, unsigned int size){
     if (fd >= MAX_FDS) return SYSCALL_FAIL;
 
@@ -48,4 +52,13 @@ int sys_exit(user_process_t* p,interrupt_stack_frame_t* stack_frame){
     log_uint(stack_frame->ebx);
     switch_task(stack_frame);
     return kill_user_process(pid);
+}
+
+int sys_alloc_page(user_process_t* p,interrupt_stack_frame_t* stack_frame){
+    unsigned int page = pmm_alloc_page_frame();
+    mem_map_page(p->page_alloc_start,page,PAGE_FLAG_WRITE | PAGE_FLAG_USER);
+
+    stack_frame->eax = p->page_alloc_start;
+    p->page_alloc_start += MEMORY_PAGE_SIZE;
+    return 0;
 }
