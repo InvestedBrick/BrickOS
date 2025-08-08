@@ -16,6 +16,7 @@ typedef struct {
     unsigned int kernel_stack;
     unsigned char* process_name;
     unsigned char running;
+    unsigned int page_alloc_start;
     generic_file_t* fd_table[MAX_FDS];
 } __attribute__((packed)) user_process_t;
 
