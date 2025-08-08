@@ -49,12 +49,15 @@ unsigned char dir_contains_name(inode_t* dir,unsigned char* name){
     string_array_t* str_arr = get_all_names_in_dir(dir,0);
     if (!str_arr) return 0;
     
+    unsigned char found = 0;
     for(unsigned int i = 0; i < str_arr->n_strings;i++){
         if (streq(str_arr->strings[i].str,name)){
-            return 1;
+            found = 1;
+            break;
         }
     }
-    return 0;
+    free_string_arr(str_arr);
+    return found;
 }
 
 inode_t* get_inode_by_id(unsigned int id){
