@@ -4,6 +4,7 @@
 #include "../processes/scheduler.h"
 #include "../memory/memory.h"
 #include "syscalls.h"
+#include "syscall_defines.h"
 #include "../filesystem/file_operations.h"
 static idt_entry_t idt_entries[IDT_MAX_ENTRIES] __attribute__((aligned(0x10)));
 static int enabled_idt[IDT_MAX_ENTRIES] = {0};
@@ -73,6 +74,8 @@ int handle_software_interrupt(interrupt_stack_frame_t* stack_frame){
         return sys_read(get_current_user_process(),stack_frame->ebx,(unsigned char*)stack_frame->ecx,stack_frame->edx);
     case SYS_WRITE:
         return sys_write(get_current_user_process(),stack_frame->ebx,(unsigned char*)stack_frame->ecx,stack_frame->edx);
+    case SYS_ALLOC_PAGE:
+        return sys_alloc_page(get_current_user_process(),stack_frame);
     default:
         break;
     }
