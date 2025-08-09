@@ -56,10 +56,12 @@ int close(unsigned int fd);
 int exit(unsigned int error_code);
 
 /**
- * alloc_page:
- * Allocates a memory page (4kb)
+ * mmap:
+ * Allocates and maps a memory region into the current process
  * 
- * @return Pointer to the allocated page
+ * @param size The size of the memory region to allocate (Will be rounded up to the next page border)
+ * 
+ * @return Pointer to the allocated memory region
  */
-void* alloc_page();
+void* mmap(unsigned int size);
 #endif
