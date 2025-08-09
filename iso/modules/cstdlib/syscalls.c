@@ -46,11 +46,11 @@ int exit(unsigned int error_code){
     );
 }
 
-void* alloc_page(){
+void* mmap(unsigned int size){
     asm volatile (
         "int $0x30"
         :
-        : "a"(SYS_ALLOC_PAGE)
+        : "a"(SYS_ALLOC_PAGE), "b"(size)
         : "memory"
     );
 }
