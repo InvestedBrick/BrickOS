@@ -7,6 +7,7 @@
 #include "../memory/memory.h"
 #include "../io/log.h"
 #include "../processes/scheduler.h"
+#include "../util.h"
 int sys_write(user_process_t* p,unsigned int fd, unsigned char* buf, unsigned int size){
     if (fd >= MAX_FDS) return SYSCALL_FAIL;
 
@@ -54,11 +55,16 @@ int sys_exit(user_process_t* p,interrupt_stack_frame_t* stack_frame){
     return kill_user_process(pid);
 }
 
-int sys_alloc_page(user_process_t* p,interrupt_stack_frame_t* stack_frame){
-    unsigned int page = pmm_alloc_page_frame();
-    mem_map_page(p->page_alloc_start,page,PAGE_FLAG_WRITE | PAGE_FLAG_USER);
-
-    stack_frame->eax = p->page_alloc_start;
-    p->page_alloc_start += MEMORY_PAGE_SIZE;
-    return 0;
+int sys_mmap(user_process_t* p,unsigned int size){
+    
+    unsigned int pages_to_alloc = CEIL_DIV(size,MEMORY_PAGE_SIZE);
+    for (unsigned int i = 0; i < pages_to_alloc; i++){
+        //ensure continuous allocation
+        unsigned int page = pmm_alloc_page_frame();
+        mem_map_page(p->page_alloc_start,page,PAGE_FLAG_WRITE | PAGE_FLAG_USER);
+        
+        p->page_alloc_start += MEMORY_PAGE_SIZE;
+    }
+    
+    return ((int)p->page_alloc_start  - (MEMORY_PAGE_SIZE * pages_to_alloc)); // int conversion (kinda) safe because surely a single process wont allocate 2gb of RAM when we only hav 512 MB
 }
