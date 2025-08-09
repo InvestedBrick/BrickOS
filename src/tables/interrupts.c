@@ -75,7 +75,7 @@ int handle_software_interrupt(interrupt_stack_frame_t* stack_frame){
     case SYS_WRITE:
         return sys_write(get_current_user_process(),stack_frame->ebx,(unsigned char*)stack_frame->ecx,stack_frame->edx);
     case SYS_ALLOC_PAGE:
-        return sys_alloc_page(get_current_user_process(),stack_frame);
+        return sys_mmap(get_current_user_process(),stack_frame->ebx);
     default:
         break;
     }
@@ -87,23 +87,41 @@ int handle_software_interrupt(interrupt_stack_frame_t* stack_frame){
 void interrupt_handler(interrupt_stack_frame_t* stack_frame) {
     interrupts_enabled = 0; // to stop other functions from copying a wrong value
 
-    if (stack_frame->interrupt_number == INT_KEYBOARD){
-        handle_keyboard_interrupt();
-        acknowledge_PIC(stack_frame->interrupt_number);
-    }
-    else if (stack_frame->interrupt_number == INT_TIMER){
-        ticks++;
-        if (ticks % TASK_SWITCH_TICKS == 0) {
-            switch_task(stack_frame);
+    switch (stack_frame->interrupt_number) {
+        case INT_KEYBOARD:
+            handle_keyboard_interrupt();
+            acknowledge_PIC(stack_frame->interrupt_number);
+            break;
+        case INT_TIMER:
+            ticks++;
+            if (ticks % TASK_SWITCH_TICKS == 0) {
+                switch_task(stack_frame);
+            }
+            acknowledge_PIC(stack_frame->interrupt_number);
+            break;
+        case INT_SOFTWARE: {
+            int ret_val = handle_software_interrupt(stack_frame);
+            if (ret_val != 0){
+                stack_frame->eax = ret_val;
+            }
+            break;
         }
-
-        acknowledge_PIC(stack_frame->interrupt_number);
-    }
-    else if(stack_frame->interrupt_number == INT_SOFTWARE){
-        int ret_val = handle_software_interrupt(stack_frame);
-        if (ret_val != 0){
-            stack_frame->eax = ret_val;
+        case INT_PAGE_FAULT:{
+            error("A page fault has occured");
+            unsigned int cr2;
+            asm volatile ("mov %%cr2, %0" : "=r"(cr2));
+            log_uint(cr2);
+            error("Cause:");
+            if (stack_frame->error_code & 0x1) error("Access of non-present page");
+            if (stack_frame->error_code & 0x2) error("Write access"); else error("Read access");
+            if (stack_frame->error_code & 0x4) error("User");
+            if (stack_frame->error_code & 0x8) error("Reserved Write");
+            if (stack_frame->error_code & 0x10) error("Non-Executable instruction fetch");
+            if (stack_frame->error_code & 0x20) error("Protection key violation");
+            break;
         }
+        default:
+            break;
     }
 
     interrupts_enabled = 1; // the interrupts only actually get enabled in the iret
