@@ -2,3 +2,5 @@
 
 Create user shell
     -> syscalls for dir switching, process execution, fork, dir entries etc...
+
+Implement dynamic linked code segments so that not every C code has to contain the entire stdlib
