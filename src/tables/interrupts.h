@@ -42,6 +42,8 @@
 #define INT_RTC 0x28
 
 #define INT_SOFTWARE 0x30
+
+#define INT_PAGE_FAULT 0xe
 typedef struct
 {
     unsigned short offset_low;
