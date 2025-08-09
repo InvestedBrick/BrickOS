@@ -117,6 +117,7 @@ void kmain(multiboot_info_t* boot_info)
     if (first_time_fs_init){
         create_file(active_dir,"modules",strlen("modules"),FS_TYPE_DIR, FS_FILE_PERM_NONE);
         create_file(active_dir,"home",strlen("home"),FS_TYPE_DIR, FS_FILE_PERM_NONE);
+        log("Initialized modules and home directory");
     }
     
     // save the modules binaries to "modules/"
