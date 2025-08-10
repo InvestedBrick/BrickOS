@@ -93,9 +93,6 @@ void kmain(multiboot_info_t* boot_info)
     init_kmalloc(MEMORY_PAGE_SIZE);
     log("Initialized kmalloc");
     
-    create_kernel_process();
-    log("Set up kernel process");
-    
     save_module_binaries(boot_info);
     log("Saved module binaries");
     
@@ -107,6 +104,9 @@ void kmain(multiboot_info_t* boot_info)
     
     disable_interrupts(); // We dont want interrupts right now, since we cant correctly return to kernel land once we interrupt
     
+    create_kernel_process();
+    log("Set up kernel process");
+
     init_disk_driver();
     log("Initialized disk driver");
     
