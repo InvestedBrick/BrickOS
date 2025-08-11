@@ -3,7 +3,6 @@
 #include "../util.h"
 #include "../io/log.h"
 static unsigned int heap_size;
-static unsigned int heap_allocated;
 static unsigned char kmalloc_initialized = 0;
 
 //NOTE: This allocator does currently not care about returning allocated pages to the page manager since I don't wanna deal with it
@@ -18,9 +17,26 @@ void alloc_and_map_new_page(){
     heap_size += MEMORY_PAGE_SIZE;
 }
 
+void merge_blocks(memory_block_t* block){
+    while (block->next && block->next->free ){
+        block->size = block->size + MEMORY_BLOCK_SIZE + block->next->size;
+        block->next = block->next->next;
+    }
+}
+
+void defrag_heap(){
+    memory_block_t* current = head;
+    while (current){
+        if (current->free){
+            merge_blocks(current);
+        }
+        current = current->next;
+    }
+}
+
 memory_block_t* find_free_block(unsigned int size){
     memory_block_t* current = head;
-    while (current != 0) {
+    while (current) {
         if (current->free && current->size >= size){
             return current;
         }
@@ -48,17 +64,15 @@ void* kmalloc(unsigned int size){
     if(block != 0){
         split_block(block,size);
         block->free = 0;
-        heap_allocated += size + MEMORY_BLOCK_SIZE;
         return (void*)((char*)block + MEMORY_BLOCK_SIZE);
     }
     
+    // no large enough block exists -> allocate more space
     unsigned int total_size = size + MEMORY_BLOCK_SIZE;
-    if (heap_allocated + total_size >= heap_size){
-        unsigned int n_pages_to_alloc = CEIL_DIV(total_size,MEMORY_PAGE_SIZE);
-        //allocate more pages if needed
-        for(unsigned int i = 0; i < n_pages_to_alloc;i++){
-            alloc_and_map_new_page();
-        }
+    unsigned int n_pages_to_alloc = CEIL_DIV(total_size,MEMORY_PAGE_SIZE);
+    //allocate more pages if needed
+    for(unsigned int i = 0; i < n_pages_to_alloc;i++){
+        alloc_and_map_new_page();
     }
 
     memory_block_t* last = head;
@@ -68,19 +82,12 @@ void* kmalloc(unsigned int size){
     block->free = 0;
     block->next = 0;
     if (last) last->next = block; else head = block;
-    heap_allocated += total_size;
 
     return (void*)((char*)block + MEMORY_BLOCK_SIZE);
 
 }
 
-void merge_blocks(memory_block_t* block){
-    while (block->next && block->next->free ){
-        block->size = block->size + MEMORY_BLOCK_SIZE + block->next->size;
-        heap_allocated -= block->next->size + MEMORY_BLOCK_SIZE;
-        block->next = block->next->next;
-    }
-}
+
 void kfree(void* addr){
     if (addr == 0 || !kmalloc_initialized) return;
 
@@ -91,12 +98,11 @@ void kfree(void* addr){
     
     block->free = 1;
 
-    merge_blocks(block);
+    defrag_heap();
 }   
 
 void init_kmalloc(unsigned int initial_heapsize){
     heap_size = 0;
-    heap_allocated = 0;
     kmalloc_initialized = 1;
     set_heap_size(initial_heapsize);
 
