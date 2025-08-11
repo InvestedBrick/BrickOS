@@ -6,6 +6,14 @@ unsigned int strlen(const char* str){
     return len;
 }
 
+void* memset(void* dest, int val, unsigned int n){
+    unsigned char* p = dest;
+    for(unsigned int i = 0; i < n;i++){
+        p[i] = (unsigned char)val;
+    }
+    return dest;
+}
+
 void loop(){
     while(1){};
 }
