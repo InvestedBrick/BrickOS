@@ -133,7 +133,7 @@ void kmain(multiboot_info_t* boot_info)
     sys_write(&global_kernel_process,FD_STDOUT,"Type 'help' for command list\n",29);
     
     // running module
-    run("modules/c_test.bin");
+    run("modules/shell.bin");
 
     // need to manually enable since run just restores whatever was before that
     enable_interrupts();
