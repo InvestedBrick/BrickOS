@@ -15,4 +15,6 @@ int sys_close(user_process_t* p, unsigned int fd);
 int sys_exit(user_process_t* p,interrupt_stack_frame_t* stack_frame);
 
 int sys_mmap(user_process_t* p,unsigned int size);
+
+int sys_getcwd(unsigned char* buffer, unsigned int buf_len);
 #endif
