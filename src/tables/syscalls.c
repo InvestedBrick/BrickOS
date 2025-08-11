@@ -8,6 +8,7 @@
 #include "../io/log.h"
 #include "../processes/scheduler.h"
 #include "../util.h"
+#include "../filesystem/fsutil.h"
 int sys_write(user_process_t* p,unsigned int fd, unsigned char* buf, unsigned int size){
     if (fd >= MAX_FDS) return SYSCALL_FAIL;
 
@@ -67,4 +68,8 @@ int sys_mmap(user_process_t* p,unsigned int size){
     }
     
     return ((int)p->page_alloc_start  - (MEMORY_PAGE_SIZE * pages_to_alloc)); // int conversion (kinda) safe because surely a single process wont allocate 2gb of RAM when we only hav 512 MB
+}
+
+int sys_getcwd(unsigned char* buffer, unsigned int buf_len){
+    return get_full_active_path(buffer,buf_len);
 }
