@@ -16,7 +16,7 @@ CC := gcc
 LD := ld
 OBJCOPY := objcopy
 
-CFLAGS := -m32 -ffreestanding -nostdlib -fno-builtin -fno-stack-protector -nostartfiles
+CFLAGS := -m32 -O1 -ffreestanding -nostdlib -fno-builtin -fno-stack-protector -nostartfiles
 LDFLAGS := -m elf_i386 -T link_c.ld
 
 CSTDLIB_DIR := cstdlib
