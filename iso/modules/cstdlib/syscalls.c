@@ -54,3 +54,12 @@ void* mmap(unsigned int size){
         : "memory"
     );
 }
+
+void getcwd(unsigned char* buffer, unsigned int buf_len){
+    asm volatile (
+        "int $0x30"
+        :
+        : "a"(SYS_GETCWD), "b"(buffer), "c"(buf_len)
+        : "memory"
+    );
+}
