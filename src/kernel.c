@@ -135,6 +135,7 @@ void kmain(multiboot_info_t* boot_info)
     // running module
     run("modules/shell.bin");
 
+    setup_timer_switch();
     // need to manually enable since run just restores whatever was before that
     enable_interrupts();
     
