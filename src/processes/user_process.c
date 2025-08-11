@@ -109,6 +109,9 @@ unsigned int create_user_process(unsigned char* binary, unsigned int size,unsign
     if (pid == -1) return 0;
     process->process_id = pid;
 
+    unsigned int code_data_pages = CEIL_DIV(size,MEMORY_PAGE_SIZE);
+    process->page_alloc_start = code_data_pages * MEMORY_PAGE_SIZE;
+
     vector_append(&user_process_vector,(unsigned int)process); // too lazy to implement a vector for structs
     
     unsigned int* pd = create_user_page_dir();
@@ -117,8 +120,7 @@ unsigned int create_user_process(unsigned char* binary, unsigned int size,unsign
     add_process_state(process);
     
     
-    unsigned int code_data_pages = CEIL_DIV(size,MEMORY_PAGE_SIZE);
-    process->page_alloc_start = code_data_pages * MEMORY_PAGE_SIZE;
+    
     for (unsigned int i = 0; i < code_data_pages;i++){
         unsigned int code_data_mem = pmm_alloc_page_frame();
         // some weird kernel mapping stuff because if I change the current page directory too early the OS shits itself
