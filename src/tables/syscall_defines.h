@@ -8,6 +8,7 @@
 #define SYS_OPEN 0x4
 #define SYS_CLOSE 0x5
 #define SYS_ALLOC_PAGE 0x6
+#define SYS_GETCWD 0x7
 
 #define SYSCALL_FAIL -1
 
