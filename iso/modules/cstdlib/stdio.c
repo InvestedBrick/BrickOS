@@ -16,6 +16,14 @@ int read_input(char* buffer,unsigned int buffer_size){
             if (read_chars >= buffer_size || c == '\n')
                 break;
 
+            if (c == '\b'){
+                // Backspace
+                if (read_chars > 0){
+                    read_chars--;
+                    write(FD_STDOUT,&c,1);
+                }
+                continue;
+            }
             buffer[read_chars++] = c;
 
             write(FD_STDOUT,&c,1);
