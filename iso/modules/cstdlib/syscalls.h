@@ -64,4 +64,14 @@ int exit(unsigned int error_code);
  * @return Pointer to the allocated memory region
  */
 void* mmap(unsigned int size);
+
+/**
+ * getcwd:
+ * Writes a null terminated string of the current working directory to a buffer
+ * 
+ * @param buffer The buffer in which to write the string
+ * @param buf_len The length of the buffer
+ * 
+ */
+void getcwd(unsigned char* buffer, unsigned int buf_len);
 #endif
