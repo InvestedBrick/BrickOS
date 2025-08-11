@@ -15,6 +15,12 @@ static idt_t idt;
 
 unsigned int ticks = 0;
 unsigned char interrupts_enabled = 1;
+unsigned char force_switch = 0;
+
+void setup_timer_switch(){
+    force_switch = 1;
+}
+
 void enable_interrupts(){
     asm volatile ("sti");
     interrupts_enabled = 1;
@@ -76,6 +82,8 @@ int handle_software_interrupt(interrupt_stack_frame_t* stack_frame){
         return sys_write(get_current_user_process(),stack_frame->ebx,(unsigned char*)stack_frame->ecx,stack_frame->edx);
     case SYS_ALLOC_PAGE:
         return sys_mmap(get_current_user_process(),stack_frame->ebx);
+    case SYS_GETCWD:
+        return sys_getcwd((unsigned char*)stack_frame->ebx, stack_frame->ecx);
     default:
         break;
     }
@@ -94,7 +102,8 @@ void interrupt_handler(interrupt_stack_frame_t* stack_frame) {
             break;
         case INT_TIMER:
             ticks++;
-            if (ticks % TASK_SWITCH_TICKS == 0) {
+            if (ticks % TASK_SWITCH_TICKS == 0 || force_switch) {
+                if (force_switch) force_switch = 0;
                 switch_task(stack_frame);
             }
             acknowledge_PIC(stack_frame->interrupt_number);
