@@ -119,4 +119,11 @@ unsigned char get_interrupt_status();
  * @param int_enable A boolean to determine if interrupts should be enabled or not
  */
 void set_interrupt_status(unsigned char int_enable);
+
+
+/**
+ * setup_timer_switch:
+ * Forces the next timer interrupt to switch tasks
+ */
+void setup_timer_switch();
 #endif
