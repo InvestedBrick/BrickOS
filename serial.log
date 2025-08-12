@@ -13,7 +13,6 @@
 [LOG] 524288
 [LOG] Initialized disk driver
 [LOG] Initialized the filesystem
-[LOG] Initialized modules and home directory
 [LOG] Wrote module binaries to files in the modules directory
 [LOG] Set up endless process
 [LOG] Initialized the scheduler
