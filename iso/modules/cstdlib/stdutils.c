@@ -2,8 +2,22 @@
 
 unsigned int strlen(const char* str){
     unsigned int len = 0;
-    while(str[len] != 0){len++;}
+    while(str[len] != '\0'){len++;}
     return len;
+}
+
+unsigned char streq(const char* str1, const char* str2){
+    unsigned int i = 0;
+    while(1){
+        if (str1[i] != str2[i]) return 0;
+
+        if (str1[i] == '\0' && str2[i] == '\0') return 1;
+
+        i++;
+    }
+
+    return 1;
+
 }
 
 void* memset(void* dest, int val, unsigned int n){
