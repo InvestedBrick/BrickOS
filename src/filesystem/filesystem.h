@@ -88,7 +88,12 @@ typedef struct {
     unsigned char* name;
 }inode_name_pair_t;
 
-
+typedef struct {
+    unsigned int inode_id;
+    unsigned int len;
+    unsigned int type;
+    unsigned char name[];
+} dirent_t;
 // This should be 8
 #define FS_INODES_PER_SECTOR (ATA_SECTOR_SIZE / sizeof(inode_t)) 
 
