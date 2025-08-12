@@ -6,4 +6,11 @@
 #define FILE_FLAG_WRITE 0x2
 #define FILE_FLAG_EXEC 0x4
 
+typedef struct {
+    unsigned int inode_id;
+    unsigned int len;
+    unsigned int type;
+    unsigned char name[];
+} dirent_t;
+
 #endif
