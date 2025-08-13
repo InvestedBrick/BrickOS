@@ -1,5 +1,6 @@
 #include "syscalls.h"
 #include "../../../src/tables/syscall_defines.h"
+#include "fs.h"
 
 int write(unsigned int fd, const char* buffer, unsigned int count){
     asm volatile (
@@ -55,11 +56,20 @@ void* mmap(unsigned int size){
     );
 }
 
-void getcwd(unsigned char* buffer, unsigned int buf_len){
+void getcwd(unsigned char* buffer, unsigned int size){
     asm volatile (
         "int $0x30"
         :
-        : "a"(SYS_GETCWD), "b"(buffer), "c"(buf_len)
+        : "a"(SYS_GETCWD), "b"(buffer), "c"(size)
+        : "memory"
+    );
+}
+
+int getdents(unsigned int fd,dirent_t* buffer,unsigned int size){
+    asm volatile (
+        "int $0x30"
+        :
+        : "a"(SYS_GETDENTS), "b"(fd), "c"(buffer), "d"(size)
         : "memory"
     );
 }
