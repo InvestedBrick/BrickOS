@@ -22,4 +22,7 @@ int sys_mmap(user_process_t* p,unsigned int size);
 int sys_getcwd(unsigned char* buffer, unsigned int buf_len);
 
 int sys_getdents(user_process_t* p,unsigned int fd,dirent_t* ent_buffer,unsigned int size);
+
+int sys_chdir(unsigned char* dir_name);
+
 #endif
