@@ -73,3 +73,12 @@ int getdents(unsigned int fd,dirent_t* buffer,unsigned int size){
         : "memory"
     );
 }
+
+int chdir(unsigned char* dir_name){
+    asm volatile (
+        "int $0x30"
+        :
+        : "a"(SYS_CHDIR), "b"(dir_name)
+        : "memory"
+    );
+}
