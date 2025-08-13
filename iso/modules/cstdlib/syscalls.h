@@ -88,4 +88,16 @@ void getcwd(unsigned char* buffer, unsigned int buf_len);
  * @return The number of directory entries read 
  */
 int getdents(unsigned int fd,dirent_t* buffer,unsigned int size);
+
+/**
+ * chdir:
+ * Changes the currently active directory
+ * 
+ * @param dir_name The full or relative path of the new directory
+ * 
+ * @return SYSCALL_FAIL if something failed, 
+ * 
+ *  else SYSCALL_SUCCESS
+ */
+int chdir(unsigned char* dir_name);
 #endif
