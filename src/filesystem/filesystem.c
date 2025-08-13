@@ -84,12 +84,11 @@ inode_t* get_parent_inode(inode_t* child){
     return get_inode_by_id(name_pair->parent_id);
 }
 
-inode_t* get_inode_by_full_file_path(unsigned char* path){
+inode_t* get_inode_by_file_path(unsigned char* path,inode_t* inode){
     unsigned char name_buffer[256 + 1]; // max len of dir name is max of unsigned char + 1 for null terminator
     
     unsigned int path_idx = 0;
     unsigned int buffer_idx;
-    inode_t* inode = get_inode_by_id(FS_ROOT_DIR_ID);
     
     while(path[path_idx] != '\0'){
         
@@ -99,7 +98,14 @@ inode_t* get_inode_by_full_file_path(unsigned char* path){
             name_buffer[buffer_idx++] = path[path_idx++];
         }
         if (path[path_idx] == '/') path_idx++;
+        
         name_buffer[buffer_idx] = '\0';
+
+        if (streq(name_buffer,"..")){
+            inode = get_parent_inode(inode);
+            continue;
+        }
+
         unsigned int id = get_inode_id_by_name(inode->id,name_buffer);
         if (id == (unsigned int)-1) return 0;
 
@@ -108,6 +114,14 @@ inode_t* get_inode_by_full_file_path(unsigned char* path){
     }
 
     return inode;
+}
+
+inode_t* get_inode_by_full_file_path(unsigned char* path) {
+    return get_inode_by_file_path(path,get_inode_by_id(FS_ROOT_DIR_ID));
+}
+
+inode_t* get_inode_by_relative_file_path(unsigned char* path){
+    return get_inode_by_file_path(path,active_dir);
 }
 
 unsigned int count_partially_used_big_sectors(unsigned int end){
