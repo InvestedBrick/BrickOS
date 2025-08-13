@@ -28,6 +28,14 @@ void* memset(void* dest, int val, unsigned int n){
     return dest;
 }
 
-void loop(){
-    while(1){};
+void* memcpy(void* dest,void* src, unsigned int n){
+    if (n == 0) return dest;
+    unsigned char* _dest = dest;
+    unsigned char* _src = src;
+
+    for (unsigned int i = 0; i < n;i++){
+        _dest[i] = _src[i];
+    }
+
+    return dest;
 }
