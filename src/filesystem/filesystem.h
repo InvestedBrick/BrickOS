@@ -215,10 +215,19 @@ inode_t* get_parent_inode(inode_t* child);
 /**
  * get_inode_by_full_file_path: 
  * Returns a pointer to the inode which indexes the provided file 
- * @param path The file path
+ * @param path The full file path
  * @return The inode pointer
  */
 inode_t* get_inode_by_full_file_path(unsigned char* path);
+
+
+/**
+ * get_inode_by_relative_file_path:
+ * Returns a pointer to the inode which indexes the provided file
+ * @param path The file path starting from the active directory
+ * @return The inode pointer
+ */
+inode_t* get_inode_by_relative_file_path(unsigned char* path);
 
 /**
  * dir_contains_name: 
