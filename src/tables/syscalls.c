@@ -9,6 +9,8 @@
 #include "../processes/scheduler.h"
 #include "../util.h"
 #include "../filesystem/fsutil.h"
+#include "../filesystem/filesystem.h"
+#include "../memory/kmalloc.h"
 int sys_write(user_process_t* p,unsigned int fd, unsigned char* buf, unsigned int size){
     if (fd >= MAX_FDS) return SYSCALL_FAIL;
 
@@ -45,7 +47,9 @@ int sys_close(user_process_t* p, unsigned int fd){
 
     free_fd(p,file);
 
-    return file->ops->close(file);
+    int ret_val = file->ops->close(file);
+    kfree(file);
+    return ret_val;
 }
 
 int sys_exit(user_process_t* p,interrupt_stack_frame_t* stack_frame){
@@ -72,4 +76,36 @@ int sys_mmap(user_process_t* p,unsigned int size){
 
 int sys_getcwd(unsigned char* buffer, unsigned int buf_len){
     return get_full_active_path(buffer,buf_len);
+}
+
+int sys_getdents(user_process_t* p,unsigned int fd,dirent_t* ent_buffer,unsigned int size){
+    if (!p->fd_table[fd]) return SYSCALL_FAIL;
+    generic_file_t* file = p->fd_table[fd];
+
+    if (!file->generic_data) return SYSCALL_FAIL;
+
+    open_file_t* open_file = (open_file_t*)file->generic_data;
+
+    inode_t* inode = get_inode_by_id(open_file->inode_id);
+    string_array_t* names = get_all_names_in_dir(inode);
+
+    if (!names) return SYSCALL_FAIL;
+
+    unsigned int total_size = 0;
+    for (unsigned int i = 0; i < names->n_strings;i++)
+        {total_size += names->strings[i].length + sizeof(int) * 3 + 1;} // +1 for the null terminator
+    if (total_size > size) return SYSCALL_FAIL; 
+
+    unsigned int bpos = 0;
+    for (unsigned int i = 0; i < names->n_strings;i++){
+        inode_t* entry_inode = get_inode_by_id(get_inode_id_by_name(open_file->inode_id,names->strings[i].str));
+        dirent_t* entry = (dirent_t*)((unsigned int)ent_buffer + bpos);
+        entry->inode_id = entry_inode->id;
+        entry->type = entry_inode->type;
+        entry->len = sizeof(int) * 3 + names->strings[i].length + 1;
+        memcpy(entry->name,names->strings[i].str,names->strings[i].length + 1);
+        bpos += entry->len;
+    }
+    free_string_arr(names);
+    return names->n_strings;
 }
