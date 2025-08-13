@@ -1,6 +1,8 @@
 #ifndef INCLUDE_SYSCALLS_H
 #define INCLUDE_SYSCALLS_H
 
+#include "fs.h"
+
 #define FD_STDIN 0x0
 #define FD_STDOUT 0x1
 #define FD_STDERR 0x2
@@ -74,4 +76,16 @@ void* mmap(unsigned int size);
  * 
  */
 void getcwd(unsigned char* buffer, unsigned int buf_len);
+
+/**
+ * getdents:
+ * Reads the entries of a directory to a buffer of dirent_t (see fs.h) structs
+ *
+ * @param fd The fd of the directory
+ * @param buffer The buffer to write into
+ * @param size The size of the buffer
+ * 
+ * @return The number of directory entries read 
+ */
+int getdents(unsigned int fd,dirent_t* buffer,unsigned int size);
 #endif
