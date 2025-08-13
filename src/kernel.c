@@ -137,6 +137,7 @@ void kmain(multiboot_info_t* boot_info)
 
     setup_timer_switch();
     // need to manually enable since run just restores whatever was before that
+    log("Shell setup complete");
     enable_interrupts();
     
     panic("Not set up beyond here");
