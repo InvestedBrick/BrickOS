@@ -182,7 +182,7 @@ unsigned int allocate_sector();
  * @return Array of strings which contain the data
  * 
  */
-string_array_t* get_all_names_in_dir(inode_t* dir,unsigned char add_slash);
+string_array_t* get_all_names_in_dir(inode_t* dir);
 
 /**
  * create_file:
