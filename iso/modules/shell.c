@@ -47,6 +47,8 @@ void main(){
                 print("\n");
                 bpos += ent->len;
             }
+
+            close(dir_fd);
         }
         else{
             print("Command '");
