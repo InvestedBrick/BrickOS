@@ -46,7 +46,7 @@ unsigned int get_inode_id_by_name(unsigned int parent_id, unsigned char* name){
 }
 
 unsigned char dir_contains_name(inode_t* dir,unsigned char* name){
-    string_array_t* str_arr = get_all_names_in_dir(dir,0);
+    string_array_t* str_arr = get_all_names_in_dir(dir);
     if (!str_arr) return 0;
     
     unsigned char found = 0;
@@ -560,7 +560,7 @@ unsigned char write_directory_entry(inode_t* parent_dir, unsigned int child_inod
     return 1;
 }
 
-string_array_t* get_all_names_in_dir(inode_t* dir, unsigned char add_slash){
+string_array_t* get_all_names_in_dir(inode_t* dir){
 
     // assure that size was set
     if (dir->size < sizeof(unsigned int)) {
@@ -579,16 +579,11 @@ string_array_t* get_all_names_in_dir(inode_t* dir, unsigned char add_slash){
         unsigned int id = *(unsigned int*)&buffer[buffer_idx];
         buffer_idx += sizeof(unsigned int); // skip id
         unsigned char raw_len = buffer[buffer_idx++];
-        inode_t* node = get_inode_by_id(id);
-        if (!node) {error("Invalid node"); log_uint(id);}
-        unsigned char is_dir = node->type == FS_TYPE_DIR;
-        unsigned int str_len = raw_len + (is_dir && add_slash ? 1 : 0);
-
+        unsigned int str_len = raw_len; 
         strings[i].length = str_len;
         strings[i].str = (unsigned char*)kmalloc(str_len + 1);
         strings[i].str[str_len] = 0;
         memcpy(strings[i].str,&buffer[buffer_idx],str_len);
-        if (is_dir && add_slash) {strings[i].str[str_len - 1] = '/';} // add a '/' to signal it is a directory
         buffer_idx += raw_len; 
     }
 
@@ -693,7 +688,7 @@ int erase_empty_dir(inode_t* parent_dir, inode_t* dir){
 }
 
 int delete_dir_recursive(inode_t* parent_dir, inode_t* dir){
-    string_array_t* names = get_all_names_in_dir(dir,0);
+    string_array_t* names = get_all_names_in_dir(dir);
     if (!names) {
         if (erase_empty_dir(parent_dir,dir) != FS_FILE_DELETION_SUCCESS) 
             return FS_FILE_DELETION_FAILED;
@@ -776,7 +771,7 @@ int delete_file_by_inode(inode_t* parent_dir,inode_t* inode){
 
 int create_file(inode_t* parent_dir, unsigned char* name, unsigned char name_length, unsigned char type,unsigned char perms){
 
-    string_array_t* strs_in_parent_dir = get_all_names_in_dir(parent_dir,0);
+    string_array_t* strs_in_parent_dir = get_all_names_in_dir(parent_dir);
     if (strs_in_parent_dir){
         for (unsigned int i = 0; i < strs_in_parent_dir->n_strings;i++){
             if(strneq(name,strs_in_parent_dir->strings[i].str,name_length,strs_in_parent_dir->strings[i].length)) {
