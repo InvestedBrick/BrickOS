@@ -87,6 +87,8 @@ int handle_software_interrupt(interrupt_stack_frame_t* stack_frame){
         return sys_getcwd((unsigned char*)stack_frame->ebx, stack_frame->ecx);
     case SYS_GETDENTS:
         return sys_getdents(get_current_user_process(),stack_frame->ebx,(dirent_t*)stack_frame->ecx,stack_frame->edx);
+    case SYS_CHDIR:
+        return sys_chdir((unsigned char*)stack_frame->ebx);
     default:
         break;
     }
@@ -113,7 +115,7 @@ void interrupt_handler(interrupt_stack_frame_t* stack_frame) {
             break;
         case INT_SOFTWARE: {
             int ret_val = handle_software_interrupt(stack_frame);
-            if (ret_val != 0){
+            if (ret_val != SYSCALL_SUCCESS){
                 stack_frame->eax = ret_val;
             }
             break;
