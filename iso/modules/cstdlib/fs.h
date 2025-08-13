@@ -2,9 +2,13 @@
 #ifndef INCLUDE_FS_H
 #define INCLUDE_FS_H
 
+#define FILE_FLAG_NONE 0x0
 #define FILE_FLAG_READ 0x1
 #define FILE_FLAG_WRITE 0x2
 #define FILE_FLAG_EXEC 0x4
+
+#define TYPE_FILE 1
+#define TYPE_DIR 2
 
 typedef struct {
     unsigned int inode_id;
