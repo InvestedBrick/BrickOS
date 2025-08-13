@@ -11,6 +11,8 @@
 #include "../filesystem/fsutil.h"
 #include "../filesystem/filesystem.h"
 #include "../memory/kmalloc.h"
+
+//TODO: provide actually helpful error messages
 int sys_write(user_process_t* p,unsigned int fd, unsigned char* buf, unsigned int size){
     if (fd >= MAX_FDS) return SYSCALL_FAIL;
 
@@ -108,4 +110,20 @@ int sys_getdents(user_process_t* p,unsigned int fd,dirent_t* ent_buffer,unsigned
     }
     free_string_arr(names);
     return names->n_strings;
+}
+
+int sys_chdir(unsigned char* dir_name){
+    inode_t* new_dir;
+
+    if (dir_contains_name(active_dir,dir_name) || strneq(dir_name,"..",2,2)){
+        new_dir = get_inode_by_relative_file_path(dir_name);
+    }else{
+        new_dir = get_inode_by_full_file_path(dir_name);
+    }
+    if (!new_dir) return SYSCALL_FAIL;
+    if (new_dir->type != FS_TYPE_DIR) return SYSCALL_FAIL;
+
+    active_dir = new_dir;
+
+    return SYSCALL_SUCCESS;
 }
