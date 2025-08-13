@@ -5,7 +5,6 @@
 #include "vfs/vfs.h"
 typedef struct {
     unsigned char flags;
-    unsigned int fd;
     unsigned int inode_id;
     unsigned int rw_pointer; //TODO: implement lseek and get_file_size 
 }open_file_t;
