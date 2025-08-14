@@ -23,6 +23,8 @@ typedef struct {
 #define USER_CODE_DATA_VMEMORY_START 0x00000000
 #define USER_STACK_VMEMORY_START     0xbffffffb
 
+#define USER_STACK_PAGES_PER_PROCESS 5
+
 extern vector_t user_process_vector;
 
 #define MAX_PIDS 32768
