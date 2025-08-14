@@ -137,9 +137,10 @@ unsigned int create_user_process(unsigned char* binary, unsigned int size,unsign
         mem_unmap_page(TEMP_KERNEL_COPY_ADDR);
         mem_map_page_in_dir(process->page_dir,USER_CODE_DATA_VMEMORY_START + i * MEMORY_PAGE_SIZE,code_data_mem,PAGE_FLAG_WRITE | PAGE_FLAG_USER);
     }
-
-    unsigned int stack_mem = pmm_alloc_page_frame();
-    mem_map_page_in_dir(process->page_dir,USER_STACK_VMEMORY_START,stack_mem,PAGE_FLAG_WRITE | PAGE_FLAG_USER);
+    for (unsigned int i = 0; i < USER_STACK_PAGES_PER_PROCESS;i++){
+        unsigned int stack_mem = pmm_alloc_page_frame();
+        mem_map_page_in_dir(process->page_dir,USER_STACK_VMEMORY_START - (i * MEMORY_PAGE_SIZE),stack_mem,PAGE_FLAG_WRITE | PAGE_FLAG_USER);
+    }
     
     set_interrupt_status(int_save);
 
@@ -163,6 +164,7 @@ void load_registers(){
     state->regs.eflags = (1 << 9) | (3 << 12); // enable interrupts for user
     state->regs.eip = USER_CODE_DATA_VMEMORY_START;
     state->regs.esp = USER_STACK_VMEMORY_START;
+    state->regs.ebp = USER_STACK_VMEMORY_START;
     state->regs.ss = user_mode_data_segment_selector;
     set_interrupt_status(int_save);
 }
