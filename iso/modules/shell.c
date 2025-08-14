@@ -101,6 +101,7 @@ void main(){
             print("Shell command list\n------------------\n");
             print("clear - Clears the screen\n");
             print("ls - Lists all entries of the current directory\n");
+            print("cd [dir name] - Changes the active directory\n");
             print("exit - Exits the shell and shuts down the OS\n\n");
 
         }
