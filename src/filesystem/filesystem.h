@@ -239,14 +239,6 @@ inode_t* get_inode_by_relative_file_path(unsigned char* path);
 unsigned char dir_contains_name(inode_t* dir,unsigned char* name);
 
 
-/**
- * delete_file:
- * Deletes a file and frees all the underlying sectors and associated memory
- * @param parent_dir The parent directory of the file
- * @param name The filename / the path to the file
- * @return If the deletion was successful (return value == 0) or not (return value < 0)
- */
-int delete_file(inode_t* parent_dir,unsigned char* name);
 
 /**
  * delete_dir:
