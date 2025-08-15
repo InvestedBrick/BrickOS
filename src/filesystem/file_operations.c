@@ -4,6 +4,7 @@
 #include "../memory/kmalloc.h"
 #include "../screen.h"
 #include "../drivers/ATA_PIO/ata.h"
+#include "fs_defines.h"
 
 vfs_handlers_t fs_ops = {
     .open = fs_open,
@@ -62,7 +63,13 @@ generic_file_t* fs_open(unsigned char* filepath,unsigned char flags){
     }
     if (!inode) {
         if (flags & FILE_FLAG_CREATE){
-            create_file(active_dir,filepath,strlen(filepath),FS_TYPE_FILE,FS_FILE_PERM_READABLE | FS_FILE_PERM_WRITABLE);
+            if (flags & FILE_CREATE_DIR){
+                if (create_file(active_dir,filepath,strlen(filepath),FS_TYPE_DIR,FS_FILE_PERM_NONE) < 0)
+                    return nullptr;
+            }else{
+                if (create_file(active_dir,filepath,strlen(filepath),FS_TYPE_FILE,FS_FILE_PERM_READABLE | FS_FILE_PERM_WRITABLE) < 0)
+                    return nullptr;
+            }
             inode = get_inode_by_id(get_inode_id_by_name(active_dir->id,filepath));
         }else{
             return nullptr;
