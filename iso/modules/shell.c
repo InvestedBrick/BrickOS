@@ -12,8 +12,16 @@ shell_command_t commands[] = {
     {"cd", cmd_cd, "Changes active directory"},
     {"mkf", cmd_mkf, "Creates a file"},
     {"mkdir",cmd_mkdir, "Creates a directory"},
+    {"rm",cmd_rm,"Deletes a file"},
     {0,0,0}
 };
+
+int argcheck(command_t* cmd,const char* msg){
+    if (!cmd->args)
+        {print(msg);return 1;}
+
+    return 0;
+}
 
 void cmd_help(command_t* cmd){
     print("Shell command list\n------------------\n");
@@ -50,13 +58,12 @@ void cmd_ls(command_t* cmd){
         print("Failed to close directory\n");
 }
 void cmd_cd(command_t* cmd){
-    if (!cmd->args)
-        {print("Expected name of directory\n");return;}
+    if (argcheck(cmd,"Expected name of directory\n")) return;
+
     if (chdir(cmd->args[0].str) == SYSCALL_FAIL) print("Not a directory\n");
 }
 void cmd_mkf(command_t* cmd){
-    if (!cmd->args)
-        {print("Expected name of directory\n");return;}
+    if (argcheck(cmd,"Expected name of file\n")) return;
     int fd = open(cmd->args[0].str,FILE_FLAG_CREATE);
     if (fd < 0)
         {print("Failed to create file\n");return;}
@@ -64,8 +71,7 @@ void cmd_mkf(command_t* cmd){
         print("Failed to close created file\n");
 }
 void cmd_mkdir(command_t* cmd){
-    if (!cmd->args)
-        {print("Expected name of directory\n");return;}
+    if (argcheck(cmd,"Expected name of directory\n")) return;
         
     int fd = open(cmd->args[0].str,FILE_FLAG_CREATE | FILE_CREATE_DIR);
     if (fd < 0)
@@ -73,7 +79,12 @@ void cmd_mkdir(command_t* cmd){
     if (close(fd) < 0)
         print("Failed to close created directory\n");
 }
+void cmd_rm(command_t* cmd){
+    if (argcheck(cmd,"Expected filename\n")) return;
 
+    if (rmfile(cmd->args[0].str) < 0) 
+        print("Failed to delete file\n");
+}
 void free_command(command_t com){
     free(com.command.str);
     for (unsigned int i = 0; i < com.n_args;i++){
