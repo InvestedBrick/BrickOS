@@ -1,13 +1,78 @@
+#include "shell.h"
 #include "cstdlib/stdio.h"
 #include "cstdlib/stdutils.h"
 #include "cstdlib/syscalls.h"
 #include "cstdlib/malloc.h"
 
-typedef struct {
-    string_t command;
-    unsigned int n_args;
-    string_t* args;
-}command_t;
+shell_command_t commands[] = {
+    {"help", cmd_help, "Shows help menu"},
+    {"exit", 0, "Exits the shell"},
+    {"clear",cmd_clear, "Clears the screen"},
+    {"ls", cmd_ls, "Lists active directory entries"},
+    {"cd", cmd_cd, "Changes active directory"},
+    {"mkf", cmd_mkf, "Creates a file"},
+    {"mkdir",cmd_mkdir, "Creates a directory"},
+    {0,0,0}
+};
+
+void cmd_help(command_t* cmd){
+    print("Shell command list\n------------------\n");
+    for (int i = 0; commands[i].name;i++){
+        print(commands[i].name);
+        print(" - ");
+        print(commands[i].help);
+        print("\n");
+    }
+}
+void cmd_clear(command_t* cmd){
+    print("\e");
+}
+void cmd_ls(command_t* cmd){
+    int dir_fd = open(cmd->executing_dir,FILE_FLAG_NONE);
+
+    if (dir_fd < 0) 
+        {print("Failed to open directory\n"); return;}
+    unsigned char buffer[1024];
+    int n_entries = getdents(dir_fd,(dirent_t*)buffer,sizeof(buffer));
+    if (n_entries == -1) return; // dir is empty
+    unsigned int bpos = 0;
+    for (unsigned int i = 0; i < n_entries;i++){
+        dirent_t* ent = (dirent_t*)(buffer + bpos);
+        print(ent->name);
+        if (ent->type == TYPE_DIR){
+            print("/");
+        }
+        print("\n");
+        bpos += ent->len;
+    }
+    
+    if (close(dir_fd) < 0)
+        print("Failed to close directory\n");
+}
+void cmd_cd(command_t* cmd){
+    if (!cmd->args)
+        {print("Expected name of directory\n");return;}
+    if (chdir(cmd->args[0].str) == SYSCALL_FAIL) print("Not a directory\n");
+}
+void cmd_mkf(command_t* cmd){
+    if (!cmd->args)
+        {print("Expected name of directory\n");return;}
+    int fd = open(cmd->args[0].str,FILE_FLAG_CREATE);
+    if (fd < 0)
+        {print("Failed to create file\n");return;}
+    if (close(fd) < 0)
+        print("Failed to close created file\n");
+}
+void cmd_mkdir(command_t* cmd){
+    if (!cmd->args)
+        {print("Expected name of directory\n");return;}
+        
+    int fd = open(cmd->args[0].str,FILE_FLAG_CREATE | FILE_CREATE_DIR);
+    if (fd < 0)
+        {print("Failed to create directory\n");return;}
+    if (close(fd) < 0)
+        print("Failed to close created directory\n");
+}
 
 void free_command(command_t com){
     free(com.command.str);
@@ -75,6 +140,7 @@ command_t parse_line(unsigned char* line,unsigned int line_length){
     return comd;
 
 }
+
 __attribute__((section(".text.start")))
 void main(){
     print("\nBrickOS Shell started\n");
@@ -90,72 +156,29 @@ void main(){
         int read_bytes = read_input(line,SCREEN_COLUMNS);
         line[read_bytes] = '\0';
         print("\n");
-
+        
         comd = parse_line(line,strlen(line));
-
+        comd.executing_dir = dir_buffer;
+        
         if (!comd.command.length) continue;
 
         unsigned char* main_cmd = comd.command.str;
-
-        if (streq(main_cmd,"help")){
-            print("Shell command list\n------------------\n");
-            print("clear - Clears the screen\n");
-            print("ls - Lists all entries of the current directory\n");
-            print("cd [dir name] - Changes the active directory\n");
-            print("mkf [filename] - Creates a file in the current directory");
-            print("exit - Exits the shell and shuts down the OS\n\n");
-
-        }
-        else if (streq(main_cmd,"exit")){
+        unsigned char found = 0;
+        if (streq(main_cmd,"exit")){
             break;
         }
-        else if (streq(main_cmd,"clear")){
-            print("\e"); // special clear char
-        }
-        else if (streq(main_cmd,"ls")){
-            unsigned int dir_fd = open(dir_buffer,FILE_FLAG_NONE);
-
-            unsigned char buffer[1024];
-
-            int n_entries = getdents(dir_fd,(dirent_t*)buffer,sizeof(buffer));
-
-            if (n_entries == -1) goto end; // dir is empty
-
-            unsigned int bpos = 0;
-            for (unsigned int i = 0; i < n_entries;i++){
-                dirent_t* ent = (dirent_t*)(buffer + bpos);
-                print(ent->name);
-                if (ent->type == TYPE_DIR){
-                    print("/");
-                }
-                print("\n");
-                bpos += ent->len;
+        for (int i = 0; commands[i].name;i++){
+            if (streq(main_cmd,commands[i].name)){
+                commands[i].handler(&comd);
+                found = 1;
+                break;
             }
-            
-            close(dir_fd);
         }
-        else if(streq(main_cmd,"cd")){
-            if (!comd.args)
-                {print("Expected name of directory\n");goto end;}
-            chdir(comd.args[0].str);
-        }
-        else if (streq(main_cmd,"mkf")){
-            if (!comd.args)
-                {print("Expected name of directory\n");goto end;}
-
-            int fd = open(comd.args[0].str,FILE_FLAG_CREATE);
-            if (fd < 0)
-                {print("Failed to create file");goto end;}
-
-            if (close(fd) < 0)
-                print("Failed to close created file");
-        }
-        else{
+        if (!found){
             print("Command '");
             print(main_cmd);
             print("' was not found!\n");
         }  
-        end:
         free_command(comd);
     }
 
