@@ -1,5 +1,4 @@
 #include "syscalls.h"
-#include "../../../src/tables/syscall_defines.h"
 #include "fs.h"
 
 int write(unsigned int fd, const char* buffer, unsigned int count){
