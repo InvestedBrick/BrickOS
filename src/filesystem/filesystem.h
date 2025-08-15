@@ -59,10 +59,7 @@ typedef struct{
 #define INTERNAL_FUNCTION_SUCCESS 0
 #define INTERNAL_FUNCTION_FAIL -1
 
-#define FS_FILE_PERM_NONE 0x0
-#define FS_FILE_PERM_READABLE 0x1
-#define FS_FILE_PERM_WRITABLE 0x2
-#define FS_FILE_PERM_EXECUTABLE 0x4
+#include "fs_defines.h"
 
 extern unsigned char first_time_fs_init;
 
