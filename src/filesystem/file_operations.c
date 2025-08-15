@@ -61,6 +61,8 @@ generic_file_t* fs_open(unsigned char* filepath,unsigned char flags){
     }else{
         inode = get_inode_by_full_file_path(filepath);
     }
+
+    if (inode && flags & FILE_FLAG_CREATE) return nullptr;
     if (!inode) {
         if (flags & FILE_FLAG_CREATE){
             if (flags & FILE_CREATE_DIR){
