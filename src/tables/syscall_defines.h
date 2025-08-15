@@ -11,6 +11,7 @@
 #define SYS_GETCWD 0x7
 #define SYS_GETDENTS 0x8
 #define SYS_CHDIR 0x9
+#define SYS_RMFILE 0xa
 
 #define SYSCALL_FAIL -1
 #define SYSCALL_SUCCESS 0
