@@ -9,19 +9,6 @@ typedef struct {
     unsigned int rw_pointer; //TODO: implement lseek and get_file_size 
 }open_file_t;
 
-#define FILE_FLAG_READ 0x1
-#define FILE_FLAG_WRITE 0x2
-#define FILE_FLAG_RW (FILE_FLAG_READ | FILE_FLAG_WRITE)
-#define FILE_FLAG_CREATE 0x4
-#define FILE_FLAG_APPEND 0x8
-
-#define FILE_OP_FAILED -1
-#define FILE_OP_SUCCESS 0
-#define FILE_INVALID_FD -2
-#define FILE_INVALID_TARGET -3
-#define FILE_NO_CAPACITY -4
-#define FILE_READ_OVER_END -5
-#define FILE_INVALID_PERMISSIONS -6
 
 #define FILE_READ_ALL (unsigned int)-1
 #define MAX_FILE_SECTORS (NUM_DATA_SECTORS_PER_FILE + ATA_SECTOR_SIZE / sizeof(unsigned int))
