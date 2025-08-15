@@ -81,3 +81,12 @@ int chdir(unsigned char* dir_name){
         : "memory"
     );
 }
+
+int rmfile(unsigned char* filename){
+    asm volatile (
+        "int $0x30"
+        :
+        : "a"(SYS_RMFILE), "b"(filename)
+        : "memory"
+    );
+}
