@@ -102,6 +102,7 @@ void main(){
             print("clear - Clears the screen\n");
             print("ls - Lists all entries of the current directory\n");
             print("cd [dir name] - Changes the active directory\n");
+            print("mkf [filename] - Creates a file in the current directory");
             print("exit - Exits the shell and shuts down the OS\n\n");
 
         }
@@ -118,36 +119,43 @@ void main(){
 
             int n_entries = getdents(dir_fd,(dirent_t*)buffer,sizeof(buffer));
 
-            if (n_entries == -1) {print("Unable to read directory entries\n");}
-            else{
+            if (n_entries == -1) goto end; // dir is empty
 
-                unsigned int bpos = 0;
-                for (unsigned int i = 0; i < n_entries;i++){
-                    dirent_t* ent = (dirent_t*)(buffer + bpos);
-                    print(ent->name);
-                    if (ent->type == TYPE_DIR){
-                        print("/");
-                    }
-                    print("\n");
-                    bpos += ent->len;
+            unsigned int bpos = 0;
+            for (unsigned int i = 0; i < n_entries;i++){
+                dirent_t* ent = (dirent_t*)(buffer + bpos);
+                print(ent->name);
+                if (ent->type == TYPE_DIR){
+                    print("/");
                 }
+                print("\n");
+                bpos += ent->len;
             }
             
             close(dir_fd);
         }
         else if(streq(main_cmd,"cd")){
             if (!comd.args)
-                {print("Expected name of directory\n");}
-            else{
-                chdir(comd.args[0].str);
-            }
+                {print("Expected name of directory\n");goto end;}
+            chdir(comd.args[0].str);
+        }
+        else if (streq(main_cmd,"mkf")){
+            if (!comd.args)
+                {print("Expected name of directory\n");goto end;}
+
+            int fd = open(comd.args[0].str,FILE_FLAG_CREATE);
+            if (fd < 0)
+                {print("Failed to create file");goto end;}
+
+            if (close(fd) < 0)
+                print("Failed to close created file");
         }
         else{
             print("Command '");
             print(main_cmd);
             print("' was not found!\n");
-        }
-        
+        }  
+        end:
         free_command(comd);
     }
 
