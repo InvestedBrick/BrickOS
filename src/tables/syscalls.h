@@ -25,4 +25,6 @@ int sys_getdents(user_process_t* p,unsigned int fd,dirent_t* ent_buffer,unsigned
 
 int sys_chdir(unsigned char* dir_name);
 
+int sys_rmfile(unsigned char* filename);
+
 #endif
