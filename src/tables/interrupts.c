@@ -89,6 +89,8 @@ int handle_software_interrupt(interrupt_stack_frame_t* stack_frame){
         return sys_getdents(get_current_user_process(),stack_frame->ebx,(dirent_t*)stack_frame->ecx,stack_frame->edx);
     case SYS_CHDIR:
         return sys_chdir((unsigned char*)stack_frame->ebx);
+    case SYS_RMFILE:
+        return sys_rmfile((unsigned char*)stack_frame->ebx);
     default:
         break;
     }
