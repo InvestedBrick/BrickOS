@@ -6,6 +6,7 @@
 #define FD_STDIN 0x0
 #define FD_STDOUT 0x1
 #define FD_STDERR 0x2
+#include "../../../src/tables/syscall_defines.h"
 
 /**
  * write:
