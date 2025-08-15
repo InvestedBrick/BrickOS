@@ -127,3 +127,21 @@ int sys_chdir(unsigned char* dir_name){
 
     return SYSCALL_SUCCESS;
 }
+
+int sys_rmfile(unsigned char* filename){
+    inode_t* file;
+
+    if (dir_contains_name(active_dir,filename)){
+        file = get_inode_by_relative_file_path(filename);
+    }else{
+        file = get_inode_by_full_file_path(filename);
+    }
+    if (!file) return SYSCALL_FAIL;
+    if (file->type != FS_TYPE_FILE) return SYSCALL_FAIL;
+    inode_t* parent_dir = get_parent_inode(file);
+
+    if (delete_file_by_inode(parent_dir,file) < 0) return SYSCALL_FAIL;
+
+    return SYSCALL_SUCCESS;
+
+}
