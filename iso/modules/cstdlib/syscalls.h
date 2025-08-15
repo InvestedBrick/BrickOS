@@ -101,4 +101,14 @@ int getdents(unsigned int fd,dirent_t* buffer,unsigned int size);
  *  else SYSCALL_SUCCESS
  */
 int chdir(unsigned char* dir_name);
+
+/**
+ * rmfile:
+ * Deletes what we colloquially call a file
+ * @param filename The full or relative path to the file
+ * @return SYSCALL_FAIL if something failed, 
+ * 
+ *  else SYSCALL_SUCCESS
+ */
+int rmfile(unsigned char* filename);
 #endif
