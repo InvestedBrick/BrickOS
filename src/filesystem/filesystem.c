@@ -738,13 +738,6 @@ int delete_dir(inode_t* parent_dir,unsigned char* name){
 
     return delete_dir_recursive(parent_dir,dir);
 }
-int delete_file(inode_t* parent_dir,unsigned char* name){
-    inode_t* inode = get_file_if_exists(parent_dir,name);
-    if(!inode) return FS_FILE_NOT_FOUND;
-
-    if(inode->type == FS_TYPE_DIR) return FILE_INVALID_TARGET;
-    return delete_file_by_inode(parent_dir,inode);
-}
 
 int delete_file_by_inode(inode_t* parent_dir,inode_t* inode){
 
@@ -777,8 +770,6 @@ int delete_file_by_inode(inode_t* parent_dir,inode_t* inode){
     unsigned int idx = vector_find(&inodes, (unsigned int)inode);
     vector_erase(&inodes,idx);
     kfree(inode);
-
-
 
     return FS_FILE_DELETION_SUCCESS;
 }
