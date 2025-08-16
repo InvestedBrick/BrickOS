@@ -104,7 +104,7 @@ int chdir(unsigned char* dir_name);
 
 /**
  * rmfile:
- * Deletes what we colloquially call a file
+ * Deletes a file or empty directory
  * @param filename The full or relative path to the file
  * @return SYSCALL_FAIL if something failed, 
  * 
