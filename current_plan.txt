@@ -1,6 +1,10 @@
 
-
-Create user shell
-    -> syscalls for dir switching, process execution, fork, dir entries etc...
-
-Implement dynamic linked code segments so that not every C code has to contain the entire stdlib
+plan:
+    [ ] recursive dir deletion
+    [ ] Graphics mode switch
+    [ ] mouse driver
+    [ ] window manager
+    [ ] running more processes
+    [ ] dynamic linked code
+    [ ] text editor
+    [ ] better fileystem
