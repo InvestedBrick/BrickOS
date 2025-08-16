@@ -84,7 +84,9 @@ inode_t* get_parent_inode(inode_t* child){
     return get_inode_by_id(name_pair->parent_id);
 }
 
-inode_t* get_inode_by_file_path(unsigned char* path,inode_t* inode){
+inode_t* get_inode_by_file_path(unsigned char* path,unsigned int inode_id){
+    
+    inode_t* inode = get_inode_by_id(inode_id);
     unsigned char name_buffer[256 + 1]; // max len of dir name is max of unsigned char + 1 for null terminator
     
     unsigned int path_idx = 0;
@@ -110,6 +112,7 @@ inode_t* get_inode_by_file_path(unsigned char* path,inode_t* inode){
         if (id == (unsigned int)-1) return 0;
 
         inode = get_inode_by_id(id);
+        if (!inode) return 0;
 
     }
 
@@ -117,11 +120,11 @@ inode_t* get_inode_by_file_path(unsigned char* path,inode_t* inode){
 }
 
 inode_t* get_inode_by_full_file_path(unsigned char* path) {
-    return get_inode_by_file_path(path,get_inode_by_id(FS_ROOT_DIR_ID));
+    return get_inode_by_file_path(path,FS_ROOT_DIR_ID);
 }
 
 inode_t* get_inode_by_relative_file_path(unsigned char* path){
-    return get_inode_by_file_path(path,active_dir);
+    return get_inode_by_file_path(path,active_dir->id);
 }
 
 unsigned int count_partially_used_big_sectors(unsigned int end){
@@ -637,7 +640,7 @@ int write_data_buffer_to_disk(inode_t* inode, unsigned char* buffer, unsigned in
         }else{
             sector = inode->data_sectors[sector_idx];
         }
-
+        if (!sector) break; // should only happend when removing last item from a dir
         write_sectors(ATA_PRIMARY_BUS_IO,1,&buffer[buffer_index],sector);
         buffer_index += ATA_SECTOR_SIZE;
         unsigned int remaining = buffer_size - bytes_written;
@@ -678,7 +681,17 @@ void erase_directory_entry(inode_t* dir, unsigned int entry_inode_id){
     *(unsigned int*)&buffer[0] = n_entries;
     dir->size -= data_len;
 
-    unsigned char last_sector_free = (buffer_offset % ATA_SECTOR_SIZE) < data_len;
+    // test if we should free the sector and if it is the first sector (now empty dir) also account for the 4 byte header
+    unsigned int first_sector_header = dir->data_sectors[1] == 0 ? sizeof(int) : 0;
+    unsigned char last_sector_free = ((buffer_offset - first_sector_header) % ATA_SECTOR_SIZE) <= data_len;
+    if (last_sector_free){
+        unsigned int sector_idx = buffer_offset / ATA_SECTOR_SIZE;
+        unsigned int sector = dir->data_sectors[sector_idx];
+        free_sector(sector);
+        dir->data_sectors[sector_idx] = 0;
+
+        if (first_sector_header) dir->size = 0; // directory has no entries now
+    }
     if (write_data_buffer_to_disk(dir,buffer,buffer_offset) != INTERNAL_FUNCTION_SUCCESS){
         error("Writing data to sector failed");
     }
@@ -741,6 +754,9 @@ int delete_dir(inode_t* parent_dir,unsigned char* name){
 
 int delete_file_by_inode(inode_t* parent_dir,inode_t* inode){
 
+    if (inode->type == FS_TYPE_DIR && inode->data_sectors[0] != 0)
+        return FS_FILE_DELETION_FAILED; // cant remote a non-empty dir
+
     if (inode->indirect_sector){
         read_sectors(ATA_PRIMARY_BUS_IO,1,last_read_sector,inode->indirect_sector);
         last_read_sector_idx = inode->indirect_sector;
@@ -754,7 +770,7 @@ int delete_file_by_inode(inode_t* parent_dir,inode_t* inode){
 
     for (unsigned int i = 0; i < NUM_DATA_SECTORS_PER_FILE;i++){
         unsigned int data_sector = inode->data_sectors[i];
-        if(data_sector) free_sector(data_sector);
+        if(data_sector) free_sector(data_sector); else break;
         
     }
 
