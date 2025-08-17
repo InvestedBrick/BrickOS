@@ -16,6 +16,50 @@ shell_command_t commands[] = {
     {0,0,0}
 };
 
+int delete_dir_recursive(unsigned char* dir_name){
+    int dir_fd = open(dir_name,FILE_FLAG_NONE);
+    if (chdir(dir_name) < 0) {
+        print("Invalid directory\n");
+        return -1;
+    }
+    if (dir_fd < 0) 
+        {print("Failed to open directory\n"); return -1;}
+    const unsigned int buffer_size = 512;
+    unsigned char* buffer = (unsigned char*)malloc(buffer_size);
+    int n_entries = getdents(dir_fd,(dirent_t*)buffer,buffer_size);
+    unsigned int bpos = 0;
+    for (int i = 0; i < n_entries;i++){
+        dirent_t* ent = (dirent_t*)(buffer + bpos);
+        if (ent->type == TYPE_FILE){
+            if (rmfile(ent->name) < 0) {
+                print("Failed to remove file '");
+                print(ent->name);
+                print("'\n");
+            }
+        }else{
+            if (delete_dir_recursive(ent->name) < 0){
+                print("Failed to remote directory '");
+                print(ent->name);
+                print("'\n");
+            }
+        }
+        bpos += ent->len;
+    }
+
+    free(buffer);
+    close(dir_fd);
+
+    chdir("..");
+    if (rmfile(dir_name) < 0) {
+        print("Failed to remove directory '");
+        print(dir_name);
+        print("'\n");
+        return -1;
+    }
+
+    return 0;
+}
+
 int argcheck(command_t* cmd,const char* msg){
     if (!cmd->args)
         {print(msg);return 1;}
@@ -82,8 +126,17 @@ void cmd_mkdir(command_t* cmd){
 void cmd_rm(command_t* cmd){
     if (argcheck(cmd,"Expected filename\n")) return;
 
-    if (rmfile(cmd->args[0].str) < 0) 
-        print("Failed to delete file\n");
+    unsigned char* filename = cmd->args[0].str;
+    if (cmd->n_args > 1){
+        if (streq(cmd->args[1].str,"-r")){
+            delete_dir_recursive(filename);
+        }else{
+            print("Invalid argument\n");
+        }
+    }else{
+        if (rmfile(cmd->args[0].str) < 0) 
+            print("Failed to delete file\n");
+    }
 }
 void free_command(command_t com){
     free(com.command.str);
