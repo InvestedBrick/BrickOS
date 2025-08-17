@@ -1,6 +1,6 @@
 
 plan:
-    [ ] recursive dir deletion
+    [X] recursive dir deletion
     [ ] Graphics mode switch
     [ ] mouse driver
     [ ] window manager
