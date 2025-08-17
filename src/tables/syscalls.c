@@ -91,7 +91,7 @@ int sys_getdents(user_process_t* p,unsigned int fd,dirent_t* ent_buffer,unsigned
     inode_t* inode = get_inode_by_id(open_file->inode_id);
     string_array_t* names = get_all_names_in_dir(inode);
 
-    if (!names) return SYSCALL_FAIL;
+    if (!names) return 0; // empty dir
 
     unsigned int total_size = 0;
     for (unsigned int i = 0; i < names->n_strings;i++)
