@@ -116,10 +116,7 @@ void interrupt_handler(interrupt_stack_frame_t* stack_frame) {
             acknowledge_PIC(stack_frame->interrupt_number);
             break;
         case INT_SOFTWARE: {
-            int ret_val = handle_software_interrupt(stack_frame);
-            if (ret_val != SYSCALL_SUCCESS){
-                stack_frame->eax = ret_val;
-            }
+            stack_frame->eax = handle_software_interrupt(stack_frame);
             break;
         }
         case INT_PAGE_FAULT:{
