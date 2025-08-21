@@ -7,7 +7,7 @@ SECTIONS {
     kernel_physical_start = .;
     kernel_virtual_start = . + 0xc0000000;
 
-    .multiboot ALIGN(4K) : {
+    .multiboot ALIGN(4) : {
         *(.multiboot)
     }
 
