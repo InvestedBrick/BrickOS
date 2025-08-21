@@ -60,15 +60,23 @@ void shutdown(){
 
 void kmain(multiboot_info_t* boot_info)
 {   
-    disable_cursor();
-    clear_screen();
+    if (!(boot_info->flags & (1 << 12))) { // check for RGB graphics mode
+        panic("RGB Setup failed!");
+    }
+
+    if (!(boot_info->framebuffer_type == 1)){
+        panic("Invalid framebuffer type");
+    }
+    
     // Serial port setup
     serial_configure_baud_rate(SERIAL_COM1_BASE,3);
     serial_configure_line(SERIAL_COM1_BASE);
     serial_configure_buffer(SERIAL_COM1_BASE);
     serial_configure_modem(SERIAL_COM1_BASE);
-
     log("Set up serial port");
+    
+    //disable_cursor();
+    //clear_screen();
 
     init_pit(DESIRED_STANDARD_FREQ);
     log("Initialized the PIT");
@@ -88,7 +96,18 @@ void kmain(multiboot_info_t* boot_info)
     unsigned int physical_alloc_start = calc_phys_alloc_start(boot_info);
     init_memory(physical_alloc_start ,boot_info->mem_upper * 1024);
     log("Initialized paged memory");
-    
+
+    init_framebuffer(boot_info,SCREEN_PIXEL_BUFFER_START);
+    log("Set up framebuffer");
+
+    for (unsigned int i = 0; i < 800;i++ ){
+        for (unsigned int j = 0; j < 600;j++){
+            write_pixel(i,j,0xffff0000);
+        }
+    }
+
+    panic("welp");
+
     // Set up kernel malloc
     init_kmalloc(MEMORY_PAGE_SIZE);
     log("Initialized kmalloc");
