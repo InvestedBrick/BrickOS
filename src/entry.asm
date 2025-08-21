@@ -1,8 +1,8 @@
 bits 32
 
-mboot_page_align equ 0x1
-mboot_mem_info equ 0x2
-mboot_use_gfx equ 0
+mboot_page_align equ (1 << 0)
+mboot_mem_info equ   (1 << 1)
+mboot_use_gfx equ    (1 << 2)
 
 mboot_magic equ 0x1badb002
 mboot_flags equ mboot_page_align | mboot_mem_info | mboot_use_gfx
@@ -13,12 +13,18 @@ align 4
     dd mboot_magic
     dd mboot_flags
     dd mboot_checksum
-    dd 0, 0, 0, 0, 0
 
-    dd 0 ; linear graphic mode
-    dd 800 ;width of screen
-    dd 600 ; height of screen
-    dd 32 ;depth
+    dd 0 ; header_addr
+    dd 0 ; load_addr
+    dd 0 ; load_end_addr
+    dd 0 ; bss_end_addr
+    dd 0 ; entry_addr
+
+    ; 1024x768x32
+    dd 0          ; mode_type: 0 = linear graphics, 1 = EGA text
+    dd 1024       ; width
+    dd 768       ; height
+    dd 32         ; depth (bits per pixel)
 
 section .bss
 
