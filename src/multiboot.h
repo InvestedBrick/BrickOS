@@ -35,7 +35,7 @@ typedef struct {
 
     union 
     {
-       multiboot_aout_symbol_table_t aout_sym;
+       //multiboot_aout_symbol_table_t aout_sym;
        multiboot_elf_section_header_table_t elf_sec;
     }u;
 
@@ -57,7 +57,20 @@ typedef struct {
     unsigned short vbe_interface_off;
     unsigned short vbe_interface_len;
 
-}multiboot_info_t;
+    unsigned long framebuffer_addr;
+    unsigned int framebuffer_pitch; // bytes per row
+    unsigned int framebuffer_width;
+    unsigned int framebuffer_height;
+    unsigned char framebuffer_bpp;
+    unsigned char framebuffer_type; // 0 = indexed. 1 = RGB, 2 = EGA text
+
+    unsigned char framebuffer_red_field_pos; // valid if framebuffer_type = 1
+    unsigned char framebuffer_red_mask_size;
+    unsigned char framebuffer_green_field_pos;
+    unsigned char framebuffer_green_mask_size;
+    unsigned char framebuffer_blue_field_pos;
+    unsigned char framebuffer_blue_mask_size;
+}__attribute__((packed)) multiboot_info_t;
 
 
 typedef struct{
