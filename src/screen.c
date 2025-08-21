@@ -2,11 +2,49 @@
 #include "io/io.h"
 #include "drivers/keyboard/keyboard.h"
 #include "filesystem/vfs/vfs.h"
+#include "util.h"
+#include "memory/memory.h"
+#include "multiboot.h"
 
+char* const g_fb = (char*)VIDEO_MEMORY_START;
 unsigned short g_cursor_pos = 0;
 unsigned char cursor_prev_idx;
 
-char* const g_fb = (char*)VIDEO_MEMORY_START;
+volatile unsigned char* fb = 0;
+unsigned int screen_width;
+unsigned int screen_height;
+unsigned int screen_bytes_per_row;
+unsigned char screen_bytespp;
+
+// preparation for multiple screens
+unsigned int screen_origin_x = 0;
+unsigned int screen_origin_y = 0;
+void map_framebuffer(unsigned int fb_phys,unsigned int fb_virt, unsigned int fb_size){
+    unsigned int n_pages = CEIL_DIV(fb_size,MEMORY_PAGE_SIZE);
+    for (unsigned int i = 0; i < n_pages;i++){
+        mem_map_page(fb_virt + i * MEMORY_PAGE_SIZE, fb_phys + i * MEMORY_PAGE_SIZE, PAGE_FLAG_WRITE | PAGE_FLAG_OWNER);
+    } 
+}
+
+void init_framebuffer(multiboot_info_t* mboot,unsigned int fb_start){
+
+    unsigned int fb_phys = (unsigned int)mboot->framebuffer_addr;
+    unsigned int fb_size = mboot->framebuffer_pitch * mboot->framebuffer_height;
+
+    fb = (volatile unsigned char*)(fb_start);
+    screen_width             = mboot->framebuffer_width;
+    screen_height            = mboot->framebuffer_height;
+    screen_bytes_per_row     = mboot->framebuffer_pitch;
+    screen_bytespp           = mboot->framebuffer_bpp / 8;
+    map_framebuffer(fb_phys,fb_start,fb_size);
+}
+
+void write_pixel(unsigned int x, unsigned int y, unsigned int color){
+    if (x >= screen_width || x < screen_origin_x) return;
+    if (y >= screen_height || y < screen_origin_y) return;
+
+    *(volatile unsigned int*)(fb + y * screen_bytes_per_row + x * screen_bytespp) = color;
+}
 
 void clamp_cursor() {
     if (g_cursor_pos > CURSOR_MAX) g_cursor_pos = CURSOR_MAX;
