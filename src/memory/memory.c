@@ -25,6 +25,11 @@ void mem_change_page_dir(unsigned int* pd){
     mem_set_current_page_dir(pd);
 }
 
+
+void flush_tlb(){
+    mem_change_page_dir(mem_get_current_page_dir());
+}
+
 void pmm_free_page_frame(unsigned int phys_addr){
     unsigned int frame = phys_addr / MEMORY_PAGE_SIZE;
     unsigned int byte = frame / 8;
