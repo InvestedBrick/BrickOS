@@ -3,6 +3,7 @@
 #define INCLUDE_SCREEN_H
 
 #define VIDEO_MEMORY_START 0xc00b8000 // need to remap due to allocated memory pages
+#define SCREEN_PIXEL_BUFFER_START 0xff000000
 
 #define SCREEN_ROWS 25
 #define SCREEN_COLUMNS 80
@@ -28,9 +29,29 @@
 #define CURSOR_MAX (SCREEN_PIXELS - 1)
 #define INVALID_ARGUMENT -1
 #include "filesystem/vfs/vfs.h"
+#include "multiboot.h"
 
 extern unsigned short g_cursor_pos;
 extern generic_file_t screen_file;
+
+/**
+ * init_framebuffer:
+ * Initializes the framebuffer
+ * @param mboot The multiboot information
+ * @param fb_start The start of the buffer in virtual memory
+ */
+void init_framebuffer(multiboot_info_t* mboot,unsigned int fb_start);
+
+/**
+ * write_pixel:
+ * Writes a pixel with a given color to the screen
+ * 
+ * @param x The x coordinate of the pixel
+ * @param y The y coordinate of the pixel
+ * @param color The color of the pixel (ARGB format)
+ */
+void write_pixel(unsigned int x, unsigned int y, unsigned int color);
+
 /**
 *  fb_write_cell:
 *  writes a char with given foreground and background color to position i in the framebuffer
