@@ -35,7 +35,7 @@ typedef struct {
 
     union 
     {
-       //multiboot_aout_symbol_table_t aout_sym;
+       multiboot_aout_symbol_table_t aout_sym;
        multiboot_elf_section_header_table_t elf_sec;
     }u;
 
@@ -62,8 +62,10 @@ typedef struct {
     unsigned int framebuffer_width;
     unsigned int framebuffer_height;
     unsigned char framebuffer_bpp;
-    unsigned char framebuffer_type; // 0 = indexed. 1 = RGB, 2 = EGA text
-
+    unsigned char framebuffer_type;
+    #define MULTIBOOT_FRAMEBUFFER_TYPE_INDEXED  0
+    #define MULTIBOOT_FRAMEBUFFER_TYPE_RGB      1
+    #define MULTIBOOT_FRAMEBUFFER_TYPE_EGA_TEXT 2
     unsigned char framebuffer_red_field_pos; // valid if framebuffer_type = 1
     unsigned char framebuffer_red_mask_size;
     unsigned char framebuffer_green_field_pos;
