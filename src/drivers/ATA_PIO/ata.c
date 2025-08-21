@@ -120,6 +120,6 @@ void write_sectors(unsigned short bus, unsigned char n_sectors, unsigned char* b
     await_bsy_clear(bus);
 
     unsigned char errors = inb(ATA_STATUS_PORT(bus));
-    if (errors & 0x1) warn("An error has occured during write or flush of a disj sector");
+    if (errors & 0x1) warn("An error has occured during write or flush of a disk sector");
     set_interrupt_status(old_int_status);
 }
