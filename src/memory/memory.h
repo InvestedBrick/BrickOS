@@ -6,6 +6,7 @@
 #define KERNEL_MALLOC_START 0xd0000000 // give the kernel some space
 #define KERNEL_MALLOC_END 0xf0000000 
 #define TEMP_KERNEL_COPY_ADDR 0xf0000000
+// video buffer is at 0xff000000
 #define REC_PAGE_DIR ((unsigned int*)0xfffff000)
 #define REC_PAGE_TABLE(i) ((unsigned int*) (0xffc00000) + ((i) * 0x400))
 
@@ -127,4 +128,11 @@ void mem_map_page_in_dir(unsigned int* page_dir, unsigned int virt_addr, unsigne
  * Do you really need an explanation for this?
  */
 void un_identity_map_first_page_table();
+
+
+/**
+ * flush_tlb:
+ * Refreshes the translation lookaside buffer
+ */
+void flush_tlb();
 #endif
