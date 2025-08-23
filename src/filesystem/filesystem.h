@@ -31,14 +31,14 @@
 #define BIT_CHECK(bitmap, idx) (bitmap[(idx)/8] & (1 << ((idx)%8)))
 
 
-extern uint8_t* last_read_sector;
+extern unsigned char* last_read_sector;
 extern uint32_t last_read_sector_idx;
 
 typedef struct{
     uint8_t big_sector_used_map[TOTAL_BIG_SECTORS / 8]; // 128 bytes as 1024-bit bitmap
     uint8_t big_sector_full_map[TOTAL_BIG_SECTORS / 8];
     uint8_t inode_sector_map[RESERVED_INODE_SECTORS]; // (100 sectors * 8 inodes/sector) / 8 bits/byte
-    uint8_t* sector_bitmaps[TOTAL_BIG_SECTORS];   // pointers to 64-byte (512-bit) normal sector bitmaps
+    unsigned char* sector_bitmaps[TOTAL_BIG_SECTORS];   // pointers to 64-byte (512-bit) normal sector bitmaps
 }sectors_headerdata_t;
 
 #define FS_DATA_START_LBA ((RESERVED_SECTORS) * 512)
@@ -83,14 +83,14 @@ typedef struct {
     uint32_t parent_id;
     uint32_t id;
     uint8_t length;
-    uint8_t* name;
+    unsigned char* name;
 }inode_name_pair_t;
 
 typedef struct {
     uint32_t inode_id;
     uint32_t len;
     uint32_t type;
-    uint8_t name[];
+    unsigned char name[];
 } dirent_t;
 // This should be 8
 #define FS_INODES_PER_SECTOR (ATA_SECTOR_SIZE / sizeof(inode_t)) 
@@ -127,7 +127,7 @@ inode_name_pair_t* get_name_by_inode_id(uint32_t id);
  * @param name The name of the directory/file
  * 
  */
-uint32_t get_inode_id_by_name(uint32_t parent_id, uint8_t* name);
+uint32_t get_inode_id_by_name(uint32_t parent_id, unsigned char*);
 
 /**
  * get_inode_by_id: 
@@ -193,7 +193,7 @@ string_array_t* get_all_names_in_dir(inode_t* dir);
  * @param perms The permissions of the file
  * @return whether the file creation was successful (return value == 0) or not (return value < 0)
  */
-int create_file(inode_t* parent_dir, uint8_t* name, uint8_t name_length,uint8_t type,uint8_t perms);
+int create_file(inode_t* parent_dir, unsigned char*, uint8_t name_length,uint8_t type,uint8_t perms);
 
 /**
  * write_to_disk: 
@@ -216,7 +216,7 @@ inode_t* get_parent_inode(inode_t* child);
  * @param path The full file path
  * @return The inode pointer
  */
-inode_t* get_inode_by_full_file_path(uint8_t* path);
+inode_t* get_inode_by_full_file_path(unsigned char* path);
 
 
 /**
@@ -225,7 +225,7 @@ inode_t* get_inode_by_full_file_path(uint8_t* path);
  * @param path The file path starting from the active directory
  * @return The inode pointer
  */
-inode_t* get_inode_by_relative_file_path(uint8_t* path);
+inode_t* get_inode_by_relative_file_path(unsigned char* path);
 
 /**
  * dir_contains_name: 
@@ -237,7 +237,7 @@ inode_t* get_inode_by_relative_file_path(uint8_t* path);
  * 
  *         0 of the directory does not contain the name
  */
-uint8_t dir_contains_name(inode_t* dir,uint8_t* name);
+uint8_t dir_contains_name(inode_t* dir,unsigned char*);
 
 
 
@@ -248,7 +248,7 @@ uint8_t dir_contains_name(inode_t* dir,uint8_t* name);
  * @param name The name of the directory / path to the directory
  * @return If the deletion was successful (return value == 0) or not (return value < 0)
  */
-int delete_dir(inode_t* parent_dir,uint8_t* name);
+int delete_dir(inode_t* parent_dir,unsigned char*);
 
 /**
  * delete_file_by_inode: 
@@ -269,7 +269,7 @@ int delete_file_by_inode(inode_t* parent_dir,inode_t* inode);
  * 
  * @return A pointer to the file inode
  */
-inode_t* get_file_if_exists(inode_t* parent_dir,uint8_t* name);
+inode_t* get_file_if_exists(inode_t* parent_dir,unsigned char*);
 
 
 /**

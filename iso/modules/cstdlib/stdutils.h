@@ -6,7 +6,7 @@
 #include <stdint.h>
 typedef struct {
     uint32_t length;
-    uint8_t* str;
+    unsigned char* str;
 } string_t;
 
 uint32_t strlen(const char* str);

@@ -58,7 +58,7 @@ void handle_keyboard_interrupt();
  * 
  *         0 if failed
  */
-int kb_buffer_pop(char* c);
+int kb_buffer_pop(unsigned char* c);
 
 /**
  * kb_buffer_is_empty:

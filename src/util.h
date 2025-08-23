@@ -6,7 +6,7 @@
 #include <stdint.h>
 typedef struct {
     uint32_t length;
-    uint8_t* str;
+    unsigned char* str;
 } string_t;
 
 typedef struct {
@@ -55,7 +55,7 @@ void* memmove(void* dest, void* src, uint32_t n);
  * @return 1 if both strings are equal
  *         0 if they are not equal 
  */
-uint8_t streq(const char* str1, const char* str2);
+uint8_t streq(const unsigned char* str1, const unsigned char* str2);
 
 /**
  * strneq: 
@@ -68,7 +68,7 @@ uint8_t streq(const char* str1, const char* str2);
  * @return 1 if both strings are equal
  *         0 if they are not equal 
  */
-uint8_t strneq(const char* str1, const char* str2, uint32_t len_1, uint32_t len_2); 
+uint8_t strneq(const unsigned char* str1, const unsigned char* str2, uint32_t len_1, uint32_t len_2); 
 
 /**
  * strlen: 
@@ -76,7 +76,7 @@ uint8_t strneq(const char* str1, const char* str2, uint32_t len_1, uint32_t len_
  * @param str The string
  * @return The length of the string
  */
-uint32_t strlen(uint8_t* str);
+uint32_t strlen(unsigned char* str);
 
 /**
  * Frees a string array assuming the array, the strings and the char* are heap allocated
@@ -94,5 +94,5 @@ void free_string_arr(string_array_t* str_arr);
  *         (uint32_t)-1 of not found
  */
 
-uint32_t find_char(uint8_t* str,uint8_t c);
+uint32_t find_char(unsigned char* str,unsigned char c);
 #endif

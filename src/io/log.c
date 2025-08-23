@@ -1,20 +1,20 @@
 #include "log.h"
 
-void serial_write_with_prefix(const uint8_t* prefix, const uint8_t* msg,uint16_t com){
+void serial_write_with_prefix(const unsigned char* prefix, const unsigned char* msg,uint16_t com){
     serial_write(prefix,com);
     serial_write(msg,com);
     serial_write("\n",com);
 }
 
-void log(const uint8_t* msg){
+void log(const unsigned char* msg){
     serial_write_with_prefix("[LOG] ",msg,SERIAL_COM1_BASE);
 }
 
-void warn(const uint8_t* msg){
+void warn(const unsigned char* msg){
     serial_write_with_prefix("[WARN] ",msg,SERIAL_COM1_BASE);
 }
 
-void error(const uint8_t* msg){
+void error(const unsigned char* msg){
     serial_write_with_prefix("[ERROR] ",msg,SERIAL_COM1_BASE);
 }
 
@@ -35,7 +35,7 @@ void log_uint(uint32_t num){
     log(ascii);
 }
 
-void panic(const uint8_t* msg){
+void panic(const unsigned char* msg){
     serial_write_with_prefix("[PANIC] ",msg,SERIAL_COM1_BASE);
     while(1){};
 }

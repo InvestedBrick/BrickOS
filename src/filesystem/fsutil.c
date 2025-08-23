@@ -2,7 +2,7 @@
 #include "filesystem.h"
 #include "../memory/kmalloc.h"
 #include "../util.h"
-int get_full_active_path(uint8_t* path_buffer, uint32_t buf_len){
+int get_full_active_path(unsigned char* path_buffer, uint32_t buf_len){
     string_array_t* str_arr = (string_array_t*)kmalloc(sizeof(string_array_t));
     inode_t* inode = active_dir;
 
@@ -24,7 +24,7 @@ int get_full_active_path(uint8_t* path_buffer, uint32_t buf_len){
         inode_name_pair_t* name_pair = get_name_by_inode_id(inode->id);
         
         str_arr->strings[str_arr_idx].length = name_pair->length;
-        str_arr->strings[str_arr_idx].str = (uint8_t*)kmalloc(name_pair->length);
+        str_arr->strings[str_arr_idx].str = (unsigned char*)kmalloc(name_pair->length);
 
         memcpy(str_arr->strings[str_arr_idx].str,name_pair->name,name_pair->length);
         str_arr_idx++;

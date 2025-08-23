@@ -8,7 +8,7 @@ typedef struct {
     uint32_t inode_id;
     uint32_t len;
     uint32_t type;
-    uint8_t name[];
+    unsigned char name[];
 } dirent_t;
 
 #endif

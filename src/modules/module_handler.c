@@ -20,15 +20,15 @@ void save_module_binaries(multiboot_info_t* boot_info){
     for (uint32_t i = 0; i < module_count;i++){
         module_binary_structs[i].size = modules[i].mod_end - modules[i].mod_start;
         
-        uint8_t* cmd_line = (uint8_t*)modules[i].cmdline;
+        unsigned char* cmd_line = (unsigned char*)modules[i].cmdline;
         // looks like "/modules/<module name>"
         uint32_t name_start_idx = find_char(&cmd_line[1],'/') + 2; // skip past the first '/' and return index to the first char of the name
         
-        if (name_start_idx == (uint32_t)-1) 
+        if (name_start_idx == ((uint32_t)-1) + 2) 
             {error("Finding name for module failed");}
         else{
             uint32_t mod_name_len = strlen(&cmd_line[name_start_idx]);
-            module_binary_structs[i].cmdline = (uint8_t*)kmalloc(mod_name_len + 1);
+            module_binary_structs[i].cmdline = (unsigned char*)kmalloc(mod_name_len + 1);
             memcpy(module_binary_structs[i].cmdline,&cmd_line[name_start_idx],mod_name_len);
             module_binary_structs[i].cmdline[mod_name_len] = '\0';
             
@@ -37,7 +37,7 @@ void save_module_binaries(multiboot_info_t* boot_info){
         module_binary_structs[i].start = (uint32_t)kmalloc(module_binary_structs[i].size);
 
         // copy the module binary for future use
-        memcpy((uint8_t*)module_binary_structs[i].start,(uint8_t*)modules[i].mod_start,module_binary_structs[i].size);
+        memcpy((unsigned char*)module_binary_structs[i].start,(unsigned char*)modules[i].mod_start,module_binary_structs[i].size);
 
     }
 
@@ -52,7 +52,7 @@ void write_module_binaries_to_file(){
         
         inode_t* dir_save = change_active_dir(module_dir);
         
-        uint8_t* name = module_binary_structs[i].cmdline;
+        unsigned char* name = (unsigned char*)module_binary_structs[i].cmdline;
         uint32_t len = strlen(name);
         if (dir_contains_name(module_dir,name)){
             // if it is already here, remove it
@@ -67,7 +67,7 @@ void write_module_binaries_to_file(){
         if (fd < 0) 
             {error("Failed to open module binary file"); continue;}
 
-        ret_code = sys_write(&global_kernel_process,fd,(uint8_t*)module_binary_structs[i].start,module_binary_structs[i].size);
+        ret_code = sys_write(&global_kernel_process,fd,(unsigned char*)module_binary_structs[i].start,module_binary_structs[i].size);
         if (ret_code < 0) 
             {error("Failed to write to module binary file"); continue;}
         

@@ -55,7 +55,7 @@ void* mmap(uint32_t size){
     );
 }
 
-void getcwd(uint8_t* buffer, uint32_t size){
+void getcwd(unsigned char* buffer, uint32_t size){
     asm volatile (
         "int $0x30"
         :
@@ -73,7 +73,7 @@ int getdents(uint32_t fd,dirent_t* buffer,uint32_t size){
     );
 }
 
-int chdir(uint8_t* dir_name){
+int chdir(unsigned char* dir_name){
     asm volatile (
         "int $0x30"
         :
@@ -82,7 +82,7 @@ int chdir(uint8_t* dir_name){
     );
 }
 
-int rmfile(uint8_t* filename){
+int rmfile(unsigned char* filename){
     asm volatile (
         "int $0x30"
         :

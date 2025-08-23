@@ -76,7 +76,7 @@ void* mmap(uint32_t size);
  * @param buf_len The length of the buffer
  * 
  */
-void getcwd(uint8_t* buffer, uint32_t buf_len);
+void getcwd(unsigned char* buffer, uint32_t buf_len);
 
 /**
  * getdents:
@@ -100,7 +100,7 @@ int getdents(uint32_t fd,dirent_t* buffer,uint32_t size);
  * 
  *  else SYSCALL_SUCCESS
  */
-int chdir(uint8_t* dir_name);
+int chdir(unsigned char* dir_name);
 
 /**
  * rmfile:
@@ -110,5 +110,5 @@ int chdir(uint8_t* dir_name);
  * 
  *  else SYSCALL_SUCCESS
  */
-int rmfile(uint8_t* filename);
+int rmfile(unsigned char* filename);
 #endif

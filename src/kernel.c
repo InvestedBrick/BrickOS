@@ -75,9 +75,6 @@ void kmain(multiboot_info_t* boot_info)
     serial_configure_modem(SERIAL_COM1_BASE);
     log("Set up serial port");
     
-    //disable_cursor();
-    //clear_screen();
-
     init_pit(DESIRED_STANDARD_FREQ);
     log("Initialized the PIT");
 
@@ -100,15 +97,7 @@ void kmain(multiboot_info_t* boot_info)
 
     init_framebuffer(boot_info,SCREEN_PIXEL_BUFFER_START);
     log("Set up framebuffer");
-    uint32_t color = VBE_COLOR_BLACK;
-    for (uint32_t i = 0; i < boot_info->framebuffer_height;i++ ){
-        for (uint32_t j = 0; j < boot_info->framebuffer_width;j++){
-            write_pixel(j,i,color);
-        }
-    }
-
-    print_bitmap();
-    panic("welp");
+    clear_screen(VBE_COLOR_BLACK);
 
     // Set up kernel malloc
     init_kmalloc(MEMORY_PAGE_SIZE);
@@ -122,7 +111,6 @@ void kmain(multiboot_info_t* boot_info)
     
     init_user_process_vector();
     log("Initialized user process vector");
-    
     
     create_kernel_process();
     log("Set up kernel process");

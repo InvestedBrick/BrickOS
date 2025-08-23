@@ -13,7 +13,7 @@
 #include "../memory/kmalloc.h"
 
 //TODO: provide actually helpful error messages
-int sys_write(user_process_t* p,uint32_t fd, uint8_t* buf, uint32_t size){
+int sys_write(user_process_t* p,uint32_t fd, unsigned char* buf, uint32_t size){
     if (fd >= MAX_FDS) return SYSCALL_FAIL;
 
     generic_file_t* file = p->fd_table[fd];
@@ -22,7 +22,7 @@ int sys_write(user_process_t* p,uint32_t fd, uint8_t* buf, uint32_t size){
 
     return file->ops->write(file,buf,size);
 }
-int sys_read(user_process_t* p,uint32_t fd, uint8_t* buf, uint32_t size){
+int sys_read(user_process_t* p,uint32_t fd, unsigned char* buf, uint32_t size){
     if (fd >= MAX_FDS) return SYSCALL_FAIL;
 
     generic_file_t* file = p->fd_table[fd];
@@ -32,7 +32,7 @@ int sys_read(user_process_t* p,uint32_t fd, uint8_t* buf, uint32_t size){
     return file->ops->read(file,buf,size);
 }
 
-int sys_open(user_process_t* p,uint8_t* filepath, uint8_t flags){
+int sys_open(user_process_t* p,unsigned char* filepath, uint8_t flags){
     generic_file_t* file = fs_open(filepath,flags);
 
     if (!file) return SYSCALL_FAIL;
@@ -76,7 +76,7 @@ int sys_mmap(user_process_t* p,uint32_t size){
     return ((int)p->page_alloc_start  - (MEMORY_PAGE_SIZE * pages_to_alloc)); // int conversion (kinda) safe because surely a single process wont allocate 2gb of RAM when we only hav 512 MB
 }
 
-int sys_getcwd(uint8_t* buffer, uint32_t buf_len){
+int sys_getcwd(unsigned char* buffer, uint32_t buf_len){
     return get_full_active_path(buffer,buf_len);
 }
 
@@ -112,7 +112,7 @@ int sys_getdents(user_process_t* p,uint32_t fd,dirent_t* ent_buffer,uint32_t siz
     return names->n_strings;
 }
 
-int sys_chdir(uint8_t* dir_name){
+int sys_chdir(unsigned char* dir_name){
     inode_t* new_dir;
 
     if (dir_contains_name(active_dir,dir_name) || strneq(dir_name,"..",2,2)){
@@ -128,7 +128,7 @@ int sys_chdir(uint8_t* dir_name){
     return SYSCALL_SUCCESS;
 }
 
-int sys_rmfile(uint8_t* filename){
+int sys_rmfile(unsigned char* filename){
     inode_t* file;
 
     if (dir_contains_name(active_dir,filename)){

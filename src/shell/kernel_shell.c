@@ -18,10 +18,10 @@ void free_command(command_t com){
     kfree(com.args);
 }
 
-string_t parse_word(uint8_t* line, uint8_t start_idx, uint32_t line_length){
+string_t parse_word(unsigned char* line, uint8_t start_idx, uint32_t line_length){
     string_t word;
     word.length = 0;
-    uint8_t* buffer = (uint8_t*)kmalloc(line_length + 1);
+    unsigned char* buffer = (unsigned char*)kmalloc(line_length + 1);
     memset(buffer,0,line_length + 1);
 
     for (uint32_t i = start_idx; i < line_length && line[i] != ' '  ;i++){
@@ -29,7 +29,7 @@ string_t parse_word(uint8_t* line, uint8_t start_idx, uint32_t line_length){
         word.length++;
     }
 
-    word.str = (uint8_t*)kmalloc(word.length + 1);
+    word.str = (unsigned char*)kmalloc(word.length + 1);
     memcpy(word.str,buffer,word.length);
     word.str[word.length] = '\0';
 
@@ -38,7 +38,7 @@ string_t parse_word(uint8_t* line, uint8_t start_idx, uint32_t line_length){
     return word;
 }
 
-command_t parse_line(uint8_t* line,uint32_t line_length){
+command_t parse_line(unsigned char* line,uint32_t line_length){
     command_t comd;
     comd.n_args = 0;
     // skip any leading spaces
@@ -77,7 +77,7 @@ command_t parse_line(uint8_t* line,uint32_t line_length){
 
 }
 
-void readline(uint8_t* line){
+void readline(unsigned char* line){
     uint32_t line_idx = 0;
     char ch;
     while(1){
@@ -151,7 +151,7 @@ void run_file(command_t comd){
 
     if (!(file->perms & FS_FILE_PERM_EXECUTABLE)) {write_string("File is not executable",22); newline();return;}
 
-    uint8_t* binary = (uint8_t*)kmalloc(file->size);
+    unsigned char* binary = (unsigned char*)kmalloc(file->size);
     
     int fd = open(comd.args[0].str,FILE_FLAG_READ);
 
@@ -196,7 +196,7 @@ string_t get_full_active_path(){
         inode_name_pair_t* name_pair = get_name_by_inode_id(inode->id);
         
         str_arr->strings[str_arr_idx].length = name_pair->length;
-        str_arr->strings[str_arr_idx].str = (uint8_t*)kmalloc(name_pair->length);
+        str_arr->strings[str_arr_idx].str = (unsigned char*)kmalloc(name_pair->length);
 
         memcpy(str_arr->strings[str_arr_idx].str,name_pair->name,name_pair->length);
         str_arr_idx++;
@@ -209,14 +209,14 @@ string_t get_full_active_path(){
 
     // str_arr now contains all the strings in reverse order
 
-    uint8_t* path;
+    unsigned char* path;
     uint32_t path_size = 0;
     
     for (uint32_t i = 0; i < str_counter;i++){
         path_size += str_arr->strings[i].length + 1; // one more for the '/' 
     }
 
-    path = (uint8_t*)kmalloc(path_size);
+    path = (unsigned char*)kmalloc(path_size);
     
     uint32_t path_idx = 0;
     for(int i = str_counter - 1;i >= 0;i--){
@@ -235,7 +235,7 @@ string_t get_full_active_path(){
 } 
 
 void start_shell(){
-    uint8_t* line = kmalloc(SCREEN_COLUMNS + 1);
+    unsigned char* line = kmalloc(SCREEN_COLUMNS + 1);
     newline(); 
     command_t comd;
     while (1){

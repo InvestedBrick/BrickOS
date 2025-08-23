@@ -16,7 +16,7 @@ shell_command_t commands[] = {
     {0,0,0}
 };
 
-int delete_dir_recursive(uint8_t* dir_name){
+int delete_dir_recursive(unsigned char* dir_name){
     int dir_fd = open(dir_name,FILE_FLAG_NONE);
     if (chdir(dir_name) < 0) {
         print("Invalid directory\n");
@@ -25,7 +25,7 @@ int delete_dir_recursive(uint8_t* dir_name){
     if (dir_fd < 0) 
         {print("Failed to open directory\n"); return -1;}
     const uint32_t buffer_size = 512;
-    uint8_t* buffer = (uint8_t*)malloc(buffer_size);
+    unsigned char* buffer = (unsigned char*)malloc(buffer_size);
     int n_entries = getdents(dir_fd,(dirent_t*)buffer,buffer_size);
     uint32_t bpos = 0;
     for (int i = 0; i < n_entries;i++){
@@ -84,7 +84,7 @@ void cmd_ls(command_t* cmd){
 
     if (dir_fd < 0) 
         {print("Failed to open directory\n"); return;}
-    uint8_t buffer[1024];
+    unsigned char buffer[1024];
     int n_entries = getdents(dir_fd,(dirent_t*)buffer,sizeof(buffer));
     if (n_entries == -1) return; // dir is empty
     uint32_t bpos = 0;
@@ -126,7 +126,7 @@ void cmd_mkdir(command_t* cmd){
 void cmd_rm(command_t* cmd){
     if (argcheck(cmd,"Expected filename\n")) return;
 
-    uint8_t* filename = cmd->args[0].str;
+    unsigned char* filename = cmd->args[0].str;
     if (cmd->n_args > 1){
         if (streq(cmd->args[1].str,"-r")){
             delete_dir_recursive(filename);
@@ -146,10 +146,10 @@ void free_command(command_t com){
     free(com.args);
 }
 
-string_t parse_word(uint8_t* line, uint8_t start_idx, uint32_t line_length){
+string_t parse_word(unsigned char* line, uint8_t start_idx, uint32_t line_length){
     string_t word;
     word.length = 0;
-    uint8_t* buffer = (uint8_t*)malloc(line_length + 1);
+    unsigned char* buffer = (unsigned char*)malloc(line_length + 1);
     memset(buffer,0,line_length + 1);
 
     for (uint32_t i = start_idx; i < line_length && line[i] != ' '  ;i++){
@@ -157,7 +157,7 @@ string_t parse_word(uint8_t* line, uint8_t start_idx, uint32_t line_length){
         word.length++;
     }
 
-    word.str = (uint8_t*)malloc(word.length + 1);
+    word.str = (unsigned char*)malloc(word.length + 1);
     memcpy(word.str,buffer,word.length);
     word.str[word.length] = '\0';
 
@@ -166,7 +166,7 @@ string_t parse_word(uint8_t* line, uint8_t start_idx, uint32_t line_length){
     return word;
 }
 
-command_t parse_line(uint8_t* line,uint32_t line_length){
+command_t parse_line(unsigned char* line,uint32_t line_length){
     command_t comd;
     comd.n_args = 0;
     // skip any leading spaces
@@ -208,8 +208,8 @@ command_t parse_line(uint8_t* line,uint32_t line_length){
 __attribute__((section(".text.start")))
 void main(){
     print("\nBrickOS Shell started\n");
-    uint8_t* line = (uint8_t*)malloc(SCREEN_COLUMNS + 1);
-    uint8_t* dir_buffer = (uint8_t*)malloc(100);
+    unsigned char* line = (unsigned char*)malloc(SCREEN_COLUMNS + 1);
+    unsigned char* dir_buffer = (unsigned char*)malloc(100);
     command_t comd;
     while(1){
         memset(line,0x0,SCREEN_COLUMNS + 1);
@@ -226,7 +226,7 @@ void main(){
         
         if (!comd.command.length) continue;
 
-        uint8_t* main_cmd = comd.command.str;
+        unsigned char* main_cmd = comd.command.str;
         uint8_t found = 0;
         if (streq(main_cmd,"exit")){
             break;

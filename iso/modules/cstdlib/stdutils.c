@@ -21,7 +21,7 @@ uint8_t streq(const char* str1, const char* str2){
 }
 
 void* memset(void* dest, int val, uint32_t n){
-    uint8_t* p = dest;
+    unsigned char* p = dest;
     for(uint32_t i = 0; i < n;i++){
         p[i] = (uint8_t)val;
     }
@@ -30,8 +30,8 @@ void* memset(void* dest, int val, uint32_t n){
 
 void* memcpy(void* dest,void* src, uint32_t n){
     if (n == 0) return dest;
-    uint8_t* _dest = dest;
-    uint8_t* _src = src;
+    unsigned char* _dest = dest;
+    unsigned char* _src = src;
 
     for (uint32_t i = 0; i < n;i++){
         _dest[i] = _src[i];

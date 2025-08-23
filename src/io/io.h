@@ -114,6 +114,6 @@ int serial_is_transmit_fifo_empty(uint32_t com);
  * @param data The string ptr
  * @param com The COM port
 */
-void serial_write(const uint8_t* data, uint16_t com);
+void serial_write(const unsigned char* data, uint16_t com);
 
 #endif

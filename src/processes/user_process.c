@@ -76,7 +76,7 @@ void free_pid(uint32_t pid){
 }
 
 
-uint32_t create_user_process(uint8_t* binary, uint32_t size,uint8_t* process_name) {
+uint32_t create_user_process(unsigned char* binary, uint32_t size,unsigned char* process_name) {
     uint32_t int_save = get_interrupt_status();
     disable_interrupts();
 // To setup a user process:
@@ -102,7 +102,7 @@ uint32_t create_user_process(uint8_t* binary, uint32_t size,uint8_t* process_nam
     process->running = 0;
     process->kernel_stack = kernel_stack;
     uint32_t name_len = strlen(process_name);
-    process->process_name = (uint8_t*)kmalloc(name_len + 1);
+    process->process_name = (unsigned char*)kmalloc(name_len + 1);
     memcpy(process->process_name,process_name,name_len + 1);
 
     int pid = get_pid();
@@ -214,7 +214,7 @@ void run(char* filepath){
         return;
     }
 
-    uint8_t* binary = (uint8_t*)kmalloc(file->size);
+    unsigned char* binary = (unsigned char*)kmalloc(file->size);
     int fd = sys_open(&global_kernel_process,filepath,FILE_FLAG_READ);
 
     if (fd < 0){

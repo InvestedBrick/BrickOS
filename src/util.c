@@ -3,7 +3,7 @@
 #include "io/log.h"
 
 void* memset(void* dest, int val, uint32_t n){
-    uint8_t* p = dest;
+    unsigned char* p = dest;
     for(uint32_t i = 0; i < n;i++){
         p[i] = (uint8_t)val;
     }
@@ -12,8 +12,8 @@ void* memset(void* dest, int val, uint32_t n){
 
 void* memcpy(void* dest,void* src, uint32_t n){
     if (n == 0) return dest;
-    uint8_t* _dest = dest;
-    uint8_t* _src = src;
+    unsigned char* _dest = dest;
+    unsigned char* _src = src;
 
     for (uint32_t i = 0; i < n;i++){
         _dest[i] = _src[i];
@@ -25,8 +25,8 @@ void* memcpy(void* dest,void* src, uint32_t n){
 void* memmove(void* dest, void* src, uint32_t n) {
     if (n == 0) return dest;
 
-    uint8_t* _dest = dest;
-    uint8_t* _src = src;
+    unsigned char* _dest = dest;
+    unsigned char* _src = src;
 
     if (_dest < _src) {
         // Forward copy
@@ -43,7 +43,7 @@ void* memmove(void* dest, void* src, uint32_t n) {
     return dest;
 }
 
-uint8_t streq(const char* str1, const char* str2){
+uint8_t streq(const unsigned char* str1, const unsigned char* str2){
     uint32_t i = 0;
     while(1){
         if (str1[i] != str2[i]) return 0;
@@ -57,7 +57,7 @@ uint8_t streq(const char* str1, const char* str2){
     return 1;
 
 }
-uint8_t strneq(const char* str1, const char* str2, uint32_t len_1, uint32_t len_2){
+uint8_t strneq(const unsigned char* str1, const unsigned char* str2, uint32_t len_1, uint32_t len_2){
     uint32_t max_len = len_1 > len_2 ? len_1 : len_2;
 
     for (uint32_t i = 0; i < max_len;i++){
@@ -67,7 +67,7 @@ uint8_t strneq(const char* str1, const char* str2, uint32_t len_1, uint32_t len_
     }
     return 1;
 }
-uint32_t strlen(uint8_t* str){
+uint32_t strlen(unsigned char* str){
     uint32_t len = 0;
     while(str[len] != 0){len++;}
     return len;
@@ -81,7 +81,7 @@ void free_string_arr(string_array_t* str_arr){
     kfree(str_arr);
 }
 
-uint32_t find_char(uint8_t* str,uint8_t c){
+uint32_t find_char(unsigned char* str,unsigned char c){
     for(uint32_t i = 0; str[i] != '\0';i++){
         if (str[i] == c) return i;
     }

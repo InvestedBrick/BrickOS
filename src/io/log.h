@@ -4,25 +4,25 @@
 
 #include "io.h"
 
-void serial_write_with_prefix(const uint8_t* prefix, const uint8_t* msg,uint16_t com);
+void serial_write_with_prefix(const unsigned char* prefix, const unsigned char* msg,uint16_t com);
 
 /**
  * log - logs a message to the COM1 serial port
  * @param msg The message to log 
  */
-void log(const uint8_t* msg);
+void log(const unsigned char* msg);
 
 /**
  * warn - logs a warning to the COM1 serial port
  * @param msg The warning
  */
-void warn(const uint8_t* msg);
+void warn(const unsigned char* msg);
 
 /**
  * error - logs an error to the COM1 serial port
  * @param msg The error
  */
-void error(const uint8_t* msg);
+void error(const unsigned char* msg);
 
 /**
  * log_uint:
@@ -36,5 +36,5 @@ void log_uint(uint32_t num);
  * panic: 
  * Something went really wrong, spins in place eternally
  */
-void panic(const uint8_t* msg);
+void panic(const unsigned char* msg);
 #endif

@@ -21,7 +21,7 @@ typedef struct {
  * @param flags flags for the file (R/W/A/C)
  * @return The file desciptor
  */
-generic_file_t* fs_open(uint8_t* filepath,uint8_t flags);
+generic_file_t* fs_open(unsigned char* filepath,uint8_t flags);
 
 
 /**
@@ -32,7 +32,7 @@ generic_file_t* fs_open(uint8_t* filepath,uint8_t flags);
  * @param size The number of bytes to write
  * @return The number of bytes written
  */
-int fs_write(generic_file_t* file, uint8_t* buffer,uint32_t size);
+int fs_write(generic_file_t* file, unsigned char* buffer,uint32_t size);
 
 /**
  * fs_close: 
@@ -53,7 +53,7 @@ int fs_close(generic_file_t* file);
  * 
  * @return The number of bytes read
  */
-int fs_read(generic_file_t* file, uint8_t* buffer, uint32_t size);
+int fs_read(generic_file_t* file, unsigned char* buffer, uint32_t size);
 
 
 #endif

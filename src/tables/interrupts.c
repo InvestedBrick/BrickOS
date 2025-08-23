@@ -74,23 +74,23 @@ int handle_software_interrupt(interrupt_stack_frame_t* stack_frame){
     case SYS_EXIT: 
         return sys_exit(get_current_user_process(),stack_frame);
     case SYS_OPEN:
-        return sys_open(get_current_user_process(),(uint8_t*)stack_frame->ebx,(uint8_t)stack_frame->ecx);
+        return sys_open(get_current_user_process(),(unsigned char*)stack_frame->ebx,(uint8_t)stack_frame->ecx);
     case SYS_CLOSE:
         return sys_close(get_current_user_process(),stack_frame->ebx);
     case SYS_READ:
-        return sys_read(get_current_user_process(),stack_frame->ebx,(uint8_t*)stack_frame->ecx,stack_frame->edx);
+        return sys_read(get_current_user_process(),stack_frame->ebx,(unsigned char*)stack_frame->ecx,stack_frame->edx);
     case SYS_WRITE:
-        return sys_write(get_current_user_process(),stack_frame->ebx,(uint8_t*)stack_frame->ecx,stack_frame->edx);
+        return sys_write(get_current_user_process(),stack_frame->ebx,(unsigned char*)stack_frame->ecx,stack_frame->edx);
     case SYS_ALLOC_PAGE:
         return sys_mmap(get_current_user_process(),stack_frame->ebx);
     case SYS_GETCWD:
-        return sys_getcwd((uint8_t*)stack_frame->ebx, stack_frame->ecx);
+        return sys_getcwd((unsigned char*)stack_frame->ebx, stack_frame->ecx);
     case SYS_GETDENTS:
         return sys_getdents(get_current_user_process(),stack_frame->ebx,(dirent_t*)stack_frame->ecx,stack_frame->edx);
     case SYS_CHDIR:
-        return sys_chdir((uint8_t*)stack_frame->ebx);
+        return sys_chdir((unsigned char*)stack_frame->ebx);
     case SYS_RMFILE:
-        return sys_rmfile((uint8_t*)stack_frame->ebx);
+        return sys_rmfile((unsigned char*)stack_frame->ebx);
     default:
         break;
     }

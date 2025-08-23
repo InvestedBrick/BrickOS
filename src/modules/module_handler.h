@@ -6,7 +6,7 @@
 typedef struct {
     uint32_t size;
     uint32_t start;
-    uint8_t* cmdline;
+    unsigned char* cmdline;
 }module_binary_t;
 
 

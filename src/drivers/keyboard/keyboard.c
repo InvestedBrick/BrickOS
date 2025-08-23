@@ -4,10 +4,10 @@
 uint8_t read_scan_code(){
     return inb(KEYBOARD_DATA_PORT);
 }
-static char kb_buffer[KB_BUFFER_SIZE];
+static unsigned char kb_buffer[KB_BUFFER_SIZE];
 static int kb_head = 0, kb_tail = 0;
 
-void kb_buffer_push(char c){
+void kb_buffer_push(unsigned char c){
   int next = (kb_head + 1) % KB_BUFFER_SIZE; // wrap around
   if (next != kb_tail) {
     kb_buffer[kb_head] = c;
@@ -19,14 +19,14 @@ int kb_buffer_is_empty(){
   return kb_head == kb_tail;
 }
 
-int kb_buffer_pop(char* c){
+int kb_buffer_pop(unsigned char* c){
   if(kb_head == kb_tail) return 0;
   *c = kb_buffer[kb_tail];
   kb_tail = (kb_tail + 1) % KB_BUFFER_SIZE;
   return 1;
 }
 
-int kb_read(generic_file_t* f, uint8_t* buffer, uint32_t size){
+int kb_read(generic_file_t* f, unsigned char* buffer, uint32_t size){
     if (size > KB_BUFFER_SIZE) size = KB_BUFFER_SIZE;
 
     int read_bytes = 0;
@@ -128,7 +128,7 @@ int is_special_code(uint8_t scan_code){
   return (scan_code == KB_SCAN_CODE_ALT_GR || scan_code == KB_SCAN_CODE_CTRL || scan_code == KB_SCAN_CODE_HOME || scan_code == KB_SCAN_CODE_SHIFT || scan_code == KB_SCAN_CODE_TOGGLE_SHIFT);
 }
 
-uint8_t decode_scan_code(uint8_t scan_code){
+unsigned char decode_scan_code(uint8_t scan_code){
     switch (scan_code)
     {
     case KB_SCAN_CODE_SHIFT:{
@@ -175,7 +175,7 @@ uint8_t decode_scan_code(uint8_t scan_code){
 }
 
 void handle_keyboard_interrupt(){
-  uint8_t key = decode_scan_code(read_scan_code());
+  unsigned char key = decode_scan_code(read_scan_code());
   if (key){
     kb_buffer_push(key);
   }

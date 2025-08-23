@@ -37,7 +37,7 @@ int serial_is_transmit_fifo_empty(uint32_t com){
     return (inb(SERIAL_LINE_STATUS_PORT(com)) & 0x20);
 }
 
-void serial_write(const uint8_t* data, uint16_t com){
+void serial_write(const unsigned char* data, uint16_t com){
     uint8_t old_int = get_interrupt_status();
     disable_interrupts();
     for(uint32_t i = 0; data[i] != '\0';++i){

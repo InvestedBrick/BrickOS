@@ -14,7 +14,7 @@ typedef struct {
     uint32_t process_id;
     uint32_t* page_dir;
     uint32_t kernel_stack;
-    uint8_t* process_name;
+    unsigned char* process_name;
     uint8_t running;
     uint32_t page_alloc_start;
     generic_file_t* fd_table[MAX_FDS];
@@ -37,7 +37,7 @@ extern vector_t user_process_vector;
  * @param process_name The name of the process
  * @return The proccess ID of the created process
  */
-uint32_t create_user_process(uint8_t* binary, uint32_t size,uint8_t* process_name);
+uint32_t create_user_process(unsigned char* binary, uint32_t size,unsigned char* process_name);
 /**
  * init_user_process_vector:
  * Sets up the user process vector

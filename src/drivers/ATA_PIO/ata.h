@@ -93,7 +93,7 @@ void init_disk_driver();
  * @param buf The buffer to read the sectors into
  * @param lba The sector from where to start reading
  */
-void read_sectors(uint16_t bus,uint8_t n_sectors, uint8_t* buf, uint32_t lba);
+void read_sectors(uint16_t bus,uint8_t n_sectors, unsigned char* buf, uint32_t lba);
 
 /**
  * write_sectors:
@@ -103,7 +103,7 @@ void read_sectors(uint16_t bus,uint8_t n_sectors, uint8_t* buf, uint32_t lba);
  * @param buf The buffer which to write into the sectors
  * @param lba The sector from where to start writing
  */
-void write_sectors(uint16_t bus, uint8_t n_sectors, uint8_t* buf,uint32_t lba);
+void write_sectors(uint16_t bus, uint8_t n_sectors, unsigned char* buf,uint32_t lba);
 
 
 #endif

@@ -66,7 +66,7 @@ void init_disk_driver(){
 
 }
 
-void read_sectors(uint16_t bus,uint8_t n_sectors, uint8_t* buf, uint32_t lba){
+void read_sectors(uint16_t bus,uint8_t n_sectors, unsigned char* buf, uint32_t lba){
     uint8_t old_int_status = get_interrupt_status();
     disable_interrupts();
     outb(ATA_DRIVE_SELECT_PORT(bus), ATA_SELECT_DRIVE_ONE | ((lba >> 24) & 0x0f));
@@ -91,7 +91,7 @@ void read_sectors(uint16_t bus,uint8_t n_sectors, uint8_t* buf, uint32_t lba){
     set_interrupt_status(old_int_status);
 }
 
-void write_sectors(uint16_t bus, uint8_t n_sectors, uint8_t* buf,uint32_t lba){
+void write_sectors(uint16_t bus, uint8_t n_sectors, unsigned char* buf,uint32_t lba){
     uint8_t old_int_status = get_interrupt_status();
     disable_interrupts();
     outb(ATA_DRIVE_SELECT_PORT(bus), ATA_SELECT_DRIVE_ONE | ((lba >> 24) & 0x0f));

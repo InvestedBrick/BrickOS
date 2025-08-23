@@ -53,7 +53,7 @@ uint32_t get_sector_for_rw(inode_t* inode, uint32_t sector_idx, uint8_t is_write
     return sector;
 }
 
-generic_file_t* fs_open(uint8_t* filepath,uint8_t flags){
+generic_file_t* fs_open(unsigned char* filepath,uint8_t flags){
     
     inode_t* inode;
     if(dir_contains_name(active_dir,filepath)){
@@ -100,7 +100,7 @@ int fs_close(generic_file_t* f){
     return FILE_OP_SUCCESS;
 }
 
-int fs_write(generic_file_t* f, uint8_t* buffer,uint32_t size){
+int fs_write(generic_file_t* f, unsigned char* buffer,uint32_t size){
 
     
     open_file_t* file = (open_file_t*)f->generic_data;
@@ -150,7 +150,7 @@ int fs_write(generic_file_t* f, uint8_t* buffer,uint32_t size){
     return bytes_written;
 }
 
-int fs_read(generic_file_t* f, uint8_t* buffer, uint32_t size){
+int fs_read(generic_file_t* f, unsigned char* buffer, uint32_t size){
     
     open_file_t* file = (open_file_t*)f->generic_data;
     

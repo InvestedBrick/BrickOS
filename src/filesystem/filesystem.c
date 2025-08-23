@@ -15,7 +15,7 @@ uint32_t active_partially_used_bitmaps;
 
 uint8_t first_time_fs_init = 0;
 
-uint8_t* last_read_sector;
+unsigned char* last_read_sector;
 uint32_t last_read_sector_idx;
 
 inode_t* change_active_dir(inode_t* new_dir){
@@ -34,7 +34,7 @@ inode_name_pair_t* get_name_by_inode_id(uint32_t id){
     return 0;
 }
 
-uint32_t get_inode_id_by_name(uint32_t parent_id, uint8_t* name){
+uint32_t get_inode_id_by_name(uint32_t parent_id, unsigned char* name){
     uint32_t len = strlen(name);
     for (uint32_t i = 0; i < inode_name_pairs.size; i++) {
         inode_name_pair_t* pair = (inode_name_pair_t*)inode_name_pairs.data[i];
@@ -45,7 +45,7 @@ uint32_t get_inode_id_by_name(uint32_t parent_id, uint8_t* name){
     return (uint32_t)-1;
 }
 
-uint8_t dir_contains_name(inode_t* dir,uint8_t* name){
+uint8_t dir_contains_name(inode_t* dir,unsigned char* name){
     string_array_t* str_arr = get_all_names_in_dir(dir);
     if (!str_arr) return 0;
     
@@ -84,10 +84,10 @@ inode_t* get_parent_inode(inode_t* child){
     return get_inode_by_id(name_pair->parent_id);
 }
 
-inode_t* get_inode_by_file_path(uint8_t* path,uint32_t inode_id){
+inode_t* get_inode_by_file_path(unsigned char* path,uint32_t inode_id){
     
     inode_t* inode = get_inode_by_id(inode_id);
-    uint8_t name_buffer[256 + 1]; // max len of dir name is max of uint8_t + 1 for null terminator
+    unsigned char name_buffer[256 + 1]; // max len of dir name is max of unsigned char + 1 for null terminator
     
     uint32_t path_idx = 0;
     uint32_t buffer_idx;
@@ -119,11 +119,11 @@ inode_t* get_inode_by_file_path(uint8_t* path,uint32_t inode_id){
     return inode;
 }
 
-inode_t* get_inode_by_full_file_path(uint8_t* path) {
+inode_t* get_inode_by_full_file_path(unsigned char* path) {
     return get_inode_by_file_path(path,FS_ROOT_DIR_ID);
 }
 
-inode_t* get_inode_by_relative_file_path(uint8_t* path){
+inode_t* get_inode_by_relative_file_path(unsigned char* path){
     return get_inode_by_file_path(path,active_dir->id);
 }
 
@@ -140,7 +140,7 @@ uint32_t count_partially_used_big_sectors(uint32_t end){
     return partially_used_bitmaps;
 }
 
-uint8_t is_bitmap_clear(uint8_t* bitmap, uint32_t byte_size){
+uint8_t is_bitmap_clear(unsigned char* bitmap, uint32_t byte_size){
     for (uint32_t i = 0; i < byte_size; i++){
         if (bitmap[i] != 0x00) return 0;
     }
@@ -148,7 +148,7 @@ uint8_t is_bitmap_clear(uint8_t* bitmap, uint32_t byte_size){
     return 1;
 }
 
-uint8_t is_bitmap_full(uint8_t* bitmap, uint32_t byte_size){
+uint8_t is_bitmap_full(unsigned char* bitmap, uint32_t byte_size){
     for (uint32_t i = 0; i < byte_size; i++){
         if (bitmap[i] != 0xff) return 0;
     }
@@ -156,14 +156,14 @@ uint8_t is_bitmap_full(uint8_t* bitmap, uint32_t byte_size){
     return 1;
 }
 
-void insert_sector_bitmap(uint8_t** bitmaps,uint8_t* new_map,uint32_t pos, uint32_t n_active_bitmaps){
+void insert_sector_bitmap(unsigned char** bitmaps,unsigned char* new_map,uint32_t pos, uint32_t n_active_bitmaps){
     for (uint32_t i = n_active_bitmaps + 1; i > pos;i--){
         bitmaps[i] = bitmaps[i - 1];
     }
     bitmaps[pos] = new_map;
 }
 
-void shift_sector_bitmaps_left(uint8_t** bitmaps, uint32_t start, uint32_t n_active_bitmaps){
+void shift_sector_bitmaps_left(unsigned char** bitmaps, uint32_t start, uint32_t n_active_bitmaps){
     for (uint32_t i = start; i < n_active_bitmaps - 1; i++){
         bitmaps[i] = bitmaps[i + 1];
     }
@@ -192,7 +192,7 @@ void read_bitmaps_from_disk(){
             last_read_sector_idx = sector_bitmap_idx;
         }
 
-        header_data.sector_bitmaps[i] = (uint8_t*)kmalloc(SECTOR_BITMAP_SIZE);
+        header_data.sector_bitmaps[i] = (unsigned char*)kmalloc(SECTOR_BITMAP_SIZE);
 
         // read in the desired sector bitmap
         memcpy(header_data.sector_bitmaps[i],&last_read_sector[bitmap_idx_in_sector * SECTOR_BITMAP_SIZE],SECTOR_BITMAP_SIZE);
@@ -208,7 +208,7 @@ void write_bitmaps_to_disk() {
     memcpy(&sector[BIG_SECTOR_BITMAP_SIZE * 2],header_data.inode_sector_map,RESERVED_INODE_SECTORS);
     write_sectors(ATA_PRIMARY_BUS_IO,1,sector,BITMAP_SECTOR_START);
 
-    uint8_t* bitmaps = (uint8_t*)kmalloc(active_partially_used_bitmaps * SECTOR_BITMAP_SIZE);
+    unsigned char* bitmaps = (unsigned char*)kmalloc(active_partially_used_bitmaps * SECTOR_BITMAP_SIZE);
     for (uint32_t i = 0; i < active_partially_used_bitmaps;i++){
         memcpy(&bitmaps[i * SECTOR_BITMAP_SIZE],header_data.sector_bitmaps[i],SECTOR_BITMAP_SIZE);
     }
@@ -231,7 +231,7 @@ void free_sector(uint32_t sector_idx) {
         // sector is full, needs to be re-allocated
 
         // insert bitmap with bitmap[big_sector_sector_idx] = 0
-        uint8_t* map = (uint8_t*)kmalloc(SECTOR_BITMAP_SIZE);
+        unsigned char* map = (unsigned char*)kmalloc(SECTOR_BITMAP_SIZE);
         memset(map,0xff,SECTOR_BITMAP_SIZE);
         BIT_CLEAR(map,big_sector_sector_idx);
 
@@ -246,7 +246,7 @@ void free_sector(uint32_t sector_idx) {
 
         // get bitmap index
 
-        uint8_t* bitmap = header_data.sector_bitmaps[bitmap_idx];
+        unsigned char* bitmap = header_data.sector_bitmaps[bitmap_idx];
 
         BIT_CLEAR(bitmap,big_sector_sector_idx);
 
@@ -286,7 +286,7 @@ uint32_t allocate_sector(){
 
         if (first_free_big_sector_idx == (uint32_t)-1) panic("No free big sector exists");
 
-        uint8_t* bitmap = (uint8_t*)kmalloc(SECTOR_BITMAP_SIZE);
+        unsigned char* bitmap = (unsigned char*)kmalloc(SECTOR_BITMAP_SIZE);
 
         // alloc first sector of big sector
         BIT_SET(bitmap,0); 
@@ -300,7 +300,7 @@ uint32_t allocate_sector(){
         return first_free_big_sector_idx * BIG_SECTOR_SECTOR_COUNT;
 
     }else{
-        uint8_t* big_sector_bitmap = header_data.sector_bitmaps[0];
+        unsigned char* big_sector_bitmap = header_data.sector_bitmaps[0];
 
         uint32_t free_sector_idx = (uint32_t)-1;
 
@@ -348,7 +348,7 @@ void free_inode_section(uint32_t inode_id){
     BIT_CLEAR(header_data.inode_sector_map,inode_id);
 }
 
-uint8_t* read_dir_entries_to_buffer(inode_t* dir){
+unsigned char* read_dir_entries_to_buffer(inode_t* dir){
     uint32_t n_indirect_sectors = 0;
     uint32_t n_sectors = 0;
 
@@ -364,7 +364,7 @@ uint8_t* read_dir_entries_to_buffer(inode_t* dir){
     for(uint32_t sec = 0; dir->data_sectors[sec] != 0 && sec < NUM_DATA_SECTORS_PER_FILE;sec++){n_sectors++;}
     if ((n_sectors + n_indirect_sectors) == 0) return 0;
 
-    uint8_t* buffer = (char*)kmalloc((n_sectors + n_indirect_sectors) * ATA_SECTOR_SIZE);
+    unsigned char* buffer = (char*)kmalloc((n_sectors + n_indirect_sectors) * ATA_SECTOR_SIZE);
     // read all the sectors individually, since they might not be continuous
     for (uint32_t i = 0; i < n_sectors + n_indirect_sectors;i++ ){
         // normal sectors
@@ -389,7 +389,7 @@ void build_inodes(inode_t* start_node,uint32_t parent_id){
     if (start_node->type == FS_TYPE_FILE) return;
 
 
-    uint8_t* buffer = read_dir_entries_to_buffer(start_node);
+    unsigned char* buffer = read_dir_entries_to_buffer(start_node);
     if (!buffer) return;
 
     //parse the sectors
@@ -406,7 +406,7 @@ void build_inodes(inode_t* start_node,uint32_t parent_id){
         pair->id = node_id;
         pair->length = name_len;
         pair->parent_id = parent_id;
-        pair->name = (uint8_t*)kmalloc(name_len);
+        pair->name = (unsigned char*)kmalloc(name_len);
         memcpy(pair->name,&buffer[buffer_idx + 1],name_len);
         pair->name[name_len] = 0;
         vector_append(&inode_name_pairs,(uint32_t)pair);
@@ -505,8 +505,8 @@ void init_filesystem(){
     name_pair->length = 4;
     name_pair->id = FS_ROOT_DIR_ID;
     name_pair->parent_id = FS_ROOT_DIR_ID;
-    name_pair->name = kmalloc(sizeof(uint8_t) * 5);
-    memcpy(name_pair->name,"root",sizeof(uint8_t) * 5);
+    name_pair->name = kmalloc(sizeof(unsigned char) * 5);
+    memcpy(name_pair->name,"root",sizeof(unsigned char) * 5);
     vector_append(&inode_name_pairs,(uint32_t)name_pair);
     
     vector_append(&inodes,(uint32_t)root_node);
@@ -514,7 +514,7 @@ void init_filesystem(){
     build_inodes(root_node,root_node->id);
 }
 
-uint8_t write_directory_entry(inode_t* parent_dir, uint32_t child_inode_id, uint8_t* name, uint8_t name_length){
+uint8_t write_directory_entry(inode_t* parent_dir, uint32_t child_inode_id, unsigned char* name, uint8_t name_length){
     uint8_t data_buffer[sizeof(uint32_t) + sizeof(uint8_t) + 256];
     uint32_t data_buffer_size = sizeof(uint32_t) + sizeof(uint8_t) + name_length;
 
@@ -584,7 +584,7 @@ string_array_t* get_all_names_in_dir(inode_t* dir){
         return 0;
     }
     
-    uint8_t* buffer = read_dir_entries_to_buffer(dir);
+    unsigned char* buffer = read_dir_entries_to_buffer(dir);
     if (!buffer) return 0;
     string_array_t* str_arr = (string_array_t*)kmalloc(sizeof(string_array_t));
     
@@ -598,7 +598,7 @@ string_array_t* get_all_names_in_dir(inode_t* dir){
         uint8_t raw_len = buffer[buffer_idx++];
         uint32_t str_len = raw_len; 
         strings[i].length = str_len;
-        strings[i].str = (uint8_t*)kmalloc(str_len + 1);
+        strings[i].str = (unsigned char*)kmalloc(str_len + 1);
         strings[i].str[str_len] = 0;
         memcpy(strings[i].str,&buffer[buffer_idx],str_len);
         buffer_idx += raw_len; 
@@ -613,7 +613,7 @@ string_array_t* get_all_names_in_dir(inode_t* dir){
 
 }
 
-int write_data_buffer_to_disk(inode_t* inode, uint8_t* buffer, uint32_t buffer_size){
+int write_data_buffer_to_disk(inode_t* inode, unsigned char* buffer, uint32_t buffer_size){
     
     if (!inode) return INTERNAL_FUNCTION_FAIL;
     if (!buffer) return INTERNAL_FUNCTION_FAIL;
@@ -659,7 +659,7 @@ void erase_directory_entry(inode_t* dir, uint32_t entry_inode_id){
     
     if (!dir->data_sectors[0]) return; // nothing there so nothing to remove
 
-    uint8_t* buffer = read_dir_entries_to_buffer(dir);
+    unsigned char* buffer = read_dir_entries_to_buffer(dir);
 
     n_entries = *(uint32_t*)&buffer[0];
 
@@ -700,7 +700,7 @@ void erase_directory_entry(inode_t* dir, uint32_t entry_inode_id){
 }
 
 
-inode_t* get_file_if_exists(inode_t* parent_dir,uint8_t* name){
+inode_t* get_file_if_exists(inode_t* parent_dir,unsigned char* name){
     
     if(dir_contains_name(parent_dir,name)){
         return get_inode_by_id(get_inode_id_by_name(parent_dir->id,name));
@@ -741,7 +741,7 @@ int delete_dir_recursive(inode_t* parent_dir, inode_t* dir){
     return FS_FILE_DELETION_SUCCESS;
 }
 
-int delete_dir(inode_t* parent_dir,uint8_t* name){
+int delete_dir(inode_t* parent_dir,unsigned char* name){
     // get dir
     inode_t* dir = get_file_if_exists(parent_dir,name);
     if (!dir) return FS_FILE_NOT_FOUND;
@@ -790,7 +790,7 @@ int delete_file_by_inode(inode_t* parent_dir,inode_t* inode){
     return FS_FILE_DELETION_SUCCESS;
 }
 
-int create_file(inode_t* parent_dir, uint8_t* name, uint8_t name_length, uint8_t type,uint8_t perms){
+int create_file(inode_t* parent_dir, unsigned char* name, uint8_t name_length, uint8_t type,uint8_t perms){
 
     string_array_t* strs_in_parent_dir = get_all_names_in_dir(parent_dir);
     if (strs_in_parent_dir){
