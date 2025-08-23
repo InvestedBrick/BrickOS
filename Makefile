@@ -32,7 +32,7 @@ TARGET = kernel.elf
 ISO = BrickOS.iso
 
 CC = gcc
-CFLAGS = -ffreestanding -m32 -nostdlib -nostdinc -fno-builtin -fno-stack-protector -fno-exceptions -g
+CFLAGS = -ffreestanding -m32 -nostdlib -fno-builtin -fno-stack-protector -fno-exceptions -g
 
 all: $(TARGET)
 
