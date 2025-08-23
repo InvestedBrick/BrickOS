@@ -11,7 +11,7 @@
 #include "../tables/syscalls.h"
 #include "../filesystem/vfs/vfs.h"
 #include "../drivers/keyboard/keyboard.h"
-#include "../screen.h"
+#include "../screen/screen.h"
 #include "../filesystem/filesystem.h"
 #include "../filesystem/file_operations.h"
 #include "../kernel_header.h"
@@ -22,7 +22,7 @@ static uint32_t next_pid = 1;
 
 
 user_process_t* get_user_process_by_pid(uint32_t pid){
-    for (unsigned i = 0; i < user_process_vector.size;i++){
+    for (uint32_t i = 0; i < user_process_vector.size;i++){
         if (((user_process_t*)(user_process_vector.data[i]))->process_id == pid){
             return (user_process_t*)(user_process_vector.data[i]);
         }
@@ -187,7 +187,7 @@ void init_user_process_vector(){
 int kill_user_process(uint32_t pid){
     if (!(pid > 0 && pid < MAX_PIDS && pid_used[pid])) return SYSCALL_FAIL;
     user_process_t* process;
-    for (unsigned i = 0; i < user_process_vector.size;i++){
+    for (uint32_t i = 0; i < user_process_vector.size;i++){
         if (((user_process_t*)(user_process_vector.data[i]))->process_id == pid){
             process = (user_process_t*)(user_process_vector.data[i]);
             vector_erase(&user_process_vector,i);

@@ -4,7 +4,7 @@
 #include "../util.h"
 #include "../memory/kmalloc.h"
 #include "file_operations.h"
-#include "../screen.h"
+#include "../screen/screen.h"
 #include "../vector.h"
 
 vector_t inodes;

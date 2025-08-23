@@ -1,6 +1,6 @@
 #include "io/io.h"
 #include "io/log.h"
-#include "screen.h"
+#include "screen/screen.h"
 #include "tables/gdt.h"
 #include "tables/interrupts.h"
 #include "drivers/keyboard/keyboard.h"

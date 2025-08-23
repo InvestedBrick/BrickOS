@@ -28,8 +28,8 @@
 #define SCREEN_PIXELS (SCREEN_ROWS * SCREEN_COLUMNS)
 #define CURSOR_MAX (SCREEN_PIXELS - 1)
 #define INVALID_ARGUMENT -1
-#include "filesystem/vfs/vfs.h"
-#include "multiboot.h"
+#include "../filesystem/vfs/vfs.h"
+#include "../multiboot.h"
 #include <stdint.h>
 extern uint16_t g_cursor_pos;
 extern generic_file_t screen_file;

@@ -1,11 +1,11 @@
 #include "screen.h"
-#include "io/io.h"
-#include "io/log.h"
-#include "drivers/keyboard/keyboard.h"
-#include "filesystem/vfs/vfs.h"
-#include "util.h"
-#include "memory/memory.h"
-#include "multiboot.h"
+#include "../io/io.h"
+#include "../io/log.h"
+#include "../drivers/keyboard/keyboard.h"
+#include "../filesystem/vfs/vfs.h"
+#include "../util.h"
+#include "../memory/memory.h"
+#include "../multiboot.h"
 #include <stdint.h>
 char* g_fb = (char*)VIDEO_MEMORY_START;
 uint16_t g_cursor_pos = 0;

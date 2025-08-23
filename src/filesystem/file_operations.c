@@ -2,7 +2,7 @@
 #include "filesystem.h"
 #include "../util.h"
 #include "../memory/kmalloc.h"
-#include "../screen.h"
+#include "../screen/screen.h"
 #include "../drivers/ATA_PIO/ata.h"
 #include "fs_defines.h"
 
