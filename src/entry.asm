@@ -20,10 +20,9 @@ align 4
     dd 0 ; bss_end_addr
     dd 0 ; entry_addr
 
-    ; 1024x768x32
     dd 0          ; mode_type: 0 = linear graphics, 1 = EGA text
     dd 1024       ; width
-    dd 768       ; height
+    dd 768        ; height
     dd 32         ; depth (bits per pixel)
 
 section .bss
