@@ -1,7 +1,7 @@
 
 plan:
     [X] recursive dir deletion
-    [ ] Graphics mode switch
+    [X] Graphics mode switch
     [ ] mouse driver
     [ ] window manager
     [ ] running more processes
