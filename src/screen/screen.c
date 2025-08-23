@@ -182,17 +182,6 @@ void handle_screen_char_input(uint8_t c){
     fb_set_cursor(g_cursor_pos);
 }
 
-int screen_read(generic_file_t* f, uint8_t* buffer, uint32_t size){
-    if (size > SCREEN_PIXELS)
-        return INVALID_ARGUMENT;
-
-    for (uint32_t i = 0; i < size; i++){
-        buffer[i] = g_fb[i * 2];
-    }
-
-    return size;
-}
-
 int screen_write(generic_file_t* f, uint8_t* buffer,uint32_t size){
     if (size > SCREEN_PIXELS) 
         return INVALID_ARGUMENT;
@@ -209,7 +198,7 @@ vfs_handlers_t screen_ops = {
 
     .close = 0,
     .open = 0,
-    .read = screen_read,
+    .read = 0,
     .write = screen_write,
 };
 
