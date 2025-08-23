@@ -11,12 +11,12 @@
 #define FD_STDERR 0x2
 
 typedef struct {
-    unsigned int process_id;
-    unsigned int* page_dir;
-    unsigned int kernel_stack;
-    unsigned char* process_name;
-    unsigned char running;
-    unsigned int page_alloc_start;
+    uint32_t process_id;
+    uint32_t* page_dir;
+    uint32_t kernel_stack;
+    uint8_t* process_name;
+    uint8_t running;
+    uint32_t page_alloc_start;
     generic_file_t* fd_table[MAX_FDS];
 } __attribute__((packed)) user_process_t;
 
@@ -37,7 +37,7 @@ extern vector_t user_process_vector;
  * @param process_name The name of the process
  * @return The proccess ID of the created process
  */
-unsigned int create_user_process(unsigned char* binary, unsigned int size,unsigned char* process_name);
+uint32_t create_user_process(uint8_t* binary, uint32_t size,uint8_t* process_name);
 /**
  * init_user_process_vector:
  * Sets up the user process vector
@@ -48,7 +48,7 @@ void init_user_process_vector();
  * Neutralizes the user process
  * @return Returns how successful the killing was
  */
-int kill_user_process(unsigned int pid);
+int kill_user_process(uint32_t pid);
 
 void enter_user_mode();
 
@@ -59,7 +59,7 @@ void enter_user_mode();
  * 
  * @return The user process struct
  */
-user_process_t* get_user_process_by_pid(unsigned int pid);
+user_process_t* get_user_process_by_pid(uint32_t pid);
 
 
 /**
@@ -67,7 +67,7 @@ user_process_t* get_user_process_by_pid(unsigned int pid);
  * Enters the user process if it is not already running
  * @param pid The process id
  */
-void dispatch_user_process(unsigned int pid);
+void dispatch_user_process(uint32_t pid);
 
 int assign_fd(user_process_t* proc,generic_file_t* file);
 
@@ -77,7 +77,7 @@ user_process_t* get_current_user_process();
 
 int get_pid();
 
-void free_pid(unsigned int pid);
+void free_pid(uint32_t pid);
 
 /**
  * run:

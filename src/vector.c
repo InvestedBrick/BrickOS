@@ -1,16 +1,17 @@
 #include "vector.h"
 #include "util.h"
 #include "memory/kmalloc.h"
-void vector_resize(vector_t* vec,unsigned int new_capacity){
-    unsigned int* new_data = kmalloc(sizeof(unsigned int) * new_capacity);
-    memcpy(new_data,vec->data,vec->size * sizeof(unsigned int));
+#include <stdint.h>
+void vector_resize(vector_t* vec,uint32_t new_capacity){
+    uint32_t* new_data = kmalloc(sizeof(uint32_t) * new_capacity);
+    memcpy(new_data,vec->data,vec->size * sizeof(uint32_t));
     kfree(vec->data);
 
     vec->data = new_data;
     vec->capacity = new_capacity;
 }
 
-void vector_append(vector_t* vec, unsigned int data){
+void vector_append(vector_t* vec, uint32_t data){
     if (vec->size >= vec->capacity){
         vector_resize(vec,vec->capacity * 2);
     }
@@ -18,7 +19,7 @@ void vector_append(vector_t* vec, unsigned int data){
     vec->data[vec->size] = data;
     vec->size++;
 }
-unsigned int vector_pop(vector_t* vec){
+uint32_t vector_pop(vector_t* vec){
     if (!vector_is_empty(vec)){
         if (vec->size - 1 <= vec->capacity * 0.25f){
             vector_resize(vec,vec->capacity * 0.5);
@@ -29,14 +30,14 @@ unsigned int vector_pop(vector_t* vec){
     return 0;
 }
 
-unsigned char vector_is_empty(vector_t* vec) {
+uint8_t vector_is_empty(vector_t* vec) {
     return vec->size == 0;
 }
 
-unsigned int vector_erase(vector_t* vec,unsigned int idx){
-    unsigned int erased_item = vec->data[idx];
+uint32_t vector_erase(vector_t* vec,uint32_t idx){
+    uint32_t erased_item = vec->data[idx];
 
-    for(unsigned int i = idx; i < vec->size - 1;i++){
+    for(uint32_t i = idx; i < vec->size - 1;i++){
         vec->data[i] = vec->data[i + 1];
     }
 
@@ -44,24 +45,24 @@ unsigned int vector_erase(vector_t* vec,unsigned int idx){
     return erased_item;
 }
 
-unsigned int vector_find(vector_t* vec, unsigned int data){
-    for(unsigned int i = 0; i < vec->size;i++){
+uint32_t vector_find(vector_t* vec, uint32_t data){
+    for(uint32_t i = 0; i < vec->size;i++){
         if (vec->data[i] == data) return i;
     }
 
-    return (unsigned int)-1;
+    return (uint32_t)-1;
 }
 
 void init_vector(vector_t* vec){
     vec->size = 0;
     vec->capacity = 1;
-    vec->data = kmalloc(sizeof(unsigned int));
+    vec->data = kmalloc(sizeof(uint32_t));
 }
 
 
-void vector_free(vector_t* vec, unsigned char ptrs){
+void vector_free(vector_t* vec, uint8_t ptrs){
     if (ptrs){
-        for (unsigned int i = 0; i < vec->size;i++){
+        for (uint32_t i = 0; i < vec->size;i++){
             kfree((void*)vec->data[i]);
         }
     }

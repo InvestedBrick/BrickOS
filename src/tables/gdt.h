@@ -1,19 +1,19 @@
 
 #ifndef INCLUDE_GDT_H
 #define INCLUDE_GDT_H
-
+#include <stdint.h>
 typedef struct {
-    unsigned short size;
-    unsigned int address;
+    uint16_t size;
+    uint32_t address;
 } __attribute__((packed)) gdt_t;
 
 typedef struct {
-    unsigned short limit_low;
-    unsigned short base_low;
-    unsigned char base_middle;
-    unsigned char access;
-    unsigned char granularity;
-    unsigned char base_high;
+    uint16_t limit_low;
+    uint16_t base_low;
+    uint8_t base_middle;
+    uint8_t access;
+    uint8_t granularity;
+    uint8_t base_high;
 }__attribute__((packed)) gdt_entry_t;
 
 #define KERNEL_CODE_SEGMENT 0x9a
@@ -35,7 +35,7 @@ void load_gdt(const gdt_t* table);
  * load_tss - loads the task state segment
  * @param tss_segment The TSS segment index (should be 0x28)
  */
-void load_tss(unsigned int tss_segment);
+void load_tss(uint32_t tss_segment);
 /**
  * set_gdt_entry:
  * creates a gdt entry with the given parameters
@@ -45,7 +45,7 @@ void load_tss(unsigned int tss_segment);
  * @param access The access of the memory segment
  * @param gran The granularity of the memory segment
  */
-void set_gdt_entry(int num,unsigned int base, unsigned int limit, unsigned char access, unsigned char gran);
+void set_gdt_entry(int num,uint32_t base, uint32_t limit, uint8_t access, uint8_t gran);
 
 /**
  * init_gdt:

@@ -1,11 +1,11 @@
 
 #ifndef INCLUDE_KMALLOC_H
 #define INCLUDE_KMALLOC_H
-
+#include <stdint.h>
 struct memory_block{
-    unsigned int size;
+    uint32_t size;
     struct memory_block* next;
-    unsigned char free;
+    uint8_t free;
 }__attribute__((packed));
 
 typedef struct memory_block memory_block_t; 
@@ -18,7 +18,7 @@ typedef struct memory_block memory_block_t;
  * 
  * @param initial_heapsize The initial heapsize in bytes
  */
-void init_kmalloc(unsigned int initial_heapsize);
+void init_kmalloc(uint32_t initial_heapsize);
 
 /**
  * set_heap_size:
@@ -26,7 +26,7 @@ void init_kmalloc(unsigned int initial_heapsize);
  * 
  * @param new_size The new heapsize
  */
-void set_heap_size(unsigned int new_size);
+void set_heap_size(uint32_t new_size);
 /**
  * kmalloc:
  * Allocates some memory for the kernel
@@ -34,7 +34,7 @@ void set_heap_size(unsigned int new_size);
  * @param size The number of bytes to allocate
  * @return A pointer to the start of the allocated memory region
  */
-void* kmalloc(unsigned int size);
+void* kmalloc(uint32_t size);
 /**
  * kfree:
  * Frees allocated kernel memory

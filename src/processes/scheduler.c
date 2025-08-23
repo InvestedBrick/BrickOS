@@ -11,9 +11,9 @@
 #include "../kernel_header.h"
 process_state_t* p_queue;
 process_state_t* current_proc;
-unsigned char locked = 0;
-unsigned char first_switch = 1;
-extern unsigned int stack_top;
+uint8_t locked = 0;
+uint8_t first_switch = 1;
+extern uint32_t stack_top;
 
 process_state_t* get_current_process_state(){
     return current_proc;
@@ -36,7 +36,7 @@ void init_scheduler(){
     log("Set up endless process");
 }
 
-process_state_t* get_process_state_by_page_dir(unsigned int* page_dir){
+process_state_t* get_process_state_by_page_dir(uint32_t* page_dir){
     process_state_t* node = p_queue;
     while (node) {
         if (node->pd == page_dir) return node;
@@ -87,8 +87,8 @@ void switch_task(interrupt_stack_frame_t* regs){
         // the loop process is the only one left
         shutdown();
     }
-    unsigned int* old_pd = mem_get_current_page_dir();
-    unsigned int interrupt_code = regs->interrupt_number;
+    uint32_t* old_pd = mem_get_current_page_dir();
+    uint32_t interrupt_code = regs->interrupt_number;
 
     if (!first_switch){
         // first switch is from kernel -> shell, but we dont want our loop process to contain the kernels code

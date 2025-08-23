@@ -3,7 +3,7 @@
 #include "stdutils.h"
 memory_block_t* head = 0;
 
-memory_block_t* find_free_block(unsigned int size){
+memory_block_t* find_free_block(uint32_t size){
     memory_block_t* current = head;
     while (current != 0) {
         if (current->free && current->size >= size){
@@ -14,7 +14,7 @@ memory_block_t* find_free_block(unsigned int size){
     return (memory_block_t*)0;
 }
 
-void split_block(memory_block_t* block, unsigned int size){
+void split_block(memory_block_t* block, uint32_t size){
     if (block->size > size + MEMORY_BLOCK_SIZE){
         memory_block_t* new_block = (memory_block_t*)((char*)block + MEMORY_BLOCK_SIZE + size);
         new_block->size = block->size - size - MEMORY_BLOCK_SIZE;
@@ -33,7 +33,7 @@ void merge_blocks(memory_block_t* block){
     }
 }
 
-void* malloc(unsigned int size){
+void* malloc(uint32_t size){
     if (size <= 0) return 0;
     
     memory_block_t* block = find_free_block(size);
@@ -42,7 +42,7 @@ void* malloc(unsigned int size){
         memory_block_t* last = head;
         while (last && last->next) last = last->next;
 
-        unsigned int total_size = size + MEMORY_BLOCK_SIZE;
+        uint32_t total_size = size + MEMORY_BLOCK_SIZE;
         block = (memory_block_t*)mmap(total_size);
         block->free = 1;
         block->next = 0;

@@ -3,12 +3,12 @@
 #define INCLUDE_VFS_H
 
 typedef struct generic_file generic_file_t;
-
+#include <stdint.h>
 typedef struct
 {
-    generic_file_t* (*open)(unsigned char* filepath, unsigned char flags);
-    int (*read)(generic_file_t* file,unsigned char* buffer, unsigned int size);  
-    int (*write)(generic_file_t* file,unsigned char* buffer, unsigned int size);
+    generic_file_t* (*open)(uint8_t* filepath, uint8_t flags);
+    int (*read)(generic_file_t* file,uint8_t* buffer, uint32_t size);  
+    int (*write)(generic_file_t* file,uint8_t* buffer, uint32_t size);
     int (*close)(generic_file_t* file); 
 } vfs_handlers_t;
 

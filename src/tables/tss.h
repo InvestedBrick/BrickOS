@@ -3,25 +3,25 @@
 #define INCLUDE_TSS_H
 
 typedef struct {
-    unsigned int prev_tss;
-    unsigned int esp0;
-    unsigned int ss0;
-    unsigned int esp1;
-    unsigned int ss1;
-    unsigned int esp2;
-    unsigned int ss2;
-    unsigned int cr3;
-    unsigned int eip;
-    unsigned int eflags;
-    unsigned int eax, ecx, edx, ebx;
-    unsigned int esp, ebp, esi, edi;
-    unsigned int es, cs, ss, ds, fs, gs;
-    unsigned int ldt;
-    unsigned short trap;
-    unsigned short iomap_base;
+    uint32_t prev_tss;
+    uint32_t esp0;
+    uint32_t ss0;
+    uint32_t esp1;
+    uint32_t ss1;
+    uint32_t esp2;
+    uint32_t ss2;
+    uint32_t cr3;
+    uint32_t eip;
+    uint32_t eflags;
+    uint32_t eax, ecx, edx, ebx;
+    uint32_t esp, ebp, esi, edi;
+    uint32_t es, cs, ss, ds, fs, gs;
+    uint32_t ldt;
+    uint16_t trap;
+    uint16_t iomap_base;
 } __attribute__((packed)) tss_entry_t;
 
-void write_tss(unsigned short ss0, unsigned int esp0);
-void set_kernel_stack(unsigned int stack);
+void write_tss(uint16_t ss0, uint32_t esp0);
+void set_kernel_stack(uint32_t stack);
 
 #endif

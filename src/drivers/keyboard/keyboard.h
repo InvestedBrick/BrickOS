@@ -28,7 +28,7 @@ extern generic_file_t kb_file;
  * 
  * @return The scan code
  */
-unsigned char read_scan_code();
+uint8_t read_scan_code();
 
 /**
  * decode_scan_code:
@@ -37,7 +37,7 @@ unsigned char read_scan_code();
  * @param scan_code The scan code
  * @return The ASCII character
  */
-unsigned char decode_scan_code(unsigned char scan_code);
+uint8_t decode_scan_code(uint8_t scan_code);
 /**
  * init_keyboard:
  * initalizes keyboard

@@ -13,7 +13,7 @@
 #include "../memory/kmalloc.h"
 
 //TODO: provide actually helpful error messages
-int sys_write(user_process_t* p,unsigned int fd, unsigned char* buf, unsigned int size){
+int sys_write(user_process_t* p,uint32_t fd, uint8_t* buf, uint32_t size){
     if (fd >= MAX_FDS) return SYSCALL_FAIL;
 
     generic_file_t* file = p->fd_table[fd];
@@ -22,7 +22,7 @@ int sys_write(user_process_t* p,unsigned int fd, unsigned char* buf, unsigned in
 
     return file->ops->write(file,buf,size);
 }
-int sys_read(user_process_t* p,unsigned int fd, unsigned char* buf, unsigned int size){
+int sys_read(user_process_t* p,uint32_t fd, uint8_t* buf, uint32_t size){
     if (fd >= MAX_FDS) return SYSCALL_FAIL;
 
     generic_file_t* file = p->fd_table[fd];
@@ -32,7 +32,7 @@ int sys_read(user_process_t* p,unsigned int fd, unsigned char* buf, unsigned int
     return file->ops->read(file,buf,size);
 }
 
-int sys_open(user_process_t* p,unsigned char* filepath, unsigned char flags){
+int sys_open(user_process_t* p,uint8_t* filepath, uint8_t flags){
     generic_file_t* file = fs_open(filepath,flags);
 
     if (!file) return SYSCALL_FAIL;
@@ -40,7 +40,7 @@ int sys_open(user_process_t* p,unsigned char* filepath, unsigned char flags){
     return assign_fd(p,file);
 }
 
-int sys_close(user_process_t* p, unsigned int fd){
+int sys_close(user_process_t* p, uint32_t fd){
     if (fd >= MAX_FDS) return SYSCALL_FAIL;
 
     generic_file_t* file = p->fd_table[fd];
@@ -55,19 +55,19 @@ int sys_close(user_process_t* p, unsigned int fd){
 }
 
 int sys_exit(user_process_t* p,interrupt_stack_frame_t* stack_frame){
-    unsigned int pid = p->process_id;
+    uint32_t pid = p->process_id;
     log("Process exited with error code");
     log_uint(stack_frame->ebx);
     switch_task(stack_frame);
     return kill_user_process(pid);
 }
 
-int sys_mmap(user_process_t* p,unsigned int size){
+int sys_mmap(user_process_t* p,uint32_t size){
     
-    unsigned int pages_to_alloc = CEIL_DIV(size,MEMORY_PAGE_SIZE);
-    for (unsigned int i = 0; i < pages_to_alloc; i++){
+    uint32_t pages_to_alloc = CEIL_DIV(size,MEMORY_PAGE_SIZE);
+    for (uint32_t i = 0; i < pages_to_alloc; i++){
         //ensure continuous allocation
-        unsigned int page = pmm_alloc_page_frame();
+        uint32_t page = pmm_alloc_page_frame();
         mem_map_page(p->page_alloc_start,page,PAGE_FLAG_WRITE | PAGE_FLAG_USER);
         
         p->page_alloc_start += MEMORY_PAGE_SIZE;
@@ -76,11 +76,11 @@ int sys_mmap(user_process_t* p,unsigned int size){
     return ((int)p->page_alloc_start  - (MEMORY_PAGE_SIZE * pages_to_alloc)); // int conversion (kinda) safe because surely a single process wont allocate 2gb of RAM when we only hav 512 MB
 }
 
-int sys_getcwd(unsigned char* buffer, unsigned int buf_len){
+int sys_getcwd(uint8_t* buffer, uint32_t buf_len){
     return get_full_active_path(buffer,buf_len);
 }
 
-int sys_getdents(user_process_t* p,unsigned int fd,dirent_t* ent_buffer,unsigned int size){
+int sys_getdents(user_process_t* p,uint32_t fd,dirent_t* ent_buffer,uint32_t size){
     if (!p->fd_table[fd]) return SYSCALL_FAIL;
     generic_file_t* file = p->fd_table[fd];
 
@@ -93,15 +93,15 @@ int sys_getdents(user_process_t* p,unsigned int fd,dirent_t* ent_buffer,unsigned
 
     if (!names) return 0; // empty dir
 
-    unsigned int total_size = 0;
-    for (unsigned int i = 0; i < names->n_strings;i++)
+    uint32_t total_size = 0;
+    for (uint32_t i = 0; i < names->n_strings;i++)
         {total_size += names->strings[i].length + sizeof(int) * 3 + 1;} // +1 for the null terminator
     if (total_size > size) return SYSCALL_FAIL; 
 
-    unsigned int bpos = 0;
-    for (unsigned int i = 0; i < names->n_strings;i++){
+    uint32_t bpos = 0;
+    for (uint32_t i = 0; i < names->n_strings;i++){
         inode_t* entry_inode = get_inode_by_id(get_inode_id_by_name(open_file->inode_id,names->strings[i].str));
-        dirent_t* entry = (dirent_t*)((unsigned int)ent_buffer + bpos);
+        dirent_t* entry = (dirent_t*)((uint32_t)ent_buffer + bpos);
         entry->inode_id = entry_inode->id;
         entry->type = entry_inode->type;
         entry->len = sizeof(int) * 3 + names->strings[i].length + 1;
@@ -112,7 +112,7 @@ int sys_getdents(user_process_t* p,unsigned int fd,dirent_t* ent_buffer,unsigned
     return names->n_strings;
 }
 
-int sys_chdir(unsigned char* dir_name){
+int sys_chdir(uint8_t* dir_name){
     inode_t* new_dir;
 
     if (dir_contains_name(active_dir,dir_name) || strneq(dir_name,"..",2,2)){
@@ -128,7 +128,7 @@ int sys_chdir(unsigned char* dir_name){
     return SYSCALL_SUCCESS;
 }
 
-int sys_rmfile(unsigned char* filename){
+int sys_rmfile(uint8_t* filename){
     inode_t* file;
 
     if (dir_contains_name(active_dir,filename)){

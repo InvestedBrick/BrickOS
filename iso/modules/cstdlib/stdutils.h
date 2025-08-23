@@ -3,17 +3,17 @@
 #define INCLUDE_STDUTILS_H
 
 #define CEIL_DIV(a,b) (((a + b) - 1 )/ b)
-
+#include <stdint.h>
 typedef struct {
-    unsigned int length;
-    unsigned char* str;
+    uint32_t length;
+    uint8_t* str;
 } string_t;
 
-unsigned int strlen(const char* str);
+uint32_t strlen(const char* str);
 
-void* memset(void* dest, int val, unsigned int n);
+void* memset(void* dest, int val, uint32_t n);
 
-void* memcpy(void* dest,void* src, unsigned int n);
+void* memcpy(void* dest,void* src, uint32_t n);
 
-unsigned char streq(const char* str1, const char* str2);
+uint8_t streq(const char* str1, const char* str2);
 #endif

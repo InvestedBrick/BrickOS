@@ -4,7 +4,7 @@
 typedef struct {
     char* executing_dir;
     string_t command;
-    unsigned int n_args;
+    uint32_t n_args;
     string_t* args;
 }command_t;
 

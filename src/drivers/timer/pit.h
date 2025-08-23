@@ -21,6 +21,6 @@
  * Initializes the Programmable Interval Timer
  * @param desired_freq The desired frequency
  */
-void init_pit(unsigned int desired_freq);
+void init_pit(uint32_t desired_freq);
 
 #endif

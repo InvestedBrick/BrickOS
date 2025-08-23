@@ -4,14 +4,14 @@
 
 #include "../multiboot.h"
 typedef struct {
-    unsigned int size;
-    unsigned int start;
-    unsigned char* cmdline;
+    uint32_t size;
+    uint32_t start;
+    uint8_t* cmdline;
 }module_binary_t;
 
 
 extern module_binary_t* module_binary_structs;
-extern unsigned int module_count;
+extern uint32_t module_count;
 
 /**
  * save_module_binaries:

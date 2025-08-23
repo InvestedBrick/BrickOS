@@ -3,14 +3,14 @@
 #define INCLUDE_UTIL_H
 
 #define CEIL_DIV(a,b) (((a + b) - 1 )/ b)
-
+#include <stdint.h>
 typedef struct {
-    unsigned int length;
-    unsigned char* str;
+    uint32_t length;
+    uint8_t* str;
 } string_t;
 
 typedef struct {
-    unsigned int n_strings;
+    uint32_t n_strings;
     string_t* strings;
 }string_array_t;
 
@@ -23,7 +23,7 @@ typedef struct {
  * 
  * @return The destination
  */
-void* memset(void* dest, int val, unsigned int n);
+void* memset(void* dest, int val, uint32_t n);
 
 /**
  * memcpy:
@@ -34,7 +34,7 @@ void* memset(void* dest, int val, unsigned int n);
  * 
  * @return The destination
  */
-void* memcpy(void* dest,void* src, unsigned int n);
+void* memcpy(void* dest,void* src, uint32_t n);
 
 /**
  * memmove: 
@@ -45,7 +45,7 @@ void* memcpy(void* dest,void* src, unsigned int n);
  * 
  * @return The destination
  */
-void* memmove(void* dest, void* src, unsigned int n);
+void* memmove(void* dest, void* src, uint32_t n);
 /**
  * streq:
  * Compares two null-terminated strings
@@ -55,7 +55,7 @@ void* memmove(void* dest, void* src, unsigned int n);
  * @return 1 if both strings are equal
  *         0 if they are not equal 
  */
-unsigned char streq(const char* str1, const char* str2);
+uint8_t streq(const char* str1, const char* str2);
 
 /**
  * strneq: 
@@ -68,7 +68,7 @@ unsigned char streq(const char* str1, const char* str2);
  * @return 1 if both strings are equal
  *         0 if they are not equal 
  */
-unsigned char strneq(const char* str1, const char* str2, unsigned int len_1, unsigned int len_2); 
+uint8_t strneq(const char* str1, const char* str2, uint32_t len_1, uint32_t len_2); 
 
 /**
  * strlen: 
@@ -76,7 +76,7 @@ unsigned char strneq(const char* str1, const char* str2, unsigned int len_1, uns
  * @param str The string
  * @return The length of the string
  */
-unsigned int strlen(unsigned char* str);
+uint32_t strlen(uint8_t* str);
 
 /**
  * Frees a string array assuming the array, the strings and the char* are heap allocated
@@ -91,8 +91,8 @@ void free_string_arr(string_array_t* str_arr);
  * @param c The character to find
  * @return The index of the character;
  * 
- *         (unsigned int)-1 of not found
+ *         (uint32_t)-1 of not found
  */
 
-unsigned int find_char(unsigned char* str,unsigned char c);
+uint32_t find_char(uint8_t* str,uint8_t c);
 #endif

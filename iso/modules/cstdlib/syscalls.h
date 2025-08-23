@@ -7,7 +7,7 @@
 #define FD_STDOUT 0x1
 #define FD_STDERR 0x2
 #include "../../../src/tables/syscall_defines.h"
-
+#include <stdint.h>
 /**
  * write:
  * Writes a buffer to a file
@@ -17,7 +17,7 @@
  * 
  * @return The number of bytes written
  */
-int write(unsigned int fd, const char* buffer, unsigned int count);
+int write(uint32_t fd, const char* buffer, uint32_t count);
 
 /**
  * read:
@@ -28,7 +28,7 @@ int write(unsigned int fd, const char* buffer, unsigned int count);
  * 
  * @return The number of bytes read
  */
-int read(unsigned int fd, const char* buffer, unsigned int count);
+int read(uint32_t fd, const char* buffer, uint32_t count);
 
 /**
  * open:
@@ -38,7 +38,7 @@ int read(unsigned int fd, const char* buffer, unsigned int count);
  * 
  * @return The file descriptor for the opened file
  */
-int open(const char* pathname, unsigned char flags);
+int open(const char* pathname, uint8_t flags);
 
 /**
  * close:
@@ -47,7 +47,7 @@ int open(const char* pathname, unsigned char flags);
  * 
  * @return 0 on success, or -1 on error
  */
-int close(unsigned int fd);
+int close(uint32_t fd);
 
 /**
  * exit:
@@ -56,7 +56,7 @@ int close(unsigned int fd);
  * 
  * @return Does not return
  */
-int exit(unsigned int error_code);
+int exit(uint32_t error_code);
 
 /**
  * mmap:
@@ -66,7 +66,7 @@ int exit(unsigned int error_code);
  * 
  * @return Pointer to the allocated memory region
  */
-void* mmap(unsigned int size);
+void* mmap(uint32_t size);
 
 /**
  * getcwd:
@@ -76,7 +76,7 @@ void* mmap(unsigned int size);
  * @param buf_len The length of the buffer
  * 
  */
-void getcwd(unsigned char* buffer, unsigned int buf_len);
+void getcwd(uint8_t* buffer, uint32_t buf_len);
 
 /**
  * getdents:
@@ -88,7 +88,7 @@ void getcwd(unsigned char* buffer, unsigned int buf_len);
  * 
  * @return The number of directory entries read 
  */
-int getdents(unsigned int fd,dirent_t* buffer,unsigned int size);
+int getdents(uint32_t fd,dirent_t* buffer,uint32_t size);
 
 /**
  * chdir:
@@ -100,7 +100,7 @@ int getdents(unsigned int fd,dirent_t* buffer,unsigned int size);
  * 
  *  else SYSCALL_SUCCESS
  */
-int chdir(unsigned char* dir_name);
+int chdir(uint8_t* dir_name);
 
 /**
  * rmfile:
@@ -110,5 +110,5 @@ int chdir(unsigned char* dir_name);
  * 
  *  else SYSCALL_SUCCESS
  */
-int rmfile(unsigned char* filename);
+int rmfile(uint8_t* filename);
 #endif

@@ -1,10 +1,12 @@
 
 #ifndef INCLUDE_VECTOR_H
 #define INCLUDE_VECTOR_H
+
+#include <stdint.h>
 typedef struct {
-    unsigned int size;
-    unsigned int capacity;
-    unsigned int* data;
+    uint32_t size;
+    uint32_t capacity;
+    uint32_t* data;
 }vector_t;
 
 /**
@@ -13,7 +15,7 @@ typedef struct {
  * @param vec The vecror
  * @param data The data to be appended
  */
-void vector_append(vector_t* vec, unsigned int data);
+void vector_append(vector_t* vec, uint32_t data);
 
 /**
  * vector_pop:
@@ -22,7 +24,7 @@ void vector_append(vector_t* vec, unsigned int data);
  * @param vec The vector
  * @return The popped item
  */
-unsigned int vector_pop(vector_t* vec);
+uint32_t vector_pop(vector_t* vec);
 
 /**
  * vector_is_empty:
@@ -31,7 +33,7 @@ unsigned int vector_pop(vector_t* vec);
  * 
  *         0 if the vector is not empty
  */
-unsigned char vector_is_empty(vector_t* vec);
+uint8_t vector_is_empty(vector_t* vec);
 
 /**
  * init_vector:
@@ -44,7 +46,7 @@ void init_vector(vector_t* vec);
  * Erases an item at a given index in a vector
  * @return The erased item
  */
-unsigned int vector_erase(vector_t* vec,unsigned int idx);
+uint32_t vector_erase(vector_t* vec,uint32_t idx);
 /** 
  * vector_find: 
  * Returns the index of a piece of data in the vector
@@ -52,7 +54,7 @@ unsigned int vector_erase(vector_t* vec,unsigned int idx);
  * @param data The data 
  * @return The index of the data in the vector
 */
-unsigned int vector_find(vector_t* vec, unsigned int data);
+uint32_t vector_find(vector_t* vec, uint32_t data);
 
 /**
  * vector_free:
@@ -60,6 +62,6 @@ unsigned int vector_find(vector_t* vec, unsigned int data);
  * @param vec The vector
  * @param ptrs Whether the vector data is pointers that need to be freed
  */
-void vector_free(vector_t* vec, unsigned char ptrs);
+void vector_free(vector_t* vec, uint8_t ptrs);
 
 #endif

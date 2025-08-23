@@ -13,6 +13,6 @@
  * @return The current working directory
  * 
  */
-int get_full_active_path(unsigned char* path_buffer, unsigned int buf_len);
+int get_full_active_path(uint8_t* path_buffer, uint32_t buf_len);
 
 #endif

@@ -1,7 +1,7 @@
 
 #ifndef INCLUDE_IO_H
 #define INCLUDE_IO_H
-
+#include <stdint.h>
 /* SCREEN I/O */
 #define FB_COMMAND_PORT                 0x3d4
 #define FB_DATA_PORT                    0x3d5
@@ -35,14 +35,14 @@
  * 
  */
 
-void outb(unsigned short port, unsigned char data);
+void outb(uint16_t port, uint8_t data);
 
 /**
  * outw - sends a word to I/O port
  * @param port ID of port
  * @param data word (short) to be sent
  */
-void outw(unsigned short port, unsigned short data);
+void outw(uint16_t port, uint16_t data);
 
 /**
  * 
@@ -50,13 +50,13 @@ void outw(unsigned short port, unsigned short data);
  * @param port ID of port
  * @return recieved byte
  */
-unsigned char inb(unsigned short port);
+uint8_t inb(uint16_t port);
 /**
  * inw - recieves a word from I/O port
  * @param port ID of port
  * @return recieved word (short)
  */
-unsigned short inw(unsigned short port);
+uint16_t inw(uint16_t port);
 
 /**
  * serial_configure_baud_rate:
@@ -67,7 +67,7 @@ unsigned short inw(unsigned short port);
  * @param com The COM port to configure
  * @param divisor The divisor
  */
-void serial_configure_baud_rate(unsigned short com, unsigned short divisor);
+void serial_configure_baud_rate(uint16_t com, uint16_t divisor);
 
 /** serial_configure_line:
  *  Configures the line of the given serial port. The port is set to have a
@@ -76,7 +76,7 @@ void serial_configure_baud_rate(unsigned short com, unsigned short divisor);
  *
  *  @param com  The serial port to configure
  */
-void serial_configure_line(unsigned short com);
+void serial_configure_line(uint16_t com);
 
 /**
  * serial_configure_buffer:
@@ -85,7 +85,7 @@ void serial_configure_line(unsigned short com);
  * 
  * @param com The serial port to configure
  */
-void serial_configure_buffer(unsigned short com);
+void serial_configure_buffer(uint16_t com);
 
 
 /**
@@ -95,7 +95,7 @@ void serial_configure_buffer(unsigned short com);
  * 
  * @param com The serial port to configure
  */
-void serial_configure_modem(unsigned short com);
+void serial_configure_modem(uint16_t com);
 
 /**
  * serial_is_transmit_fifo_empty:
@@ -105,7 +105,7 @@ void serial_configure_modem(unsigned short com);
  * @return 0 if the transmit FIFO queue is not empty 
  *         1 if the transmit FIFO queue is emtpy
  */
-int serial_is_transmit_fifo_empty(unsigned int com);
+int serial_is_transmit_fifo_empty(uint32_t com);
 
 /** 
  * serial_write:
@@ -114,6 +114,6 @@ int serial_is_transmit_fifo_empty(unsigned int com);
  * @param data The string ptr
  * @param com The COM port
 */
-void serial_write(const unsigned char* data, unsigned short com);
+void serial_write(const uint8_t* data, uint16_t com);
 
 #endif

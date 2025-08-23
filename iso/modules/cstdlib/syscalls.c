@@ -1,7 +1,7 @@
 #include "syscalls.h"
 #include "fs.h"
 
-int write(unsigned int fd, const char* buffer, unsigned int count){
+int write(uint32_t fd, const char* buffer, uint32_t count){
     asm volatile (
         "int $0x30"
         :
@@ -10,7 +10,7 @@ int write(unsigned int fd, const char* buffer, unsigned int count){
     );
 }
 
-int read(unsigned int fd, const char* buffer, unsigned int count){
+int read(uint32_t fd, const char* buffer, uint32_t count){
     asm volatile (
         "int $0x30"
         :
@@ -19,7 +19,7 @@ int read(unsigned int fd, const char* buffer, unsigned int count){
     );
 }
 
-int open(const char* pathname, unsigned char flags){
+int open(const char* pathname, uint8_t flags){
     asm volatile (
         "int $0x30"
         :
@@ -28,7 +28,7 @@ int open(const char* pathname, unsigned char flags){
     );
 }
 
-int close(unsigned int fd){
+int close(uint32_t fd){
     asm volatile (
         "int $0x30"
         :
@@ -37,7 +37,7 @@ int close(unsigned int fd){
     );
 }
 
-int exit(unsigned int error_code){
+int exit(uint32_t error_code){
     asm volatile (
         "int $0x30"
         :
@@ -46,7 +46,7 @@ int exit(unsigned int error_code){
     );
 }
 
-void* mmap(unsigned int size){
+void* mmap(uint32_t size){
     asm volatile (
         "int $0x30"
         :
@@ -55,7 +55,7 @@ void* mmap(unsigned int size){
     );
 }
 
-void getcwd(unsigned char* buffer, unsigned int size){
+void getcwd(uint8_t* buffer, uint32_t size){
     asm volatile (
         "int $0x30"
         :
@@ -64,7 +64,7 @@ void getcwd(unsigned char* buffer, unsigned int size){
     );
 }
 
-int getdents(unsigned int fd,dirent_t* buffer,unsigned int size){
+int getdents(uint32_t fd,dirent_t* buffer,uint32_t size){
     asm volatile (
         "int $0x30"
         :
@@ -73,7 +73,7 @@ int getdents(unsigned int fd,dirent_t* buffer,unsigned int size){
     );
 }
 
-int chdir(unsigned char* dir_name){
+int chdir(uint8_t* dir_name){
     asm volatile (
         "int $0x30"
         :
@@ -82,7 +82,7 @@ int chdir(unsigned char* dir_name){
     );
 }
 
-int rmfile(unsigned char* filename){
+int rmfile(uint8_t* filename){
     asm volatile (
         "int $0x30"
         :

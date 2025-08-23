@@ -1,7 +1,7 @@
 #include "keyboard.h"
 #include "../../io/io.h"
 #include "../../filesystem/vfs/vfs.h"
-unsigned char read_scan_code(){
+uint8_t read_scan_code(){
     return inb(KEYBOARD_DATA_PORT);
 }
 static char kb_buffer[KB_BUFFER_SIZE];
@@ -26,11 +26,11 @@ int kb_buffer_pop(char* c){
   return 1;
 }
 
-int kb_read(generic_file_t* f, unsigned char* buffer, unsigned int size){
+int kb_read(generic_file_t* f, uint8_t* buffer, uint32_t size){
     if (size > KB_BUFFER_SIZE) size = KB_BUFFER_SIZE;
 
     int read_bytes = 0;
-    for (unsigned int i = 0; i < size; i++){
+    for (uint32_t i = 0; i < size; i++){
       if (!kb_buffer_pop(&buffer[i])){
         break;
       }
@@ -52,7 +52,7 @@ generic_file_t kb_file = {
   .generic_data = 0,
 };
 
-unsigned int KB_STATUS = KB_LOWER; 
+uint32_t KB_STATUS = KB_LOWER; 
 // IMPORTANT: This keyboard map is for a full german keyboard layout, you will need to change it if you have a different layout
 // Umlaute have been replaced by their regular counterpart
 char keyboard_map_lower[128] = {
@@ -124,11 +124,11 @@ void init_keyboard(){
     keyboard_map_ALT_GR[57] = ' ';
 }
 
-int is_special_code(unsigned char scan_code){
+int is_special_code(uint8_t scan_code){
   return (scan_code == KB_SCAN_CODE_ALT_GR || scan_code == KB_SCAN_CODE_CTRL || scan_code == KB_SCAN_CODE_HOME || scan_code == KB_SCAN_CODE_SHIFT || scan_code == KB_SCAN_CODE_TOGGLE_SHIFT);
 }
 
-unsigned char decode_scan_code(unsigned char scan_code){
+uint8_t decode_scan_code(uint8_t scan_code){
     switch (scan_code)
     {
     case KB_SCAN_CODE_SHIFT:{
@@ -175,7 +175,7 @@ unsigned char decode_scan_code(unsigned char scan_code){
 }
 
 void handle_keyboard_interrupt(){
-  unsigned char key = decode_scan_code(read_scan_code());
+  uint8_t key = decode_scan_code(read_scan_code());
   if (key){
     kb_buffer_push(key);
   }

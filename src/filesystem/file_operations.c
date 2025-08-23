@@ -13,10 +13,10 @@ vfs_handlers_t fs_ops = {
     .read = fs_read
 };
 
-unsigned int get_sector_for_rw(inode_t* inode, unsigned int sector_idx, unsigned char is_write) {
-    unsigned int sector;
+uint32_t get_sector_for_rw(inode_t* inode, uint32_t sector_idx, uint8_t is_write) {
+    uint32_t sector;
 
-    if (sector_idx >= NUM_DATA_SECTORS_PER_FILE + ATA_SECTOR_SIZE / sizeof(unsigned int))
+    if (sector_idx >= NUM_DATA_SECTORS_PER_FILE + ATA_SECTOR_SIZE / sizeof(uint32_t))
         return 0; // Signal: Invalid sector index
 
     if (sector_idx >= NUM_DATA_SECTORS_PER_FILE) {
@@ -33,8 +33,8 @@ unsigned int get_sector_for_rw(inode_t* inode, unsigned int sector_idx, unsigned
             last_read_sector_idx = inode->indirect_sector;
         }
 
-        unsigned int indirect_idx = sector_idx - NUM_DATA_SECTORS_PER_FILE;
-        unsigned int* indirect_entries = (unsigned int*)last_read_sector;
+        uint32_t indirect_idx = sector_idx - NUM_DATA_SECTORS_PER_FILE;
+        uint32_t* indirect_entries = (uint32_t*)last_read_sector;
         sector = indirect_entries[indirect_idx];
 
         if (is_write && !sector) {
@@ -53,7 +53,7 @@ unsigned int get_sector_for_rw(inode_t* inode, unsigned int sector_idx, unsigned
     return sector;
 }
 
-generic_file_t* fs_open(unsigned char* filepath,unsigned char flags){
+generic_file_t* fs_open(uint8_t* filepath,uint8_t flags){
     
     inode_t* inode;
     if(dir_contains_name(active_dir,filepath)){
@@ -100,7 +100,7 @@ int fs_close(generic_file_t* f){
     return FILE_OP_SUCCESS;
 }
 
-int fs_write(generic_file_t* f, unsigned char* buffer,unsigned int size){
+int fs_write(generic_file_t* f, uint8_t* buffer,uint32_t size){
 
     
     open_file_t* file = (open_file_t*)f->generic_data;
@@ -108,7 +108,7 @@ int fs_write(generic_file_t* f, unsigned char* buffer,unsigned int size){
     if (!file) return FILE_INVALID_FD;
     if (!(file->flags & FILE_FLAG_WRITE)) return FILE_INVALID_PERMISSIONS;
     
-    unsigned int write_pos = file->rw_pointer;
+    uint32_t write_pos = file->rw_pointer;
 
     inode_t* inode = get_inode_by_id(file->inode_id);
 
@@ -116,18 +116,18 @@ int fs_write(generic_file_t* f, unsigned char* buffer,unsigned int size){
 
     if (file->flags & FILE_FLAG_APPEND) write_pos = inode->size;
 
-    unsigned int bytes_written = 0;
-    unsigned int to_write;
+    uint32_t bytes_written = 0;
+    uint32_t to_write;
     while(bytes_written < size){
-        unsigned int sector_idx = write_pos / ATA_SECTOR_SIZE;
+        uint32_t sector_idx = write_pos / ATA_SECTOR_SIZE;
 
         if (sector_idx >= MAX_FILE_SECTORS)
             return FILE_NO_CAPACITY;
         
-        unsigned int sector = get_sector_for_rw(inode,sector_idx,1);
+        uint32_t sector = get_sector_for_rw(inode,sector_idx,1);
         if (!sector) return FILE_NO_CAPACITY;
 
-        unsigned int sector_offset = write_pos % ATA_SECTOR_SIZE;
+        uint32_t sector_offset = write_pos % ATA_SECTOR_SIZE;
         read_sectors(ATA_PRIMARY_BUS_IO,1,last_read_sector,sector);
         last_read_sector_idx = sector;
 
@@ -150,13 +150,13 @@ int fs_write(generic_file_t* f, unsigned char* buffer,unsigned int size){
     return bytes_written;
 }
 
-int fs_read(generic_file_t* f, unsigned char* buffer, unsigned int size){
+int fs_read(generic_file_t* f, uint8_t* buffer, uint32_t size){
     
     open_file_t* file = (open_file_t*)f->generic_data;
     
     if (!file) return FILE_INVALID_FD;
     if (!(file->flags & FILE_FLAG_READ)) return FILE_INVALID_PERMISSIONS;
-    unsigned int read_pos = file->rw_pointer;
+    uint32_t read_pos = file->rw_pointer;
 
     inode_t* inode = get_inode_by_id(file->inode_id);
 
@@ -164,19 +164,19 @@ int fs_read(generic_file_t* f, unsigned char* buffer, unsigned int size){
 
     if (inode->type == FS_TYPE_DIR) return FILE_INVALID_TARGET;
 
-    unsigned int bytes_read = 0;
-    unsigned int to_read;
+    uint32_t bytes_read = 0;
+    uint32_t to_read;
 
     while (bytes_read < size)
     {
-        unsigned int sector_idx = read_pos / ATA_SECTOR_SIZE;
+        uint32_t sector_idx = read_pos / ATA_SECTOR_SIZE;
 
         if (sector_idx >= MAX_FILE_SECTORS)
             return FILE_READ_OVER_END;
         
-        unsigned int sector = get_sector_for_rw(inode,sector_idx,0);
+        uint32_t sector = get_sector_for_rw(inode,sector_idx,0);
 
-        unsigned int sector_offset = read_pos % ATA_SECTOR_SIZE;
+        uint32_t sector_offset = read_pos % ATA_SECTOR_SIZE;
 
         read_sectors(ATA_PRIMARY_BUS_IO,1,last_read_sector,sector);
         last_read_sector_idx = sector;

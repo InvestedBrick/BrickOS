@@ -12,24 +12,24 @@
 
 void free_command(command_t com){
     kfree(com.command.str);
-    for (unsigned int i = 0; i < com.n_args;i++){
+    for (uint32_t i = 0; i < com.n_args;i++){
         kfree(com.args[i].str);
     }
     kfree(com.args);
 }
 
-string_t parse_word(unsigned char* line, unsigned char start_idx, unsigned int line_length){
+string_t parse_word(uint8_t* line, uint8_t start_idx, uint32_t line_length){
     string_t word;
     word.length = 0;
-    unsigned char* buffer = (unsigned char*)kmalloc(line_length + 1);
+    uint8_t* buffer = (uint8_t*)kmalloc(line_length + 1);
     memset(buffer,0,line_length + 1);
 
-    for (unsigned int i = start_idx; i < line_length && line[i] != ' '  ;i++){
+    for (uint32_t i = start_idx; i < line_length && line[i] != ' '  ;i++){
         buffer[i - start_idx] = line[i];
         word.length++;
     }
 
-    word.str = (unsigned char*)kmalloc(word.length + 1);
+    word.str = (uint8_t*)kmalloc(word.length + 1);
     memcpy(word.str,buffer,word.length);
     word.str[word.length] = '\0';
 
@@ -38,17 +38,17 @@ string_t parse_word(unsigned char* line, unsigned char start_idx, unsigned int l
     return word;
 }
 
-command_t parse_line(unsigned char* line,unsigned int line_length){
+command_t parse_line(uint8_t* line,uint32_t line_length){
     command_t comd;
     comd.n_args = 0;
     // skip any leading spaces
-    unsigned int command_start = 0;
+    uint32_t command_start = 0;
     while(line[command_start] == ' ') command_start++;
 
     // parse the main command
     comd.command = parse_word(line,command_start,line_length);
 
-    unsigned int i = command_start + comd.command.length;
+    uint32_t i = command_start + comd.command.length;
 
     while (i < line_length) {
         while (i < line_length && line[i] == ' ') i++;
@@ -60,9 +60,9 @@ command_t parse_line(unsigned char* line,unsigned int line_length){
     }
     comd.args = (string_t*)kmalloc(sizeof(string_t) * comd.n_args);
 
-    unsigned int arg_idx = 0;
+    uint32_t arg_idx = 0;
     //parse optional arguments
-    for(unsigned int i = command_start + comd.command.length; i < line_length;i++){
+    for(uint32_t i = command_start + comd.command.length; i < line_length;i++){
         while (i < line_length && line[i] == ' ') i++;
         
         if (i >= line_length) break;
@@ -77,8 +77,8 @@ command_t parse_line(unsigned char* line,unsigned int line_length){
 
 }
 
-void readline(unsigned char* line){
-    unsigned int line_idx = 0;
+void readline(uint8_t* line){
+    uint32_t line_idx = 0;
     char ch;
     while(1){
         if (kb_buffer_pop(&ch)){
@@ -122,13 +122,13 @@ void change_directory(command_t comd){
     string_array_t* strs = get_all_names_in_dir(active_dir,1);
     if (!strs) {write_string("The current directory is empty",30);newline();return;}
 
-    for(unsigned int i = 0; i < strs->n_strings;i++){
+    for(uint32_t i = 0; i < strs->n_strings;i++){
         if (!(strs->strings[i].str[strs->strings[i].length - 1] == '/')){
             continue;
         }
-        unsigned int name_len = strs->strings[i].length - 1; // ignore the '/' because it is not part of the actualy name
+        uint32_t name_len = strs->strings[i].length - 1; // ignore the '/' because it is not part of the actualy name
         if(strneq(strs->strings[i].str,comd.args[0].str,name_len,name_len)){
-            unsigned int id = get_inode_id_by_name(active_dir->id,comd.args[0].str);
+            uint32_t id = get_inode_id_by_name(active_dir->id,comd.args[0].str);
             inode_t* inode = get_inode_by_id(id);
             if(!inode) error("Failed to retrieve inode");
             change_active_dir(inode);
@@ -151,7 +151,7 @@ void run_file(command_t comd){
 
     if (!(file->perms & FS_FILE_PERM_EXECUTABLE)) {write_string("File is not executable",22); newline();return;}
 
-    unsigned char* binary = (unsigned char*)kmalloc(file->size);
+    uint8_t* binary = (uint8_t*)kmalloc(file->size);
     
     int fd = open(comd.args[0].str,FILE_FLAG_READ);
 
@@ -164,7 +164,7 @@ void run_file(command_t comd){
     close(fd);
     
     disable_interrupts();
-    unsigned int pid = create_user_process(binary,file->size,comd.args[0].str);
+    uint32_t pid = create_user_process(binary,file->size,comd.args[0].str);
     
     dispatch_user_process(pid);
     enable_interrupts();
@@ -178,7 +178,7 @@ string_t get_full_active_path(){
     string_array_t* str_arr = (string_array_t*)kmalloc(sizeof(string_array_t));
     inode_t* inode = active_dir;
 
-    unsigned int str_counter = 0;
+    uint32_t str_counter = 0;
 
     while(1) {
         str_counter++;
@@ -191,12 +191,12 @@ string_t get_full_active_path(){
     str_arr->n_strings = str_counter;
     inode = active_dir;
 
-    unsigned int str_arr_idx = 0;
+    uint32_t str_arr_idx = 0;
     while (1){
         inode_name_pair_t* name_pair = get_name_by_inode_id(inode->id);
         
         str_arr->strings[str_arr_idx].length = name_pair->length;
-        str_arr->strings[str_arr_idx].str = (unsigned char*)kmalloc(name_pair->length);
+        str_arr->strings[str_arr_idx].str = (uint8_t*)kmalloc(name_pair->length);
 
         memcpy(str_arr->strings[str_arr_idx].str,name_pair->name,name_pair->length);
         str_arr_idx++;
@@ -209,16 +209,16 @@ string_t get_full_active_path(){
 
     // str_arr now contains all the strings in reverse order
 
-    unsigned char* path;
-    unsigned int path_size = 0;
+    uint8_t* path;
+    uint32_t path_size = 0;
     
-    for (unsigned int i = 0; i < str_counter;i++){
+    for (uint32_t i = 0; i < str_counter;i++){
         path_size += str_arr->strings[i].length + 1; // one more for the '/' 
     }
 
-    path = (unsigned char*)kmalloc(path_size);
+    path = (uint8_t*)kmalloc(path_size);
     
-    unsigned int path_idx = 0;
+    uint32_t path_idx = 0;
     for(int i = str_counter - 1;i >= 0;i--){
         memcpy(&path[path_idx],str_arr->strings[i].str,str_arr->strings[i].length);
         path_idx += str_arr->strings[i].length;
@@ -235,7 +235,7 @@ string_t get_full_active_path(){
 } 
 
 void start_shell(){
-    unsigned char* line = kmalloc(SCREEN_COLUMNS + 1);
+    uint8_t* line = kmalloc(SCREEN_COLUMNS + 1);
     newline(); 
     command_t comd;
     while (1){
@@ -248,7 +248,7 @@ void start_shell(){
 
         readline(line);
         newline();
-        unsigned int len = strlen(line);
+        uint32_t len = strlen(line);
 
         comd = parse_line(line,len);
         
@@ -288,7 +288,7 @@ void start_shell(){
 
             if (names) {
 
-                for(unsigned int i = 0; i < names->n_strings;i++){
+                for(uint32_t i = 0; i < names->n_strings;i++){
                     write_string(names->strings[i].str,names->strings[i].length);
                     newline();
                 }
@@ -314,7 +314,7 @@ void start_shell(){
         else if (streq(comd.command.str,"rm")){
             if (!comd.args) {write_string("Expected name of file to remove",31); newline();}
             else{
-                unsigned char is_dir = 0;
+                uint8_t is_dir = 0;
                 if (comd.n_args > 1 && !streq(comd.args[1].str,"-r")) {write_string("Expected '-r' flag for directory",32);newline();}
                 else{
                     is_dir = 1;
@@ -337,27 +337,27 @@ void start_shell(){
         else if (streq(comd.command.str, "ftest")){
             if (!comd.args) {write_string("Expected name of file",21); newline();continue;};
             int fd = open(comd.args[0].str,FILE_FLAG_RW);
-            unsigned char failed = 0;
+            uint8_t failed = 0;
             if (fd < 0){
                 warn("opening failed");
-                log_uint((unsigned int)fd);
+                log_uint((uint32_t)fd);
                 failed = 1;
             }
-            unsigned char buf[] = {"Hello World, I hope this works"};
-            unsigned int buf_size = sizeof("Hello World, I hope this works");
+            uint8_t buf[] = {"Hello World, I hope this works"};
+            uint32_t buf_size = sizeof("Hello World, I hope this works");
             int ret = write(fd,buf,buf_size);
             log("Wrote bytes:");
             log_uint(ret);
             if (ret < 0){
                 warn("writing failed");
-                log_uint((unsigned int)ret);
+                log_uint((uint32_t)ret);
                 failed = 1;
             }
             memset(buf,0,buf_size);
             ret = read(fd,buf,buf_size);
             if (ret < 0){
                 warn("Reading failed");
-                log_uint((unsigned int)ret);
+                log_uint((uint32_t)ret);
                 failed = 1;
             }
             log(buf);
@@ -368,7 +368,7 @@ void start_shell(){
             ret = close(fd);
             if (ret < 0){
                 warn("closing failed");
-                log_uint((unsigned int)ret);
+                log_uint((uint32_t)ret);
                 failed = 1;
             }
             if (!failed) log("ftest succeded");

@@ -5,7 +5,7 @@ tss_entry_t tss_entry;
 
 gdt_entry_t gdt_entries[N_GDT_ENTRIES];
 gdt_t gdtp;
-void set_gdt_entry(int num,unsigned int base, unsigned int limit, unsigned char access, unsigned char gran){
+void set_gdt_entry(int num,uint32_t base, uint32_t limit, uint8_t access, uint8_t gran){
     gdt_entries[num].base_low = (base & 0xffff);
     gdt_entries[num].base_middle = (base >> 16) & 0xff;
     gdt_entries[num].base_high = (base >> 24) & 0xff;
@@ -16,7 +16,7 @@ void set_gdt_entry(int num,unsigned int base, unsigned int limit, unsigned char 
 
 void init_gdt() {
     gdtp.size = (sizeof(gdt_entry_t) * N_GDT_ENTRIES ) - 1;
-    gdtp.address = (unsigned int) &gdt_entries;
+    gdtp.address = (uint32_t) &gdt_entries;
     //        P DPL S E DC RW A
     // 0x9a = 1 00  1 1 0  1  0
     // 0x92 = 1 00  1 0 0  1  0
@@ -36,14 +36,14 @@ void init_gdt() {
     load_tss(0x28);
 }
 
-void write_tss(unsigned short ss0, unsigned int esp0){
-    set_gdt_entry(5,(unsigned int)&tss_entry,sizeof(tss_entry_t) - 1,0x89,GRANULARITY  & ~(0x80)); // 0x89 = present, ring 0, type 9 (TSS)
+void write_tss(uint16_t ss0, uint32_t esp0){
+    set_gdt_entry(5,(uint32_t)&tss_entry,sizeof(tss_entry_t) - 1,0x89,GRANULARITY  & ~(0x80)); // 0x89 = present, ring 0, type 9 (TSS)
     memset(&tss_entry,0,sizeof(tss_entry_t));
     tss_entry.ss0 = ss0;
     tss_entry.esp0 = esp0;
     tss_entry.iomap_base = sizeof(tss_entry_t);
 }
 
-void set_kernel_stack(unsigned int stack){
+void set_kernel_stack(uint32_t stack){
     tss_entry.esp0 = stack;
 }

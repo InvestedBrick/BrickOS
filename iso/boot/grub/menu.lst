@@ -1,9 +1,0 @@
-default=0
-timeout=0
-
-title BrickOS
-kernel /boot/kernel.elf
-module /modules/module_two.bin
-module /modules/interrupt.bin
-module /modules/shell.bin
-module /modules/loop.bin

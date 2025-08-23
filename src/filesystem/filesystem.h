@@ -3,6 +3,7 @@
 #define INCLUDE_FILESYSTEM_H
 
 #include "../util.h"
+#include <stdint.h>
 // must be set so that the inode struct is exactly 64 bytes wide
 #define NUM_DATA_SECTORS_PER_FILE 12
 
@@ -30,14 +31,14 @@
 #define BIT_CHECK(bitmap, idx) (bitmap[(idx)/8] & (1 << ((idx)%8)))
 
 
-extern unsigned char* last_read_sector;
-extern unsigned int last_read_sector_idx;
+extern uint8_t* last_read_sector;
+extern uint32_t last_read_sector_idx;
 
 typedef struct{
-    unsigned char big_sector_used_map[TOTAL_BIG_SECTORS / 8]; // 128 bytes as 1024-bit bitmap
-    unsigned char big_sector_full_map[TOTAL_BIG_SECTORS / 8];
-    unsigned char inode_sector_map[RESERVED_INODE_SECTORS]; // (100 sectors * 8 inodes/sector) / 8 bits/byte
-    unsigned char* sector_bitmaps[TOTAL_BIG_SECTORS];   // pointers to 64-byte (512-bit) normal sector bitmaps
+    uint8_t big_sector_used_map[TOTAL_BIG_SECTORS / 8]; // 128 bytes as 1024-bit bitmap
+    uint8_t big_sector_full_map[TOTAL_BIG_SECTORS / 8];
+    uint8_t inode_sector_map[RESERVED_INODE_SECTORS]; // (100 sectors * 8 inodes/sector) / 8 bits/byte
+    uint8_t* sector_bitmaps[TOTAL_BIG_SECTORS];   // pointers to 64-byte (512-bit) normal sector bitmaps
 }sectors_headerdata_t;
 
 #define FS_DATA_START_LBA ((RESERVED_SECTORS) * 512)
@@ -61,35 +62,35 @@ typedef struct{
 
 #include "fs_defines.h"
 
-extern unsigned char first_time_fs_init;
+extern uint8_t first_time_fs_init;
 
 // Padding so that the size is 64 and they are sector aligned
 typedef struct {
-    unsigned int id;
-    unsigned int size;
-    unsigned char type;
-    unsigned char perms;
-    unsigned char unused_flag_two;
-    unsigned char unused_flag_three;
-    unsigned int indirect_sector;
-    unsigned int data_sectors[NUM_DATA_SECTORS_PER_FILE];
+    uint32_t id;
+    uint32_t size;
+    uint8_t type;
+    uint8_t perms;
+    uint8_t unused_flag_two;
+    uint8_t unused_flag_three;
+    uint32_t indirect_sector;
+    uint32_t data_sectors[NUM_DATA_SECTORS_PER_FILE];
 
 }__attribute__((packed)) inode_t;
 
 extern inode_t* active_dir;
 
 typedef struct {
-    unsigned int parent_id;
-    unsigned int id;
-    unsigned char length;
-    unsigned char* name;
+    uint32_t parent_id;
+    uint32_t id;
+    uint8_t length;
+    uint8_t* name;
 }inode_name_pair_t;
 
 typedef struct {
-    unsigned int inode_id;
-    unsigned int len;
-    unsigned int type;
-    unsigned char name[];
+    uint32_t inode_id;
+    uint32_t len;
+    uint32_t type;
+    uint8_t name[];
 } dirent_t;
 // This should be 8
 #define FS_INODES_PER_SECTOR (ATA_SECTOR_SIZE / sizeof(inode_t)) 
@@ -118,7 +119,7 @@ inode_t* change_active_dir(inode_t* new_dir);
  * @param id The id of the inode
  * @return A pointer to a inode_name_pair_t struct where the name is contained
  */
-inode_name_pair_t* get_name_by_inode_id(unsigned int id);
+inode_name_pair_t* get_name_by_inode_id(uint32_t id);
 
 /**
  * get_inode_id_by_name:
@@ -126,7 +127,7 @@ inode_name_pair_t* get_name_by_inode_id(unsigned int id);
  * @param name The name of the directory/file
  * 
  */
-unsigned int get_inode_id_by_name(unsigned int parent_id, unsigned char* name);
+uint32_t get_inode_id_by_name(uint32_t parent_id, uint8_t* name);
 
 /**
  * get_inode_by_id: 
@@ -134,7 +135,7 @@ unsigned int get_inode_id_by_name(unsigned int parent_id, unsigned char* name);
  * @param id The id of the inode
  * @return A pointer to the inode
  */
-inode_t* get_inode_by_id(unsigned int id);
+inode_t* get_inode_by_id(uint32_t id);
 /**
  * get_active_dir: 
  * Returns the name of the current active directory
@@ -160,14 +161,14 @@ void write_bitmaps_to_disk();
  * Frees an allocated sector of the disk
  * @param sector_index The sector index of the sector
  */
-void free_sector(unsigned int sector_index);
+void free_sector(uint32_t sector_index);
 
 /**
  * allocate_sector: 
  * Allocates a sector from the disk
  * @return The sector index from the allocated sector
  */
-unsigned int allocate_sector();
+uint32_t allocate_sector();
 
 /**
  * get_all_names_in_dir:
@@ -192,7 +193,7 @@ string_array_t* get_all_names_in_dir(inode_t* dir);
  * @param perms The permissions of the file
  * @return whether the file creation was successful (return value == 0) or not (return value < 0)
  */
-int create_file(inode_t* parent_dir, unsigned char* name, unsigned char name_length,unsigned char type,unsigned char perms);
+int create_file(inode_t* parent_dir, uint8_t* name, uint8_t name_length,uint8_t type,uint8_t perms);
 
 /**
  * write_to_disk: 
@@ -215,7 +216,7 @@ inode_t* get_parent_inode(inode_t* child);
  * @param path The full file path
  * @return The inode pointer
  */
-inode_t* get_inode_by_full_file_path(unsigned char* path);
+inode_t* get_inode_by_full_file_path(uint8_t* path);
 
 
 /**
@@ -224,7 +225,7 @@ inode_t* get_inode_by_full_file_path(unsigned char* path);
  * @param path The file path starting from the active directory
  * @return The inode pointer
  */
-inode_t* get_inode_by_relative_file_path(unsigned char* path);
+inode_t* get_inode_by_relative_file_path(uint8_t* path);
 
 /**
  * dir_contains_name: 
@@ -236,7 +237,7 @@ inode_t* get_inode_by_relative_file_path(unsigned char* path);
  * 
  *         0 of the directory does not contain the name
  */
-unsigned char dir_contains_name(inode_t* dir,unsigned char* name);
+uint8_t dir_contains_name(inode_t* dir,uint8_t* name);
 
 
 
@@ -247,7 +248,7 @@ unsigned char dir_contains_name(inode_t* dir,unsigned char* name);
  * @param name The name of the directory / path to the directory
  * @return If the deletion was successful (return value == 0) or not (return value < 0)
  */
-int delete_dir(inode_t* parent_dir,unsigned char* name);
+int delete_dir(inode_t* parent_dir,uint8_t* name);
 
 /**
  * delete_file_by_inode: 
@@ -268,7 +269,7 @@ int delete_file_by_inode(inode_t* parent_dir,inode_t* inode);
  * 
  * @return A pointer to the file inode
  */
-inode_t* get_file_if_exists(inode_t* parent_dir,unsigned char* name);
+inode_t* get_file_if_exists(inode_t* parent_dir,uint8_t* name);
 
 
 /**
@@ -277,5 +278,5 @@ inode_t* get_file_if_exists(inode_t* parent_dir,unsigned char* name);
  * @param file The file
  * @param perms The new permissions
  */
-void change_file_permissions(inode_t* file,unsigned char perms);
+void change_file_permissions(inode_t* file,uint8_t perms);
 #endif

@@ -4,14 +4,14 @@
 
 #include "vfs/vfs.h"
 typedef struct {
-    unsigned char flags;
-    unsigned int inode_id;
-    unsigned int rw_pointer; //TODO: implement lseek and get_file_size 
+    uint8_t flags;
+    uint32_t inode_id;
+    uint32_t rw_pointer; //TODO: implement lseek and get_file_size 
 }open_file_t;
 
 
-#define FILE_READ_ALL (unsigned int)-1
-#define MAX_FILE_SECTORS (NUM_DATA_SECTORS_PER_FILE + ATA_SECTOR_SIZE / sizeof(unsigned int))
+#define FILE_READ_ALL (uint32_t)-1
+#define MAX_FILE_SECTORS (NUM_DATA_SECTORS_PER_FILE + ATA_SECTOR_SIZE / sizeof(uint32_t))
 
 #define nullptr 0
 /**
@@ -21,7 +21,7 @@ typedef struct {
  * @param flags flags for the file (R/W/A/C)
  * @return The file desciptor
  */
-generic_file_t* fs_open(unsigned char* filepath,unsigned char flags);
+generic_file_t* fs_open(uint8_t* filepath,uint8_t flags);
 
 
 /**
@@ -32,7 +32,7 @@ generic_file_t* fs_open(unsigned char* filepath,unsigned char flags);
  * @param size The number of bytes to write
  * @return The number of bytes written
  */
-int fs_write(generic_file_t* file, unsigned char* buffer,unsigned int size);
+int fs_write(generic_file_t* file, uint8_t* buffer,uint32_t size);
 
 /**
  * fs_close: 
@@ -53,7 +53,7 @@ int fs_close(generic_file_t* file);
  * 
  * @return The number of bytes read
  */
-int fs_read(generic_file_t* file, unsigned char* buffer, unsigned int size);
+int fs_read(generic_file_t* file, uint8_t* buffer, uint32_t size);
 
 
 #endif

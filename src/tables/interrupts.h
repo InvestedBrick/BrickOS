@@ -1,7 +1,7 @@
 
 #ifndef INCLUDE_IDT_H
 #define INCLUDE_IDT_H
-
+#include <stdint.h>
 #define STANDARD_KERNEL_ATTRIBUTES 0x8e // Present, DPL=0, 32-bit interrupt gate 
 #define STANDARD_USER_ATTRIBUTES 0xee // Present, DPL = 3, 32-bit interrupt gate
 
@@ -46,24 +46,24 @@
 #define INT_PAGE_FAULT 0xe
 typedef struct
 {
-    unsigned short offset_low;
-    unsigned short segment_selector;
-    unsigned char reserved;
-    unsigned char attributes;
-    unsigned short offset_high;
+    uint16_t offset_low;
+    uint16_t segment_selector;
+    uint8_t reserved;
+    uint8_t attributes;
+    uint16_t offset_high;
 }__attribute__((packed)) idt_entry_t;
 
 typedef struct
 {
-    unsigned short limit;
-    unsigned int base;
+    uint16_t limit;
+    uint32_t base;
 }__attribute__((packed)) idt_t;
 
 
 typedef struct {
-    unsigned int gs,fs,es,ds;
-    unsigned int ebp,edi,esi,edx,ecx,ebx,eax;
-    unsigned int interrupt_number,error_code,eip,cs,eflags,esp,ss;
+    uint32_t gs,fs,es,ds;
+    uint32_t ebp,edi,esi,edx,ecx,ebx,eax;
+    uint32_t interrupt_number,error_code,eip,cs,eflags,esp,ss;
 }__attribute__((packed)) interrupt_stack_frame_t;
 
 /**
@@ -74,7 +74,7 @@ typedef struct {
  * @param attributes The relevant attribute bits
  * @param segment_selector The segment selector
  */
-void set_idt_entry(unsigned char num,void* offset,unsigned char attributes);
+void set_idt_entry(uint8_t num,void* offset,uint8_t attributes);
 
 /**
  * 
@@ -92,7 +92,7 @@ void load_idt(const idt_t* first_entry);
  * PIC1 becomes offset1..offset1+7
  * PIC2 becomes offset2..offset2+7
  */
-void remap_PIC(unsigned int offset1, unsigned int offset2);
+void remap_PIC(uint32_t offset1, uint32_t offset2);
 
 /**
  * acknowledge_PIC:
@@ -100,7 +100,7 @@ void remap_PIC(unsigned int offset1, unsigned int offset2);
  *  
  * @param interrupt The number of the interrupt
  */
-void acknowledge_PIC(unsigned int interrupt);
+void acknowledge_PIC(uint32_t interrupt);
 
 
 void enable_interrupts();
@@ -111,14 +111,14 @@ void disable_interrupts();
  * get_interrupt_status:
  * @return whether interrupts are enabled (return val 1) or not (return val 0)
  */
-unsigned char get_interrupt_status();
+uint8_t get_interrupt_status();
 
 /**
  * set_interrupt_status:
  * Enbales or disables interrupts based on whether int_enable > 0
  * @param int_enable A boolean to determine if interrupts should be enabled or not
  */
-void set_interrupt_status(unsigned char int_enable);
+void set_interrupt_status(uint8_t int_enable);
 
 
 /**

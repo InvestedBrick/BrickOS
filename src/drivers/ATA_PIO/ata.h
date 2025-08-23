@@ -1,7 +1,9 @@
 
 #ifndef INCLUDE_ATA_H
 #define INCLUDE_ATA_H
-extern unsigned int addressable_LBA28_sectors;
+
+#include <stdint.h>
+extern uint32_t addressable_LBA28_sectors;
 /**
  * Primary bus I/O ports:
  * 0x1f0 - 0x1f7
@@ -91,7 +93,7 @@ void init_disk_driver();
  * @param buf The buffer to read the sectors into
  * @param lba The sector from where to start reading
  */
-void read_sectors(unsigned short bus,unsigned char n_sectors, unsigned char* buf, unsigned int lba);
+void read_sectors(uint16_t bus,uint8_t n_sectors, uint8_t* buf, uint32_t lba);
 
 /**
  * write_sectors:
@@ -101,7 +103,7 @@ void read_sectors(unsigned short bus,unsigned char n_sectors, unsigned char* buf
  * @param buf The buffer which to write into the sectors
  * @param lba The sector from where to start writing
  */
-void write_sectors(unsigned short bus, unsigned char n_sectors, unsigned char* buf,unsigned int lba);
+void write_sectors(uint16_t bus, uint8_t n_sectors, uint8_t* buf,uint32_t lba);
 
 
 #endif

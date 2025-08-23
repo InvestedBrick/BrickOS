@@ -7,11 +7,11 @@
 #include "user_process.h"
 
 typedef struct process_state_struct{
-    unsigned int pid;
+    uint32_t pid;
     interrupt_stack_frame_t regs;
-    unsigned int* pd;
+    uint32_t* pd;
     struct process_state_struct* next;
-    unsigned int kernel_stack_top;
+    uint32_t kernel_stack_top;
 } process_state_t;
 
 #define TASK_SWITCH_DELAY_MS 20
@@ -55,7 +55,7 @@ void remove_process_state(process_state_t* proc);
  * Returns a process state with a given page dir
  * @param page_dir The page directory of the process
  */
-process_state_t* get_process_state_by_page_dir(unsigned int* page_dir);
+process_state_t* get_process_state_by_page_dir(uint32_t* page_dir);
 
 
 process_state_t* get_current_process_state();

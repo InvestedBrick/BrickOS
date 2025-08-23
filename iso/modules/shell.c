@@ -3,7 +3,7 @@
 #include "cstdlib/stdutils.h"
 #include "cstdlib/syscalls.h"
 #include "cstdlib/malloc.h"
-
+#include <stdint.h>
 shell_command_t commands[] = {
     {"help", cmd_help, "Shows help menu"},
     {"exit", 0, "Exits the shell"},
@@ -16,7 +16,7 @@ shell_command_t commands[] = {
     {0,0,0}
 };
 
-int delete_dir_recursive(unsigned char* dir_name){
+int delete_dir_recursive(uint8_t* dir_name){
     int dir_fd = open(dir_name,FILE_FLAG_NONE);
     if (chdir(dir_name) < 0) {
         print("Invalid directory\n");
@@ -24,10 +24,10 @@ int delete_dir_recursive(unsigned char* dir_name){
     }
     if (dir_fd < 0) 
         {print("Failed to open directory\n"); return -1;}
-    const unsigned int buffer_size = 512;
-    unsigned char* buffer = (unsigned char*)malloc(buffer_size);
+    const uint32_t buffer_size = 512;
+    uint8_t* buffer = (uint8_t*)malloc(buffer_size);
     int n_entries = getdents(dir_fd,(dirent_t*)buffer,buffer_size);
-    unsigned int bpos = 0;
+    uint32_t bpos = 0;
     for (int i = 0; i < n_entries;i++){
         dirent_t* ent = (dirent_t*)(buffer + bpos);
         if (ent->type == TYPE_FILE){
@@ -84,11 +84,11 @@ void cmd_ls(command_t* cmd){
 
     if (dir_fd < 0) 
         {print("Failed to open directory\n"); return;}
-    unsigned char buffer[1024];
+    uint8_t buffer[1024];
     int n_entries = getdents(dir_fd,(dirent_t*)buffer,sizeof(buffer));
     if (n_entries == -1) return; // dir is empty
-    unsigned int bpos = 0;
-    for (unsigned int i = 0; i < n_entries;i++){
+    uint32_t bpos = 0;
+    for (uint32_t i = 0; i < n_entries;i++){
         dirent_t* ent = (dirent_t*)(buffer + bpos);
         print(ent->name);
         if (ent->type == TYPE_DIR){
@@ -126,7 +126,7 @@ void cmd_mkdir(command_t* cmd){
 void cmd_rm(command_t* cmd){
     if (argcheck(cmd,"Expected filename\n")) return;
 
-    unsigned char* filename = cmd->args[0].str;
+    uint8_t* filename = cmd->args[0].str;
     if (cmd->n_args > 1){
         if (streq(cmd->args[1].str,"-r")){
             delete_dir_recursive(filename);
@@ -140,24 +140,24 @@ void cmd_rm(command_t* cmd){
 }
 void free_command(command_t com){
     free(com.command.str);
-    for (unsigned int i = 0; i < com.n_args;i++){
+    for (uint32_t i = 0; i < com.n_args;i++){
         free(com.args[i].str);
     }
     free(com.args);
 }
 
-string_t parse_word(unsigned char* line, unsigned char start_idx, unsigned int line_length){
+string_t parse_word(uint8_t* line, uint8_t start_idx, uint32_t line_length){
     string_t word;
     word.length = 0;
-    unsigned char* buffer = (unsigned char*)malloc(line_length + 1);
+    uint8_t* buffer = (uint8_t*)malloc(line_length + 1);
     memset(buffer,0,line_length + 1);
 
-    for (unsigned int i = start_idx; i < line_length && line[i] != ' '  ;i++){
+    for (uint32_t i = start_idx; i < line_length && line[i] != ' '  ;i++){
         buffer[i - start_idx] = line[i];
         word.length++;
     }
 
-    word.str = (unsigned char*)malloc(word.length + 1);
+    word.str = (uint8_t*)malloc(word.length + 1);
     memcpy(word.str,buffer,word.length);
     word.str[word.length] = '\0';
 
@@ -166,17 +166,17 @@ string_t parse_word(unsigned char* line, unsigned char start_idx, unsigned int l
     return word;
 }
 
-command_t parse_line(unsigned char* line,unsigned int line_length){
+command_t parse_line(uint8_t* line,uint32_t line_length){
     command_t comd;
     comd.n_args = 0;
     // skip any leading spaces
-    unsigned int command_start = 0;
+    uint32_t command_start = 0;
     while(line[command_start] == ' ') command_start++;
 
     // parse the main command
     comd.command = parse_word(line,command_start,line_length);
 
-    unsigned int i = command_start + comd.command.length;
+    uint32_t i = command_start + comd.command.length;
 
     while (i < line_length) {
         while (i < line_length && line[i] == ' ') i++;
@@ -188,9 +188,9 @@ command_t parse_line(unsigned char* line,unsigned int line_length){
     }
     comd.args = (string_t*)malloc(sizeof(string_t) * comd.n_args);
 
-    unsigned int arg_idx = 0;
+    uint32_t arg_idx = 0;
     //parse optional arguments
-    for(unsigned int i = command_start + comd.command.length; i < line_length;i++){
+    for(uint32_t i = command_start + comd.command.length; i < line_length;i++){
         while (i < line_length && line[i] == ' ') i++;
         
         if (i >= line_length) break;
@@ -208,8 +208,8 @@ command_t parse_line(unsigned char* line,unsigned int line_length){
 __attribute__((section(".text.start")))
 void main(){
     print("\nBrickOS Shell started\n");
-    unsigned char* line = (unsigned char*)malloc(SCREEN_COLUMNS + 1);
-    unsigned char* dir_buffer = (unsigned char*)malloc(100);
+    uint8_t* line = (uint8_t*)malloc(SCREEN_COLUMNS + 1);
+    uint8_t* dir_buffer = (uint8_t*)malloc(100);
     command_t comd;
     while(1){
         memset(line,0x0,SCREEN_COLUMNS + 1);
@@ -226,8 +226,8 @@ void main(){
         
         if (!comd.command.length) continue;
 
-        unsigned char* main_cmd = comd.command.str;
-        unsigned char found = 0;
+        uint8_t* main_cmd = comd.command.str;
+        uint8_t found = 0;
         if (streq(main_cmd,"exit")){
             break;
         }
