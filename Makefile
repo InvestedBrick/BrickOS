@@ -17,7 +17,7 @@ C_SOURCES = \
 	src/drivers/ATA_PIO/*.c \
     src/filesystem/*c \
     src/filesystem/vfs/*.c \
-#    src/shell/*.c 
+    src/screen/*.c 
 
 
 ASM_SOURCES := $(wildcard $(ASM_SOURCES))
