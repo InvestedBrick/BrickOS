@@ -3,7 +3,7 @@
 #define INCLUDE_SCREEN_H
 
 #define VIDEO_MEMORY_START 0xc00b8000 // need to remap due to allocated memory pages
-#define SCREEN_PIXEL_BUFFER_START 0xff000000
+#define SCREEN_PIXEL_BUFFER_START 0xe0000000
 
 #define SCREEN_ROWS 25
 #define SCREEN_COLUMNS 80
@@ -30,17 +30,19 @@
 #define INVALID_ARGUMENT -1
 #include "filesystem/vfs/vfs.h"
 #include "multiboot.h"
-
-extern unsigned short g_cursor_pos;
+#include <stdint.h>
+extern uint16_t g_cursor_pos;
 extern generic_file_t screen_file;
 
+
+uint32_t rgb_to_color(uint8_t r, uint8_t g, uint8_t b);
 /**
  * init_framebuffer:
  * Initializes the framebuffer
  * @param mboot The multiboot information
  * @param fb_start The start of the buffer in virtual memory
  */
-void init_framebuffer(multiboot_info_t* mboot,unsigned int fb_start);
+void init_framebuffer(multiboot_info_t* mboot,uint32_t fb_start);
 
 /**
  * write_pixel:
@@ -50,7 +52,7 @@ void init_framebuffer(multiboot_info_t* mboot,unsigned int fb_start);
  * @param y The y coordinate of the pixel
  * @param color The color of the pixel (ARGB format)
  */
-void write_pixel(unsigned int x, unsigned int y, unsigned int color);
+void write_pixel(uint32_t x, uint32_t y, uint32_t color);
 
 /**
 *  fb_write_cell:
@@ -62,7 +64,7 @@ void write_pixel(unsigned int x, unsigned int y, unsigned int color);
 * @param bg The background color
 *  
 * */ 
-void fb_write_cell(unsigned short i, char c,unsigned char fg, unsigned char bg);
+void fb_write_cell(uint16_t i, char c,uint8_t fg, uint8_t bg);
 
 /**
 * clear_screen:
@@ -77,7 +79,7 @@ void clear_screen();
  * 
  * @param pos The new position of the cursor
  */
-void fb_set_cursor(unsigned short pos);
+void fb_set_cursor(uint16_t pos);
 
 /**
  * scroll_screen_up:
