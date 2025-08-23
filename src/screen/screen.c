@@ -6,9 +6,11 @@
 #include "../util.h"
 #include "../memory/memory.h"
 #include "../multiboot.h"
+#include "bitmap.h"
 #include <stdint.h>
 char* g_fb = (char*)VIDEO_MEMORY_START;
 uint16_t g_cursor_pos = 0;
+
 uint8_t cursor_prev_idx;
 
 volatile uint8_t* fb = 0;
@@ -25,6 +27,9 @@ uint8_t g_mask_size = 0;
 
 uint8_t b_pos = 0;
 uint8_t b_mask_size = 0;
+
+uint32_t gfx_cursor_x = 0;
+uint32_t gfx_cursor_y = 0;
 
 // preparation for multiple screens
 uint32_t screen_origin_x = 0;
@@ -79,6 +84,41 @@ void write_pixel(uint32_t x, uint32_t y, uint32_t color){
     *(volatile uint32_t*)(fb + y * screen_bytes_per_row + x * screen_bytespp) = color;
 }
 
+void write_char(uint8_t ch){
+    if (ch < ' ' || ch > '~') return;
+    const uint8_t map_idx = ch - ' ';
+
+    uint32_t px = gfx_cursor_x * COLUMNS_PER_CHAR;
+    uint32_t py = gfx_cursor_y * ROWS_PER_CHAR + ROWS_PER_CHAR; // work up from the bottom
+
+    for (uint32_t i = 0; i < ROWS_PER_CHAR;i++){
+        uint8_t row = char_bitmap[map_idx][i];
+
+        if (row == 0x00){py--;continue;}
+
+        for (uint8_t bit_idx = 0; bit_idx < 8; bit_idx++) {
+            if (row & (1 << bit_idx)) {
+                write_pixel(px + (7 - bit_idx), py, VBE_COLOR_GRAY);
+            }
+        }
+
+        py--; 
+
+    }
+
+    gfx_cursor_x++;
+    if (gfx_cursor_x * COLUMNS_PER_CHAR >= screen_width) {
+        gfx_cursor_x = 0;
+        gfx_cursor_y++;
+    }
+}
+
+void print_bitmap(){
+    for (uint8_t ch = ' '; ch <= '~';ch++){
+        write_char(ch);
+    }
+}
+
 void clamp_cursor() {
     if (g_cursor_pos > CURSOR_MAX) g_cursor_pos = CURSOR_MAX;
     // g_cursor_pos is unsigned, so no need to check < 0
@@ -92,7 +132,7 @@ void fb_write_cell(uint16_t i, char c,uint8_t fg, uint8_t bg){
 void clear_screen(){
     uint16_t i = 0;
     while (i <  SCREEN_ROWS * SCREEN_COLUMNS){
-        fb_write_cell(i,' ',COLOR_BLACK,COLOR_BLACK);
+        fb_write_cell(i,' ',VGA_COLOR_BLACK,VGA_COLOR_BLACK);
         i++;
     }
     g_cursor_pos = 0;
@@ -100,7 +140,7 @@ void clear_screen(){
 
 void fb_set_cursor(uint16_t pos) {
     clamp_cursor();
-    fb_write_cell(pos,' ',COLOR_LIGHT_GREY,COLOR_LIGHT_GREY);
+    fb_write_cell(pos,' ',VGA_COLOR_LIGHT_GREY,VGA_COLOR_LIGHT_GREY);
 }
 
 void scroll_screen_up(){
@@ -110,7 +150,7 @@ void scroll_screen_up(){
     }
 
     for(uint16_t idx = (SCREEN_ROWS * SCREEN_COLUMNS) - SCREEN_COLUMNS; idx <  (SCREEN_ROWS * SCREEN_COLUMNS);idx++){
-        fb_write_cell(idx,' ',COLOR_BLACK,COLOR_BLACK);
+        fb_write_cell(idx,' ',VGA_COLOR_BLACK,VGA_COLOR_BLACK);
     }
     if (g_cursor_pos >= SCREEN_COLUMNS)
         g_cursor_pos -= SCREEN_COLUMNS;
@@ -121,29 +161,21 @@ void scroll_screen_up(){
 }
 
 void erase_one_char(){
-    fb_write_cell(g_cursor_pos,' ',COLOR_BLACK,COLOR_BLACK);//remove current cell
+    fb_write_cell(g_cursor_pos,' ',VGA_COLOR_BLACK,VGA_COLOR_BLACK);//remove current cell
     if (g_cursor_pos != 0){
         g_cursor_pos--;
     }
     clamp_cursor();
-    fb_write_cell(g_cursor_pos,' ',COLOR_BLACK,COLOR_BLACK);//remove current cell
+    fb_write_cell(g_cursor_pos,' ',VGA_COLOR_BLACK,VGA_COLOR_BLACK);//remove current cell
     fb_set_cursor(g_cursor_pos);
 }
 
 void newline(){
-    fb_write_cell(g_cursor_pos,' ',COLOR_BLACK,COLOR_BLACK);//remove current cell
+    fb_write_cell(g_cursor_pos,' ',VGA_COLOR_BLACK,VGA_COLOR_BLACK);//remove current cell
     if (g_cursor_pos < (SCREEN_COLUMNS - 1) * SCREEN_ROWS){
         g_cursor_pos += (SCREEN_COLUMNS - (g_cursor_pos % SCREEN_COLUMNS));
         clamp_cursor();
     }
-    fb_set_cursor(g_cursor_pos);
-}
-
-void write_char(uint8_t c){
-    if (g_cursor_pos >= SCREEN_ROWS * SCREEN_COLUMNS){scroll_screen_up();}
-    fb_write_cell(g_cursor_pos,c,COLOR_LIGHT_GREY,COLOR_BLACK);
-    g_cursor_pos++;
-    clamp_cursor();
     fb_set_cursor(g_cursor_pos);
 }
 
