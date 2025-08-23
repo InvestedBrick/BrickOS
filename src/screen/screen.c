@@ -6,17 +6,11 @@
 #include "../util.h"
 #include "../memory/memory.h"
 #include "../multiboot.h"
-#include "bitmap.h"
+#include "font_bitmaps.h"
 #include <stdint.h>
-char* g_fb = (char*)VIDEO_MEMORY_START;
-uint16_t g_cursor_pos = 0;
 
-uint8_t cursor_prev_idx;
+volatile unsigned char* fb = 0;
 
-volatile uint8_t* fb = 0;
-uint32_t screen_width;
-uint32_t screen_height;
-uint32_t screen_bytes_per_row;
 uint8_t screen_bytespp;
 
 uint8_t r_pos = 0;
@@ -28,13 +22,17 @@ uint8_t g_mask_size = 0;
 uint8_t b_pos = 0;
 uint8_t b_mask_size = 0;
 
+// preparation for multiple screens
 uint32_t gfx_cursor_x = 0;
 uint32_t gfx_cursor_y = 0;
+uint32_t screen_cursor_x_max = 0;
+uint32_t screen_cursor_y_max = 0;
 
-// preparation for multiple screens
+uint32_t screen_bytes_per_row;
 uint32_t screen_origin_x = 0;
 uint32_t screen_origin_y = 0;
-
+uint32_t screen_width;
+uint32_t screen_height;
 uint32_t rgb_to_color(uint8_t r, uint8_t g, uint8_t b) {
     // assuming 32bit ARGB
     uint32_t color = 0;
@@ -62,7 +60,7 @@ void init_framebuffer(multiboot_info_t* mboot,uint32_t fb_start){
     uint32_t fb_phys = (uint32_t)mboot->framebuffer_addr;
     uint32_t fb_size = mboot->framebuffer_pitch * mboot->framebuffer_height;
 
-    fb = (volatile uint8_t*)(fb_start);
+    fb = (volatile unsigned char*)(fb_start);
     screen_width             = mboot->framebuffer_width;
     screen_height            = mboot->framebuffer_height;
     screen_bytes_per_row     = mboot->framebuffer_pitch;
@@ -74,7 +72,14 @@ void init_framebuffer(multiboot_info_t* mboot,uint32_t fb_start){
     b_pos                    = mboot->framebuffer_blue_field_pos;
     b_mask_size              = mboot->framebuffer_blue_mask_size;
 
+    screen_cursor_x_max = screen_width / COLUMNS_PER_CHAR;
+    screen_cursor_y_max = screen_height / ROWS_PER_CHAR;
+
     map_framebuffer(fb_phys,fb_start,fb_size);
+}
+void clamp_cursor() {
+    if (gfx_cursor_x > screen_cursor_x_max) {gfx_cursor_x = 0;gfx_cursor_y++;}
+    if (gfx_cursor_y > screen_cursor_y_max) gfx_cursor_y = screen_cursor_y_max;
 }
 
 void write_pixel(uint32_t x, uint32_t y, uint32_t color){
@@ -84,99 +89,77 @@ void write_pixel(uint32_t x, uint32_t y, uint32_t color){
     *(volatile uint32_t*)(fb + y * screen_bytes_per_row + x * screen_bytespp) = color;
 }
 
-void write_char(uint8_t ch){
+void write_char(uint8_t ch,uint32_t fg, uint32_t bg){
     if (ch < ' ' || ch > '~') return;
     const uint8_t map_idx = ch - ' ';
 
     uint32_t px = gfx_cursor_x * COLUMNS_PER_CHAR;
-    uint32_t py = gfx_cursor_y * ROWS_PER_CHAR + ROWS_PER_CHAR; // work up from the bottom
+    uint32_t py = gfx_cursor_y * ROWS_PER_CHAR; // work up from the bottom
 
     for (uint32_t i = 0; i < ROWS_PER_CHAR;i++){
-        uint8_t row = char_bitmap[map_idx][i];
-
-        if (row == 0x00){py--;continue;}
+        uint8_t row = char_bitmap_8x16[map_idx][i];
 
         for (uint8_t bit_idx = 0; bit_idx < 8; bit_idx++) {
-            if (row & (1 << bit_idx)) {
-                write_pixel(px + (7 - bit_idx), py, VBE_COLOR_GRAY);
-            }
+             
+            write_pixel(px + (7 - bit_idx), py, row & (1 << bit_idx) ? fg : bg);
         }
 
-        py--; 
+        py++; 
 
     }
-
     gfx_cursor_x++;
-    if (gfx_cursor_x * COLUMNS_PER_CHAR >= screen_width) {
-        gfx_cursor_x = 0;
-        gfx_cursor_y++;
-    }
+    clamp_cursor();
 }
 
 void print_bitmap(){
     for (uint8_t ch = ' '; ch <= '~';ch++){
-        write_char(ch);
+        write_char(ch,VBE_COLOR_GRAY,VBE_COLOR_BLACK);
     }
 }
 
-void clamp_cursor() {
-    if (g_cursor_pos > CURSOR_MAX) g_cursor_pos = CURSOR_MAX;
-    // g_cursor_pos is unsigned, so no need to check < 0
-}
-
-void fb_write_cell(uint16_t i, char c,uint8_t fg, uint8_t bg){
-    g_fb[i * 2] = c;
-    g_fb[i * 2 + 1] = ((bg & 0x0f) << 4 | (fg & 0x0f));
-}
-
-void clear_screen(){
-    uint16_t i = 0;
-    while (i <  SCREEN_ROWS * SCREEN_COLUMNS){
-        fb_write_cell(i,' ',VGA_COLOR_BLACK,VGA_COLOR_BLACK);
-        i++;
+void clear_screen(uint32_t color){
+    for (uint32_t i = screen_origin_y; i < screen_origin_y + screen_height;i++ ){
+        for (uint32_t j = screen_origin_x; j < screen_origin_x + screen_width;j++){
+            write_pixel(j,i,color);
+        }
     }
-    g_cursor_pos = 0;
+
+    gfx_cursor_x = 0;
+    gfx_cursor_y = 0;
 }
 
-void fb_set_cursor(uint16_t pos) {
+void move_cursor_one_back(){
+    if (gfx_cursor_x != 0){
+        gfx_cursor_x--;
+    }else{
+        if (gfx_cursor_y != 0){
+            gfx_cursor_x = screen_cursor_x_max;
+            gfx_cursor_y = 0;
+        }
+    }
+}
+
+void update_cursor() {
+    write_char(' ',VBE_COLOR_GRAY,VBE_COLOR_GRAY);
+    move_cursor_one_back();
     clamp_cursor();
-    fb_write_cell(pos,' ',VGA_COLOR_LIGHT_GREY,VGA_COLOR_LIGHT_GREY);
-}
-
-void scroll_screen_up(){
-    for (uint16_t idx = 0; idx < (SCREEN_ROWS * SCREEN_COLUMNS) - SCREEN_COLUMNS;idx++){
-        g_fb[idx * 2] = g_fb[(idx + SCREEN_COLUMNS) * 2];
-        g_fb[idx * 2 + 1] = g_fb[(idx + SCREEN_COLUMNS) * 2 + 1];
-    }
-
-    for(uint16_t idx = (SCREEN_ROWS * SCREEN_COLUMNS) - SCREEN_COLUMNS; idx <  (SCREEN_ROWS * SCREEN_COLUMNS);idx++){
-        fb_write_cell(idx,' ',VGA_COLOR_BLACK,VGA_COLOR_BLACK);
-    }
-    if (g_cursor_pos >= SCREEN_COLUMNS)
-        g_cursor_pos -= SCREEN_COLUMNS;
-    else
-        g_cursor_pos = 0;
-    clamp_cursor();
-    fb_set_cursor(g_cursor_pos);
 }
 
 void erase_one_char(){
-    fb_write_cell(g_cursor_pos,' ',VGA_COLOR_BLACK,VGA_COLOR_BLACK);//remove current cell
-    if (g_cursor_pos != 0){
-        g_cursor_pos--;
-    }
-    clamp_cursor();
-    fb_write_cell(g_cursor_pos,' ',VGA_COLOR_BLACK,VGA_COLOR_BLACK);//remove current cell
-    fb_set_cursor(g_cursor_pos);
+    write_char(' ',VGA_COLOR_BLACK,VGA_COLOR_BLACK);
+    move_cursor_one_back();
+    move_cursor_one_back();
+    update_cursor();
 }
 
 void newline(){
-    fb_write_cell(g_cursor_pos,' ',VGA_COLOR_BLACK,VGA_COLOR_BLACK);//remove current cell
-    if (g_cursor_pos < (SCREEN_COLUMNS - 1) * SCREEN_ROWS){
-        g_cursor_pos += (SCREEN_COLUMNS - (g_cursor_pos % SCREEN_COLUMNS));
-        clamp_cursor();
+
+    write_char(' ',VBE_COLOR_BLACK,VBE_COLOR_BLACK);
+    if (gfx_cursor_y < screen_cursor_y_max - 1){
+        gfx_cursor_y++;
+        gfx_cursor_x = 0;
     }
-    fb_set_cursor(g_cursor_pos);
+    update_cursor();
 }
 
 void handle_screen_char_input(uint8_t c){
@@ -187,17 +170,11 @@ void handle_screen_char_input(uint8_t c){
             break;
         }
         case '\e': { // just an esc char that gcc does not complain about
-            clear_screen();
+            clear_screen(VBE_COLOR_BLACK);
             break;
         }
         case '\t':{
-            if (g_cursor_pos < SCREEN_ROWS * SCREEN_COLUMNS - 4){
-                g_cursor_pos += 4;
-            } else {
-                g_cursor_pos = CURSOR_MAX;
-            }
-            clamp_cursor();
-            fb_set_cursor(g_cursor_pos);
+            gfx_cursor_x += 4;
             break;
         }
         case '\b':{
@@ -205,17 +182,17 @@ void handle_screen_char_input(uint8_t c){
             break;
         }
         default:{
-            write_char(c);
+            write_char(c,VBE_COLOR_GRAY,VBE_COLOR_BLACK);
             break;
         }
     }
     
     clamp_cursor();
-    fb_set_cursor(g_cursor_pos);
+    update_cursor();
 }
 
-int screen_write(generic_file_t* f, uint8_t* buffer,uint32_t size){
-    if (size > SCREEN_PIXELS) 
+int screen_write(generic_file_t* f, unsigned char* buffer,uint32_t size){
+    if (size > screen_width * screen_height) 
         return INVALID_ARGUMENT;
     
     for(uint32_t i = 0; i < size;i++){
@@ -239,8 +216,3 @@ generic_file_t screen_file = {
     .generic_data = 0
 };
 
-
-void disable_cursor(){
-	outb(FB_COMMAND_PORT, FB_DISABLE_CURSOR_COMMAND);
-	outb(FB_DATA_PORT, FB_DISABLE_CURSOR_DATA);
-}
