@@ -8,22 +8,28 @@
 #define SCREEN_ROWS 25
 #define SCREEN_COLUMNS 80
 
-#define COLOR_BLACK 0x0
-#define COLOR_BLUE 0x1
-#define COLOR_GREEN 0x2
-#define COLOR_CYAN 0x3
-#define COLOR_RED 0x4
-#define COLOR_MAGENTA 0x5
-#define COLOR_BROWN 0x6
-#define COLOR_LIGHT_GREY 0x7
-#define COLOR_DARK_GREY 0x8
-#define COLOR_LIGHT_BLUE 0x9
-#define COLOR_LIGHT_GREEN 0xa
-#define COLOR_LIGHT_CYAN 0xb
-#define COLOR_LIGHT_RED 0xc
-#define COLOR_LIGHT_MAGENTA 0xd
-#define COLOR_LIGHT_BROWN 0xe
-#define COLOR_WHITE 0xf
+#define VGA_COLOR_BLACK 0x0
+#define VGA_COLOR_BLUE 0x1
+#define VGA_COLOR_GREEN 0x2
+#define VGA_COLOR_CYAN 0x3
+#define VGA_COLOR_RED 0x4
+#define VGA_COLOR_MAGENTA 0x5
+#define VGA_COLOR_BROWN 0x6
+#define VGA_COLOR_LIGHT_GREY 0x7
+#define VGA_COLOR_DARK_GREY 0x8
+#define VGA_COLOR_LIGHT_BLUE 0x9
+#define VGA_COLOR_LIGHT_GREEN 0xa
+#define VGA_COLOR_LIGHT_CYAN 0xb
+#define VGA_COLOR_LIGHT_RED 0xc
+#define VGA_COLOR_LIGHT_MAGENTA 0xd
+#define VGA_COLOR_LIGHT_BROWN 0xe
+#define VGA_COLOR_WHITE 0xf
+
+
+#define VBE_COLOR_BLACK 0x00000000
+#define VBE_COLOR_WHITE 0xffffffff
+#define VBE_COLOR_GRAY 0xffcbccca
+#define VBE_COLOR_RED 0xffff0000
 
 #define SCREEN_PIXELS (SCREEN_ROWS * SCREEN_COLUMNS)
 #define CURSOR_MAX (SCREEN_PIXELS - 1)
@@ -34,6 +40,7 @@
 extern uint16_t g_cursor_pos;
 extern generic_file_t screen_file;
 
+void print_bitmap();
 
 uint32_t rgb_to_color(uint8_t r, uint8_t g, uint8_t b);
 /**
