@@ -15,8 +15,8 @@
 #define VGA_COLOR_RED 0x4
 #define VGA_COLOR_MAGENTA 0x5
 #define VGA_COLOR_BROWN 0x6
-#define VGA_COLOR_LIGHT_GREY 0x7
-#define VGA_COLOR_DARK_GREY 0x8
+#define VGA_COLOR_LIGHT_GRAY 0x7
+#define VGA_COLOR_DARK_GRAY 0x8
 #define VGA_COLOR_LIGHT_BLUE 0x9
 #define VGA_COLOR_LIGHT_GREEN 0xa
 #define VGA_COLOR_LIGHT_CYAN 0xb
@@ -61,38 +61,14 @@ void init_framebuffer(multiboot_info_t* mboot,uint32_t fb_start);
  */
 void write_pixel(uint32_t x, uint32_t y, uint32_t color);
 
-/**
-*  fb_write_cell:
-*  writes a char with given foreground and background color to position i in the framebuffer
-* 
-* @param i The location in the framebuffer
-* @param c The char
-* @param fg The foreground color
-* @param bg The background color
-*  
-* */ 
-void fb_write_cell(uint16_t i, char c,uint8_t fg, uint8_t bg);
 
 /**
 * clear_screen:
-* Clears the screen of the OS terminal
+* Writes a color to every pixel of the screen
+* @param color The color to clear with
 *
 */
-void clear_screen();
-
-/**
- * fb_move_cursor:
- * moves the cursor to a given position
- * 
- * @param pos The new position of the cursor
- */
-void fb_set_cursor(uint16_t pos);
-
-/**
- * scroll_screen_up:
- * scrolls the screen up by one row
- */
-void scroll_screen_up();
+void clear_screen(uint32_t color);
 
 /**
  * newline: 
@@ -105,9 +81,4 @@ void newline();
  */
 void erase_one_char();
 
-/**
- * disable_cursor: 
- * disables the standard VGA cursor
- */
-void disable_cursor();
 #endif
