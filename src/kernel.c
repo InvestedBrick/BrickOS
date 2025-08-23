@@ -16,14 +16,14 @@
 #include "processes/scheduler.h"
 #include "tables/syscalls.h"
 user_process_t global_kernel_process;
-extern unsigned int stack_top;
+extern uint32_t stack_top;
 
 
-unsigned int calc_phys_alloc_start(multiboot_info_t* boot_info){
+uint32_t calc_phys_alloc_start(multiboot_info_t* boot_info){
     multiboot_module_t* mods = (multiboot_module_t*) boot_info->mods_addr;
-    unsigned int highest_mod_end = 0;
+    uint32_t highest_mod_end = 0;
 
-    for (unsigned int i = 0; i < boot_info->mods_count;i++){
+    for (uint32_t i = 0; i < boot_info->mods_count;i++){
         if (mods[i].mod_end > highest_mod_end){
             highest_mod_end = mods[i].mod_end;
         }
@@ -41,12 +41,12 @@ void create_kernel_process(){
     global_kernel_process.kernel_stack = stack_top;
     global_kernel_process.page_dir = mem_get_current_page_dir();
     global_kernel_process.process_id = get_pid();
-    global_kernel_process.process_name = kmalloc(sizeof(unsigned char) * 5);
+    global_kernel_process.process_name = kmalloc(sizeof(uint8_t) * 5);
     
     memcpy(global_kernel_process.process_name,"root",sizeof("root"));
     global_kernel_process.running = 1;
 
-    vector_append(&user_process_vector,(unsigned int)&global_kernel_process);
+    vector_append(&user_process_vector,(uint32_t)&global_kernel_process);
 }
 
 void shutdown(){
@@ -87,22 +87,23 @@ void kmain(multiboot_info_t* boot_info)
     
     //Set up Interrupt descriptor table
     init_idt();
+    disable_interrupts(); // We dont want interrupts right now, since we cant correctly return to kernel land once we interrupt
     log("Initialited the IDT");
     
     //Initialize keyboard
     init_keyboard();
     log("Initialized keyboard");
     
-    unsigned int physical_alloc_start = calc_phys_alloc_start(boot_info);
+    uint32_t physical_alloc_start = calc_phys_alloc_start(boot_info);
     init_memory(physical_alloc_start ,boot_info->mem_upper * 1024);
     log("Initialized paged memory");
 
     init_framebuffer(boot_info,SCREEN_PIXEL_BUFFER_START);
     log("Set up framebuffer");
-
-    for (unsigned int i = 0; i < 800;i++ ){
-        for (unsigned int j = 0; j < 600;j++){
-            write_pixel(i,j,0xffff0000);
+    uint32_t color = rgb_to_color(51, 102, 0);
+    for (uint32_t i = 0; i < boot_info->framebuffer_height;i++ ){
+        for (uint32_t j = 0; j < boot_info->framebuffer_width;j++){
+            write_pixel(j,i,color);
         }
     }
 
@@ -121,7 +122,6 @@ void kmain(multiboot_info_t* boot_info)
     init_user_process_vector();
     log("Initialized user process vector");
     
-    disable_interrupts(); // We dont want interrupts right now, since we cant correctly return to kernel land once we interrupt
     
     create_kernel_process();
     log("Set up kernel process");
