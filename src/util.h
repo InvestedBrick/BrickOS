@@ -3,6 +3,7 @@
 #define INCLUDE_UTIL_H
 
 #define CEIL_DIV(a,b) (((a + b) - 1 )/ b)
+#define ALIGN_DOWN(a, b) ((b) ? ((a) - ((a) % (b))) : (a))
 #include <stdint.h>
 typedef struct {
     uint32_t length;
