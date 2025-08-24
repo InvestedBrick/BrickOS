@@ -7,6 +7,7 @@
 #include "syscall_defines.h"
 #include "../filesystem/file_operations.h"
 #include "../filesystem/filesystem.h"
+#include "../memory/kmalloc.h"
 static idt_entry_t idt_entries[IDT_MAX_ENTRIES] __attribute__((aligned(0x10)));
 static int enabled_idt[IDT_MAX_ENTRIES] = {0};
 
@@ -81,8 +82,10 @@ int handle_software_interrupt(interrupt_stack_frame_t* stack_frame){
         return sys_read(get_current_user_process(),stack_frame->ebx,(unsigned char*)stack_frame->ecx,stack_frame->edx);
     case SYS_WRITE:
         return sys_write(get_current_user_process(),stack_frame->ebx,(unsigned char*)stack_frame->ecx,stack_frame->edx);
+    case SYS_SEEK:
+        return sys_seek(get_current_user_process(),stack_frame->ebx,stack_frame->ecx);
     case SYS_ALLOC_PAGE:
-        return sys_mmap(get_current_user_process(),stack_frame->ebx);
+        return sys_mmap(get_current_user_process(),0,stack_frame->ebx,stack_frame->ecx,stack_frame->edx,stack_frame->edi,stack_frame->esi);
     case SYS_GETCWD:
         return sys_getcwd((unsigned char*)stack_frame->ebx, stack_frame->ecx);
     case SYS_GETDENTS:
@@ -98,6 +101,68 @@ int handle_software_interrupt(interrupt_stack_frame_t* stack_frame){
     return 0;
 }
 
+uint32_t init_new_page(virt_mem_area_t* vma,user_process_t* p,uint32_t aligned_fault_addr){
+    uint32_t frame = pmm_alloc_page_frame();        
+    mem_map_page(TEMP_KERNEL_COPY_ADDR,frame,PAGE_FLAG_WRITE | PAGE_FLAG_PRESENT);
+    
+    if (vma->fd != MAP_FD_NONE){
+        uint32_t file_off = vma->offset + (aligned_fault_addr - (uint32_t)vma->addr);
+        sys_seek(p,vma->fd,file_off);
+        sys_read(p,vma->fd,(unsigned char*)TEMP_KERNEL_COPY_ADDR,MEMORY_PAGE_SIZE);
+    }else{
+        memset((void*)TEMP_KERNEL_COPY_ADDR,0,MEMORY_PAGE_SIZE);
+    }
+    
+    mem_unmap_page(TEMP_KERNEL_COPY_ADDR);
+
+    return frame;
+}
+
+void page_fault_handler(user_process_t* p,uint32_t fault_addr,interrupt_stack_frame_t* stack_frame){
+
+    virt_mem_area_t* vma = find_virt_mem_area(p->vm_areas,fault_addr);
+    if (!vma){
+        error("A page fault has occured");
+        log_uint(fault_addr);
+        error("Cause:");
+        if (stack_frame->error_code & 0x1) error("Access of non-present page");
+        if (stack_frame->error_code & 0x2) error("Write access"); else error("Read access");
+        if (stack_frame->error_code & 0x4) error("User");
+        if (stack_frame->error_code & 0x8) error("Reserved Write");
+        if (stack_frame->error_code & 0x10) error("Non-Executable instruction fetch");
+        if (stack_frame->error_code & 0x20) error("Protection key violation");
+
+        sys_exit(p,stack_frame);
+    }
+
+    uint32_t aligned_fault_addr = ALIGN_DOWN(fault_addr,MEMORY_PAGE_SIZE);
+
+    uint32_t frame;
+
+    if (vma->shrd_obj){
+        
+        int page_idx = (aligned_fault_addr - (uint32_t)vma->addr) / MEMORY_PAGE_SIZE;
+
+        if (!vma->shrd_obj->shared_pages[page_idx]){
+            frame = init_new_page(vma,p,aligned_fault_addr);
+
+            vma->shrd_obj->shared_pages[page_idx] = (shared_page_t*)kmalloc(sizeof(shared_page_t));
+            vma->shrd_obj->shared_pages[page_idx]->phys_addr = frame;
+            vma->shrd_obj->shared_pages[page_idx]->ref_count = 1;
+        }else{
+            frame = vma->shrd_obj->shared_pages[page_idx]->phys_addr;
+            vma->shrd_obj->shared_pages[page_idx]->ref_count++;
+        }
+
+    }else{
+        frame = init_new_page(vma,p,aligned_fault_addr);
+    }
+
+    int page_flags = PAGE_FLAG_USER;
+    if (vma->prot & PROT_WRITE) page_flags |= PAGE_FLAG_WRITE;
+
+    mem_map_page(aligned_fault_addr,frame,page_flags);
+}
 
 void interrupt_handler(interrupt_stack_frame_t* stack_frame) {
     interrupts_enabled = 0; // to stop other functions from copying a wrong value
@@ -120,17 +185,10 @@ void interrupt_handler(interrupt_stack_frame_t* stack_frame) {
             break;
         }
         case INT_PAGE_FAULT:{
-            error("A page fault has occured");
+
             uint32_t cr2;
             asm volatile ("mov %%cr2, %0" : "=r"(cr2));
-            log_uint(cr2);
-            error("Cause:");
-            if (stack_frame->error_code & 0x1) error("Access of non-present page");
-            if (stack_frame->error_code & 0x2) error("Write access"); else error("Read access");
-            if (stack_frame->error_code & 0x4) error("User");
-            if (stack_frame->error_code & 0x8) error("Reserved Write");
-            if (stack_frame->error_code & 0x10) error("Non-Executable instruction fetch");
-            if (stack_frame->error_code & 0x20) error("Protection key violation");
+            page_fault_handler(get_current_user_process(),cr2,stack_frame);
             break;
         }
         default:
