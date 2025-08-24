@@ -4,6 +4,7 @@
 
 #include "../filesystem/vfs/vfs.h"
 #include "../vector.h"
+#include "../memory/memory.h"
 #define MAX_FDS 512
 
 #define FD_STDIN 0x0
@@ -17,6 +18,7 @@ typedef struct {
     unsigned char* process_name;
     uint8_t running;
     uint32_t page_alloc_start;
+    virt_mem_area_t* vm_areas;
     generic_file_t* fd_table[MAX_FDS];
 } __attribute__((packed)) user_process_t;
 
