@@ -8,6 +8,7 @@
 #define FILE_FLAG_CREATE 0x4
 #define FILE_FLAG_APPEND 0x8
 #define FILE_CREATE_DIR 0x80
+#define FILE_CREATE_DEV 0x10
 
 #define FILE_OP_FAILED -1
 #define FILE_OP_SUCCESS 0
