@@ -60,23 +60,27 @@ int exit(uint32_t error_code);
 
 /**
  * mmap:
- * Allocates and maps a memory region into the current process
+ * memory region into the current process
  * 
  * @param size The size of the memory region to allocate (Will be rounded up to the next page border)
+ * @param prot The protections of the page
+ * @param flags The page flags
+ * @param fd The file descriptor if the mapping is backed by a page
+ * @param offset The offset into the file
  * 
- * @return Pointer to the allocated memory region
+ * @return Pointer to the memory region
  */
-void* mmap(uint32_t size);
+void* mmap(uint32_t size, uint32_t prot, uint32_t flags, uint32_t fd, uint32_t offset);
 
 /**
  * getcwd:
  * Writes a null terminated string of the current working directory to a buffer
  * 
  * @param buffer The buffer in which to write the string
- * @param buf_len The length of the buffer
+ * @param size The size of the buffer
  * 
  */
-void getcwd(unsigned char* buffer, uint32_t buf_len);
+void getcwd(unsigned char* buffer, uint32_t size);
 
 /**
  * getdents:
@@ -111,4 +115,15 @@ int chdir(unsigned char* dir_name);
  *  else SYSCALL_SUCCESS
  */
 int rmfile(unsigned char* filename);
+
+
+/**
+ * seek:
+ * Sets the read-write pointer of a file
+ * @param fd The file descriptor to the file
+ * @param offset The new offset of the rw pointer
+ * 
+ * @return The offset (may be capped at the filesize)
+ */
+int seek(uint32_t fd,uint32_t offset);
 #endif
