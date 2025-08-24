@@ -12,6 +12,7 @@
 #include "drivers/ATA_PIO/ata.h"
 #include "filesystem/filesystem.h"
 #include "filesystem/file_operations.h"
+#include "filesystem/devices/devs.h"
 #include "drivers/timer/pit.h"
 #include "processes/scheduler.h"
 #include "tables/syscalls.h"
@@ -109,6 +110,9 @@ void kmain(multiboot_info_t* boot_info)
     // Fully commit to virtual memory now
     un_identity_map_first_page_table();
     
+    init_shm_obj_vector();
+    log("Initialized shared memory objects vector");
+
     init_user_process_vector();
     log("Initialized user process vector");
     
@@ -125,9 +129,13 @@ void kmain(multiboot_info_t* boot_info)
     if (first_time_fs_init){
         create_file(active_dir,"modules",strlen("modules"),FS_TYPE_DIR, FS_FILE_PERM_NONE);
         create_file(active_dir,"home",strlen("home"),FS_TYPE_DIR, FS_FILE_PERM_NONE);
-        log("Initialized modules and home directory");
+        create_file(active_dir,"dev",strlen("dev"),FS_TYPE_DIR,FS_FILE_PERM_NONE);
+        log("Initialized /modules, /home and /dev directories");
     }
     
+    initialize_devices();
+    log("Initialized devices");
+
     // save the modules binaries to "modules/"
     write_module_binaries_to_file();
     log("Wrote module binaries to files in the modules directory");
