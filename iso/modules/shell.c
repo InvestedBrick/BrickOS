@@ -246,5 +246,5 @@ void main(){
         free_command(comd);
     }
 
-    exit(1);
+    exit(0);
 }
