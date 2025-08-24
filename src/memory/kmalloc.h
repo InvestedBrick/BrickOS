@@ -41,4 +41,14 @@ void* kmalloc(uint32_t size);
  * @param addr The pointer to the memory location 
  */
 void kfree(void* addr);
+/**
+ * realloc:
+ * Reallocates a pointer and copies the data into a new size
+ * @param ptr The pointer to the data
+ * @param old_size The current size of the data 
+ * @param new_size The new size of the pointer
+ * 
+ * @return The reallocated pointer
+ */
+void* realloc(void* ptr,uint32_t old_size,uint32_t new_size);
 #endif
