@@ -1,6 +1,7 @@
 #include "memory.h"
 #include "../util.h"
 #include "../io/log.h"
+#include "../vector.h"
 
 static uint32_t page_frame_min;
 static uint32_t page_frame_max;
@@ -12,6 +13,31 @@ uint8_t physical_memory_bitmap[(NUM_PAGE_FRAMES / 8)]; // Update dynamically && 
 __attribute__((aligned(0x1000)))
 static uint32_t page_dirs[NUM_PAGE_DIRS] [1024] __attribute__((aligned(4096)));
 static uint8_t page_dir_used[NUM_PAGE_DIRS];
+
+vector_t shm_obj_vec;
+
+void init_shm_obj_vector(){
+    init_vector(&shm_obj_vec);
+}
+
+virt_mem_area_t* find_virt_mem_area(virt_mem_area_t* start,uint32_t addr){
+    virt_mem_area_t* vma = start;
+    while(vma && !(addr >= (uint32_t)vma->addr && addr <= (uint32_t)vma->addr + vma->size)){
+        vma = vma->next;
+    }
+
+    return vma;
+}
+
+shared_object_t* find_shared_object_by_id(uint32_t unique_id){
+    for (uint32_t i = 0; i < shm_obj_vec.size;i++){
+        shared_object_t* shrd_obj = (shared_object_t*)shm_obj_vec.data[i];
+        if (shrd_obj->unique_id == unique_id) 
+            return shrd_obj;
+    }
+
+    return 0;
+}
 
 void pmm_init(uint32_t mem_low, uint32_t mem_high){
     page_frame_min = CEIL_DIV(mem_low,MEMORY_PAGE_SIZE);
