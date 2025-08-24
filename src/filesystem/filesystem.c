@@ -6,7 +6,7 @@
 #include "file_operations.h"
 #include "../screen/screen.h"
 #include "../vector.h"
-
+#include "devices/devs.h"
 vector_t inodes;
 vector_t inode_name_pairs; // Note to self: do not free this with vector free, the names have to be freed too
 sectors_headerdata_t header_data; 
@@ -449,6 +449,7 @@ void init_filesystem(){
 
     init_vector(&inodes);
     init_vector(&inode_name_pairs);
+    init_dev_vec();
     
     inode_t* root_node = (inode_t*)kmalloc(sizeof(inode_t));
     
