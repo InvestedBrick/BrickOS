@@ -11,6 +11,7 @@
 #include "../filesystem/fsutil.h"
 #include "../filesystem/filesystem.h"
 #include "../memory/kmalloc.h"
+#include <stdbool.h>
 
 //TODO: provide actually helpful error messages
 int sys_write(user_process_t* p,uint32_t fd, unsigned char* buf, uint32_t size){
@@ -54,6 +55,16 @@ int sys_close(user_process_t* p, uint32_t fd){
     return ret_val;
 }
 
+int sys_seek(user_process_t* p,uint32_t fd, uint32_t offset){
+    if (fd >= MAX_FDS) return SYSCALL_FAIL;
+
+    generic_file_t* file = p->fd_table[fd];
+
+    if (!file || !file->ops || !file->ops->seek) return SYSCALL_FAIL;
+
+    return file->ops->seek(file,offset);
+}
+
 int sys_exit(user_process_t* p,interrupt_stack_frame_t* stack_frame){
     uint32_t pid = p->process_id;
     log("Process exited with error code");
@@ -62,18 +73,67 @@ int sys_exit(user_process_t* p,interrupt_stack_frame_t* stack_frame){
     return kill_user_process(pid);
 }
 
-int sys_mmap(user_process_t* p,uint32_t size){
+int sys_mmap(user_process_t *p, void *addr, uint32_t size,uint32_t prot, uint32_t flags, uint32_t fd, uint32_t offset){
+    if (size == 0 || (offset % MEMORY_PAGE_SIZE) != 0) return SYSCALL_FAIL;
     
-    uint32_t pages_to_alloc = CEIL_DIV(size,MEMORY_PAGE_SIZE);
-    for (uint32_t i = 0; i < pages_to_alloc; i++){
-        //ensure continuous allocation
-        uint32_t page = pmm_alloc_page_frame();
-        mem_map_page(p->page_alloc_start,page,PAGE_FLAG_WRITE | PAGE_FLAG_USER);
-        
-        p->page_alloc_start += MEMORY_PAGE_SIZE;
+    if (fd < 3) fd = MAP_FD_NONE;
+
+    if (flags & MAP_ANONYMOUS && flags & MAP_SHARED) return SYSCALL_FAIL; // not implemented yet
+
+    if (!(flags & MAP_ANONYMOUS)){
+        // we are mapping a file
+        if (!p->fd_table[fd]) return SYSCALL_FAIL;
+    }
+
+    if (!addr) addr = (void*)p->page_alloc_start;
+
+    uint32_t n_pages = CEIL_DIV(size,MEMORY_PAGE_SIZE);
+    size = n_pages * MEMORY_PAGE_SIZE;
+
+    virt_mem_area_t* vma = (virt_mem_area_t*)kmalloc(sizeof(virt_mem_area_t));
+
+    vma->addr = addr;
+    vma->size = size;
+    vma->fd = fd;
+    vma->flags = flags;
+    vma->prot = prot;
+    vma->offset = offset;
+    
+    if (flags & MAP_SHARED){
+        shared_object_t* shrd_obj = find_shared_object_by_id(p->fd_table[fd]->object_id);
+
+        if (!shrd_obj){
+            shrd_obj = (shared_object_t*)kmalloc(sizeof(shared_object_t));
+            shrd_obj->n_pages = n_pages;
+            shrd_obj->ref_count = 1;
+            shrd_obj->shared_pages = (shared_page_t**)kmalloc(n_pages * sizeof(shared_page_t*));
+            memset(shrd_obj->shared_pages,0x0,n_pages * sizeof(shared_page_t*));
+        }   
+    
+        if (n_pages > shrd_obj->n_pages){
+
+            uint32_t old_n_pages = shrd_obj->n_pages;
+            shrd_obj->shared_pages = (shared_page_t**)
+                                        realloc(shrd_obj->shared_pages,
+                                            shrd_obj->n_pages * sizeof(shared_page_t*),
+                                            n_pages * sizeof(shared_page_t*)
+                                     );
+            // set the new shared pages null
+            memset((void*)&shrd_obj->shared_pages[old_n_pages],0x0,(shrd_obj->n_pages - old_n_pages) * sizeof(shared_page_t*));
+        }
+
+        vma->shrd_obj = shrd_obj;
+    }else{
+        vma->shrd_obj = nullptr;
     }
     
-    return ((int)p->page_alloc_start  - (MEMORY_PAGE_SIZE * pages_to_alloc)); // int conversion (kinda) safe because surely a single process wont allocate 2gb of RAM when we only hav 512 MB
+    vma->next = p->vm_areas;
+    p->vm_areas = vma;
+
+    p->page_alloc_start = (uint32_t)addr + size;
+
+    // we kinda just pretend that the area is mapped and map it once we fault there
+    return (int)addr;
 }
 
 int sys_getcwd(unsigned char* buffer, uint32_t buf_len){
