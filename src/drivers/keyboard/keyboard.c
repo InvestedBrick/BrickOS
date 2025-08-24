@@ -40,11 +40,12 @@ int kb_read(generic_file_t* f, unsigned char* buffer, uint32_t size){
     return read_bytes;
 }
 
-vfs_handlers_t kb_ops = {
+vfs_handles_t kb_ops = {
   .close = 0,
   .open = 0,
   .read = kb_read,
   .write = 0,
+  .seek = 0,
 };
 
 generic_file_t kb_file = {
