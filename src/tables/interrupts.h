@@ -40,7 +40,7 @@
 #define INT_FLOPPY 0x26
 #define INT_LPT1 0x27
 #define INT_RTC 0x28
-
+#define INT_MOUSE 0x2c
 #define INT_SOFTWARE 0x30
 
 #define INT_PAGE_FAULT 0xe
