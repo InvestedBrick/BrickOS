@@ -98,7 +98,7 @@ uint32_t create_user_process(unsigned char* binary, uint32_t size,unsigned char*
     memset(process->fd_table,0,MAX_FDS);
     process->fd_table[FD_STDIN] = &kb_file; 
     process->fd_table[FD_STDOUT] = &screen_file;
-    
+    process->vm_areas = nullptr;
     process->running = 0;
     process->kernel_stack = kernel_stack;
     uint32_t name_len = strlen(process_name);
@@ -194,6 +194,35 @@ int kill_user_process(uint32_t pid){
             break;
         }
     }
+    
+    virt_mem_area_t* vma = process->vm_areas;
+    virt_mem_area_t* prev_vma;
+    while(vma){
+        
+        if (vma->shrd_obj){
+            for (unsigned int i = 0; i < vma->shrd_obj->n_pages;i++){
+                shared_page_t* shrd_page = vma->shrd_obj->shared_pages[i];
+                if (!shrd_page) continue;
+
+                shrd_page->ref_count--;
+                if (shrd_page->ref_count == 0){
+                    kfree(shrd_page);
+                    vma->shrd_obj->shared_pages[i] = nullptr;
+                }
+            }
+
+            vma->shrd_obj->ref_count--;
+
+            if (vma->shrd_obj->ref_count == 0){
+                kfree(vma->shrd_obj);
+            }
+            
+        }
+        prev_vma = vma;
+        vma = vma->next;
+        kfree(prev_vma);
+    }
+
     process_state_t* proc_state = get_process_state_by_page_dir(process->page_dir);
     if (!proc_state) {error("Getting process state failed"); return SYSCALL_FAIL;};
     remove_process_state(proc_state);
