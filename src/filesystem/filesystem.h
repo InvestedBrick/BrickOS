@@ -7,7 +7,7 @@
 // must be set so that the inode struct is exactly 64 bytes wide
 #define NUM_DATA_SECTORS_PER_FILE 12
 
-#define RESERVED_BITMAP_SECTORS 17 // (16 * 8) normal sector bitmaps + 1 sector for header + 2 big bitmaps
+#define RESERVED_BITMAP_SECTORS  // (16 * 8) normal sector bitmaps + 1 sector for header + 2 big bitmaps
 // we can create up to 800 files / directories. Will be enough for now
 #define RESERVED_INODE_SECTORS 100
 #define RESERVED_ROOT_SECTOR 1
@@ -46,6 +46,7 @@ typedef struct{
 
 #define FS_TYPE_FILE 1
 #define FS_TYPE_DIR 2
+#define FS_TYPE_DEV 4
 #define FS_TYPE_ERASED 3
 
 #define FS_FILE_CREATION_SUCCESS 0
