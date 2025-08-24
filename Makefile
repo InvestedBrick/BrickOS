@@ -17,6 +17,7 @@ C_SOURCES = \
 	src/drivers/ATA_PIO/*.c \
     src/filesystem/*c \
     src/filesystem/vfs/*.c \
+    src/filesystem/devices/*.c \
     src/screen/*.c 
 
 
