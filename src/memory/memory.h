@@ -2,6 +2,7 @@
 #ifndef INCLUDE_MEMORY_H
 #define INCLUDE_MEMORY_H
 #include <stdint.h>
+#include "../filesystem/vfs/vfs.h"
 #define KERNEL_START 0xc0000000 
 #define KERNEL_MALLOC_START 0xd0000000 // give the kernel some space
 #define KERNEL_MALLOC_END 0xe0000000 
@@ -20,7 +21,58 @@
 #define NUM_PAGE_DIRS 256
 #define NUM_PAGE_FRAMES (0x20000000 / 0x1000 / 0x8)
 
+#include "../vector.h"
+
+typedef struct {
+    uint32_t phys_addr;
+    uint32_t ref_count;
+} shared_page_t;
+
+typedef struct{
+    shared_page_t** shared_pages;
+    uint32_t ref_count;
+    uint32_t n_pages;
+    uint32_t unique_id; // either inode id or unique dev id
+
+}shared_object_t;
+
+typedef struct virt_mem_area{
+    void* addr;
+    uint32_t size;
+    uint32_t prot;
+    uint32_t flags;
+
+    uint32_t fd;
+    uint32_t offset;
+
+    shared_object_t* shrd_obj;
+    struct virt_mem_area* next;
+
+} virt_mem_area_t;
+
+void init_shm_obj_vector();
+
+/**
+ * find_shared_object_by_id:
+ * returns a shared object with the given unique id if exists
+ * @param unique_id The unique id of the shared object (inode id / dev id)
+ * @return A pointer to the shared object or null if it does not yet exist
+ */
+shared_object_t* find_shared_object_by_id(uint32_t unique_id);
+
+extern vector_t shm_obj_vec;
+
 extern uint32_t initial_page_dir[1024];
+/**
+ * find_virt_mem_area:
+ * finds a virtual memory area in a virt_mem_area_t linked list, assuming addr is page-aligned
+ * 
+ * @param start The start of the linked list
+ * @param addr The address to search
+ * 
+ * @return The virt_mem_area_t to which the addr belongs
+ */
+virt_mem_area_t* find_virt_mem_area(virt_mem_area_t* start,uint32_t addr);
 
 /**
  * init_memory:
