@@ -10,10 +10,12 @@ typedef struct
     int (*read)(generic_file_t* file,unsigned char* buffer, uint32_t size);  
     int (*write)(generic_file_t* file,unsigned char* buffer, uint32_t size);
     int (*close)(generic_file_t* file); 
-} vfs_handlers_t;
+    int (*seek)(generic_file_t*,uint32_t offset);
+} vfs_handles_t;
 
 typedef struct generic_file{
-    vfs_handlers_t* ops;
+    vfs_handles_t* ops;
     void* generic_data; // file specific data
+    uint32_t object_id;
 } generic_file_t;
 #endif
