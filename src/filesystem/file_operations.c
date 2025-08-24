@@ -5,13 +5,24 @@
 #include "../screen/screen.h"
 #include "../drivers/ATA_PIO/ata.h"
 #include "fs_defines.h"
+#include "devices/devs.h"
 
-vfs_handlers_t fs_ops = {
+vfs_handles_t fs_ops = {
     .open = fs_open,
     .close = fs_close,
     .write = fs_write,
-    .read = fs_read
+    .read = fs_read,
+    .seek = fs_seek,
 };
+
+int fs_seek(generic_file_t* file, uint32_t offset){
+    open_file_t* open_file = (open_file_t*)file->generic_data;
+    inode_t* inode = get_inode_by_id(open_file->inode_id);
+    if (offset >= inode->size) offset = inode->size - 1;
+    open_file->rw_pointer = offset;
+
+    return offset;
+}
 
 uint32_t get_sector_for_rw(inode_t* inode, uint32_t sector_idx, uint8_t is_write) {
     uint32_t sector;
@@ -61,6 +72,7 @@ generic_file_t* fs_open(unsigned char* filepath,uint8_t flags){
     }else{
         inode = get_inode_by_full_file_path(filepath);
     }
+    if (inode && inode->type == FS_TYPE_DEV) return dev_open(inode);
 
     if (inode && flags & FILE_FLAG_CREATE) return nullptr;
     if (!inode) {
@@ -68,7 +80,7 @@ generic_file_t* fs_open(unsigned char* filepath,uint8_t flags){
             if (flags & FILE_CREATE_DIR){
                 if (create_file(active_dir,filepath,strlen(filepath),FS_TYPE_DIR,FS_FILE_PERM_NONE) < 0)
                     return nullptr;
-            }else{
+            }else {
                 if (create_file(active_dir,filepath,strlen(filepath),FS_TYPE_FILE,FS_FILE_PERM_READABLE | FS_FILE_PERM_WRITABLE) < 0)
                     return nullptr;
             }
@@ -89,6 +101,7 @@ generic_file_t* fs_open(unsigned char* filepath,uint8_t flags){
     generic_file_t* gen_file = (generic_file_t*)kmalloc(sizeof(generic_file_t)); 
     gen_file->ops = &fs_ops;
     gen_file->generic_data = (void*)open_file;
+    gen_file->object_id = inode->id;
     return gen_file;
 }
 
