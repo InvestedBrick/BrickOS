@@ -41,7 +41,6 @@ uint32_t rgb_to_color(uint8_t r, uint8_t g, uint8_t b) {
     color |= ((uint32_t)g << 8);
     color |= ((uint32_t)b << 0);
 
-    // optional: force alpha to opaque if your format uses it
     color |= 0xff000000;
 
     return color;
@@ -203,12 +202,13 @@ int screen_write(generic_file_t* f, unsigned char* buffer,uint32_t size){
         
 }
 
-vfs_handlers_t screen_ops = {
+vfs_handles_t screen_ops = {
 
     .close = 0,
     .open = 0,
     .read = 0,
     .write = screen_write,
+    .seek = 0,
 };
 
 generic_file_t screen_file = {
