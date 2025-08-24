@@ -17,7 +17,9 @@ int sys_close(user_process_t* p, uint32_t fd);
 
 int sys_exit(user_process_t* p,interrupt_stack_frame_t* stack_frame);
 
-int sys_mmap(user_process_t* p,uint32_t size);
+int sys_seek(user_process_t* p,uint32_t fd, uint32_t offset);
+
+int sys_mmap(user_process_t *p, void *addr, uint32_t size,uint32_t prot, uint32_t flags, uint32_t fd, uint32_t offset);
 
 int sys_getcwd(unsigned char* buffer, uint32_t buf_len);
 
