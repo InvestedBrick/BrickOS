@@ -127,3 +127,19 @@ void set_heap_size(uint32_t new_size){
     }
     heap_size = new_page_top * MEMORY_PAGE_SIZE;
 }
+
+void* realloc(void* ptr,uint32_t old_size,uint32_t new_size){
+    if (!ptr) return kmalloc(new_size);
+
+    if (new_size == 0) {
+        kfree(ptr);
+        return 0;
+    }
+
+    void* new_ptr = kmalloc(new_size);
+    uint32_t copy_size = old_size < new_size ? old_size : new_size;
+    memcpy(new_ptr, ptr, copy_size);
+    kfree(ptr);
+
+    return new_ptr;
+}
