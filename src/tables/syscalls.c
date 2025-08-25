@@ -106,8 +106,10 @@ int sys_mmap(user_process_t *p, void *addr, uint32_t size,uint32_t prot, uint32_
             shrd_obj = (shared_object_t*)kmalloc(sizeof(shared_object_t));
             shrd_obj->n_pages = n_pages;
             shrd_obj->ref_count = 1;
+            shrd_obj->unique_id = p->fd_table[fd]->object_id;
             shrd_obj->shared_pages = (shared_page_t**)kmalloc(n_pages * sizeof(shared_page_t*));
             memset(shrd_obj->shared_pages,0x0,n_pages * sizeof(shared_page_t*));
+            append_shared_object(shrd_obj);
         }   
     
         if (n_pages > shrd_obj->n_pages){
@@ -151,8 +153,6 @@ int sys_getdents(user_process_t* p,uint32_t fd,dirent_t* ent_buffer,uint32_t siz
     inode_t* inode = get_inode_by_id(open_file->inode_id);
     string_array_t* names = get_all_names_in_dir(inode);
 
-    if (!names) return 0; // empty dir
-
     uint32_t total_size = 0;
     for (uint32_t i = 0; i < names->n_strings;i++)
         {total_size += names->strings[i].length + sizeof(int) * 3 + 1;} // +1 for the null terminator
@@ -173,13 +173,7 @@ int sys_getdents(user_process_t* p,uint32_t fd,dirent_t* ent_buffer,uint32_t siz
 }
 
 int sys_chdir(unsigned char* dir_name){
-    inode_t* new_dir;
-
-    if (dir_contains_name(active_dir,dir_name) || strneq(dir_name,"..",2,2)){
-        new_dir = get_inode_by_relative_file_path(dir_name);
-    }else{
-        new_dir = get_inode_by_full_file_path(dir_name);
-    }
+    inode_t* new_dir = get_inode_by_path(dir_name);
     if (!new_dir) return SYSCALL_FAIL;
     if (new_dir->type != FS_TYPE_DIR) return SYSCALL_FAIL;
 
@@ -189,13 +183,8 @@ int sys_chdir(unsigned char* dir_name){
 }
 
 int sys_rmfile(unsigned char* filename){
-    inode_t* file;
+    inode_t* file = get_inode_by_path(filename);
 
-    if (dir_contains_name(active_dir,filename)){
-        file = get_inode_by_relative_file_path(filename);
-    }else{
-        file = get_inode_by_full_file_path(filename);
-    }
     if (!file) return SYSCALL_FAIL;
 
     inode_t* parent_dir = get_parent_inode(file);
@@ -204,4 +193,38 @@ int sys_rmfile(unsigned char* filename){
 
     return SYSCALL_SUCCESS;
 
+}
+
+int sys_mknod(unsigned char* filename,uint32_t type){
+    if (get_inode_by_path(filename)) return SYSCALL_FAIL;
+
+    if (type != FS_TYPE_PIPE) return SYSCALL_FAIL; // add other types later
+
+
+    inode_t* creation_dir = active_dir;
+
+    string_array_t* str_arr = split_filepath(filename);
+
+    unsigned char* file_name;
+    if (str_arr->n_strings > 1){
+        creation_dir = get_inode_by_path(str_arr->strings[0].str);
+
+        if (!creation_dir){
+            free_string_arr(str_arr);
+            return SYSCALL_FAIL;
+        }
+
+        file_name = str_arr->strings[1].str;
+    }else{
+        file_name = str_arr->strings[0].str;
+    }
+
+    if (create_file(creation_dir,file_name,strlen(file_name),type,FS_FILE_PERM_NONE) < 0) {
+        free_string_arr(str_arr);
+        return SYSCALL_FAIL;
+    }
+
+    free_string_arr(str_arr);
+
+    return SYSCALL_SUCCESS;
 }
