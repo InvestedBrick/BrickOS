@@ -77,7 +77,7 @@ void free_string_arr(string_array_t* str_arr){
     for (uint32_t i = 0; i < str_arr->n_strings;i++){
         kfree(str_arr->strings[i].str);
     }
-    kfree(str_arr->strings);
+    if (str_arr->n_strings > 0) kfree(str_arr->strings);
     kfree(str_arr);
 }
 
@@ -85,5 +85,15 @@ uint32_t find_char(unsigned char* str,unsigned char c){
     for(uint32_t i = 0; str[i] != '\0';i++){
         if (str[i] == c) return i;
     }
+    return (uint32_t)-1;
+}
+
+uint32_t rfind_char(unsigned char* str, unsigned char c){
+    uint32_t str_len = strlen(str);
+
+    for (unsigned int i = str_len - 1; i >= 0; i--){
+        if (str[i] == c) return i;
+    }
+
     return (uint32_t)-1;
 }
