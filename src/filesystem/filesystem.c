@@ -7,6 +7,7 @@
 #include "../screen/screen.h"
 #include "../vector.h"
 #include "devices/devs.h"
+#include "IPC/pipes.h"
 vector_t inodes;
 vector_t inode_name_pairs; // Note to self: do not free this with vector free, the names have to be freed too
 sectors_headerdata_t header_data; 
@@ -17,6 +18,27 @@ uint8_t first_time_fs_init = 0;
 
 unsigned char* last_read_sector;
 uint32_t last_read_sector_idx;
+
+inode_t* get_inode_by_path(unsigned char* path){
+    inode_t* file;
+
+    uint32_t first_name_end_idx = find_char(path,'/');
+
+    uint32_t alloc_size = first_name_end_idx == (uint32_t)-1 ? strlen(path) : first_name_end_idx; 
+    unsigned char* first_name = (unsigned char*)kmalloc(alloc_size + 1); // + '\0'
+    memcpy(first_name,path,alloc_size);
+    first_name[alloc_size] = '\0';
+
+    if (dir_contains_name(active_dir,first_name) || strneq(path,"..",2,2)){
+        file = get_inode_by_relative_file_path(path);
+    }else{
+        file = get_inode_by_full_file_path(path);
+    }
+
+    kfree(first_name);
+
+    return file;
+}
 
 inode_t* change_active_dir(inode_t* new_dir){
     inode_t* dir_save = active_dir;
@@ -47,7 +69,6 @@ uint32_t get_inode_id_by_name(uint32_t parent_id, unsigned char* name){
 
 uint8_t dir_contains_name(inode_t* dir,unsigned char* name){
     string_array_t* str_arr = get_all_names_in_dir(dir);
-    if (!str_arr) return 0;
     
     uint8_t found = 0;
     for(uint32_t i = 0; i < str_arr->n_strings;i++){
@@ -361,7 +382,8 @@ unsigned char* read_dir_entries_to_buffer(inode_t* dir){
         }
     }
 
-    for(uint32_t sec = 0; dir->data_sectors[sec] != 0 && sec < NUM_DATA_SECTORS_PER_FILE;sec++){n_sectors++;}
+    for (uint32_t sec = 0; dir->data_sectors[sec] != 0 && sec < NUM_DATA_SECTORS_PER_FILE;sec++){n_sectors++;}
+
     if ((n_sectors + n_indirect_sectors) == 0) return 0;
 
     unsigned char* buffer = (char*)kmalloc((n_sectors + n_indirect_sectors) * ATA_SECTOR_SIZE);
@@ -381,17 +403,17 @@ unsigned char* read_dir_entries_to_buffer(inode_t* dir){
 
 }
 
-void build_inodes(inode_t* start_node,uint32_t parent_id){
+void build_inodes(inode_t* parent){
     /**
      * Directory entry:
      *               [n_entries (4 bytes)| inode id (4 bytes) | name len (1 byte) | name (name len bytes) | inode id (4 bytes) | name len (1 byte) | name (name len bytes) | ...] 
      */
-    if (start_node->type == FS_TYPE_FILE) return;
+    if (parent->type != FS_TYPE_DIR) return;
 
-
-    unsigned char* buffer = read_dir_entries_to_buffer(start_node);
+    
+    unsigned char* buffer = read_dir_entries_to_buffer(parent);
     if (!buffer) return;
-
+    
     //parse the sectors
     uint32_t n_entries = *(uint32_t*)(&buffer[0]);
     uint32_t buffer_idx = sizeof(uint32_t);
@@ -405,10 +427,11 @@ void build_inodes(inode_t* start_node,uint32_t parent_id){
         inode_name_pair_t* pair = (inode_name_pair_t*)kmalloc(sizeof(inode_name_pair_t));
         pair->id = node_id;
         pair->length = name_len;
-        pair->parent_id = parent_id;
-        pair->name = (unsigned char*)kmalloc(name_len);
+        pair->parent_id = parent->id;
+        pair->name = (unsigned char*)kmalloc(name_len + 1);
         memcpy(pair->name,&buffer[buffer_idx + 1],name_len);
         pair->name[name_len] = 0;
+
         vector_append(&inode_name_pairs,(uint32_t)pair);
 
         buffer_idx += name_len + sizeof(uint8_t);
@@ -428,12 +451,11 @@ void build_inodes(inode_t* start_node,uint32_t parent_id){
         memcpy((void*)inode,&last_read_sector[sector_offset],sizeof(inode_t));
 
         vector_append(&inodes,(uint32_t)inode);
-        build_inodes(inode,inode->id); 
+        build_inodes(inode); 
     }
 
     // We are nice today and return our memory
     kfree(buffer);
-
 
 }
 
@@ -441,7 +463,7 @@ void init_filesystem(){
     // Check whether the disk driver has been set up
     if (!addressable_LBA28_sectors) {error("Disk driver has not been set up");return;}
 
-    last_read_sector = kmalloc(ATA_SECTOR_SIZE);
+    last_read_sector = (unsigned char*)kmalloc(ATA_SECTOR_SIZE);
 
     // read the first sector 
     read_sectors(ATA_PRIMARY_BUS_IO,1,last_read_sector,0);
@@ -450,6 +472,7 @@ void init_filesystem(){
     init_vector(&inodes);
     init_vector(&inode_name_pairs);
     init_dev_vec();
+    init_pipe_vec();
     
     inode_t* root_node = (inode_t*)kmalloc(sizeof(inode_t));
     
@@ -461,13 +484,13 @@ void init_filesystem(){
         memset(root_node->data_sectors,0x0,NUM_DATA_SECTORS_PER_FILE * sizeof(uint32_t)); // no data in the root dir right now
         root_node->size = 0;
         *(uint32_t*)&last_read_sector[0x0] = root_node->id;
-        *(uint32_t*)&last_read_sector[0x4] = root_node->size;
-        last_read_sector[0x8] = root_node->type;
-        last_read_sector[0x9] = 0;
-        last_read_sector[0xa] = 0;
-        last_read_sector[0xb] = 0;
-        *(uint32_t*)&last_read_sector[0xc] = 0;
-        memset(&last_read_sector[0x10],0x0,NUM_DATA_SECTORS_PER_FILE * sizeof(uint32_t));
+        *(uint32_t*)&last_read_sector[sizeof(uint32_t)] = root_node->size;
+        last_read_sector[sizeof(uint32_t) * 2] = root_node->type;
+        last_read_sector[sizeof(uint32_t) * 2 + sizeof(uint8_t)] = 0;
+        last_read_sector[sizeof(uint32_t) * 2 + sizeof(uint8_t) * 2] = 0;
+        last_read_sector[sizeof(uint32_t) * 2 + sizeof(uint8_t) * 3] = 0;
+        *(uint32_t*)&last_read_sector[sizeof(uint32_t) * 3] = 0;
+        memset(&last_read_sector[sizeof(uint32_t) * 4],0x0,NUM_DATA_SECTORS_PER_FILE * sizeof(uint32_t));
         last_read_sector[ATA_SECTOR_SIZE - 1] = FS_SECTOR_0_INIT_FLAG;
         write_sectors(ATA_PRIMARY_BUS_IO,1,last_read_sector,0); 
         
@@ -483,20 +506,20 @@ void init_filesystem(){
          * 0x00000000: root_id
          * 0x00000004: root_size
          * 0x00000008: root_type
-         * 0x00000009: flags 1
+         * 0x00000009: perms
          * 0x0000000a: flags 2
          * 0x0000000b: flags 3
          * 0x0000000c: indirect_sector
          * 0x00000010: root_data_sectors
          */
         root_node->id = *(uint32_t*)&last_read_sector[0x00];
-        root_node->size = *(uint32_t*)&last_read_sector[0x04];
-        root_node->type = last_read_sector[0x08];
-        root_node->perms = last_read_sector[0x09];
-        root_node->unused_flag_two = last_read_sector[0x0a];
-        root_node->unused_flag_three = last_read_sector[0x0b];
-        root_node->indirect_sector = *(uint32_t*)&last_read_sector[0xc];
-        memcpy(root_node->data_sectors,&last_read_sector[0x10],NUM_DATA_SECTORS_PER_FILE * sizeof(uint32_t));
+        root_node->size = *(uint32_t*)&last_read_sector[sizeof(uint32_t)];
+        root_node->type = last_read_sector[sizeof(uint32_t) * 2];
+        root_node->perms = last_read_sector[sizeof(uint32_t) * 2 + sizeof(uint8_t)];
+        root_node->unused_flag_two = last_read_sector[sizeof(uint32_t) * 2 + sizeof(uint8_t) * 2];
+        root_node->unused_flag_three = last_read_sector[sizeof(uint32_t) * 2 + sizeof(uint8_t) * 3];
+        root_node->indirect_sector = *(uint32_t*)&last_read_sector[sizeof(uint32_t) * 3];
+        memcpy(root_node->data_sectors,&last_read_sector[sizeof(uint32_t) * 4],NUM_DATA_SECTORS_PER_FILE * sizeof(uint32_t));
         read_bitmaps_from_disk();
     }
     
@@ -512,7 +535,7 @@ void init_filesystem(){
     
     vector_append(&inodes,(uint32_t)root_node);
     
-    build_inodes(root_node,root_node->id);
+    build_inodes(root_node);
 }
 
 uint8_t write_directory_entry(inode_t* parent_dir, uint32_t child_inode_id, unsigned char* name, uint8_t name_length){
@@ -580,14 +603,19 @@ uint8_t write_directory_entry(inode_t* parent_dir, uint32_t child_inode_id, unsi
 
 string_array_t* get_all_names_in_dir(inode_t* dir){
 
+    string_array_t* str_arr = (string_array_t*)kmalloc(sizeof(string_array_t));
+
     // assure that size was set
     if (dir->size < sizeof(uint32_t)) {
-        return 0;
+        str_arr->n_strings = 0;
+        return str_arr;
     }
     
     unsigned char* buffer = read_dir_entries_to_buffer(dir);
-    if (!buffer) return 0;
-    string_array_t* str_arr = (string_array_t*)kmalloc(sizeof(string_array_t));
+    if (!buffer) {
+        str_arr->n_strings = 0;
+        return str_arr;
+    }
     
     uint32_t n_strings = *(uint32_t*)&buffer[0];
     string_t* strings = (string_t*)kmalloc(sizeof(string_t) * n_strings);
@@ -700,7 +728,6 @@ void erase_directory_entry(inode_t* dir, uint32_t entry_inode_id){
     
 }
 
-
 inode_t* get_file_if_exists(inode_t* parent_dir,unsigned char* name){
     
     if(dir_contains_name(parent_dir,name)){
@@ -717,7 +744,7 @@ int erase_empty_dir(inode_t* parent_dir, inode_t* dir){
 
 int delete_dir_recursive(inode_t* parent_dir, inode_t* dir){
     string_array_t* names = get_all_names_in_dir(dir);
-    if (!names) {
+    if (names->n_strings == 0) {
         if (erase_empty_dir(parent_dir,dir) != FS_FILE_DELETION_SUCCESS) 
             return FS_FILE_DELETION_FAILED;
         return FS_FILE_DELETION_SUCCESS;
@@ -727,7 +754,7 @@ int delete_dir_recursive(inode_t* parent_dir, inode_t* dir){
         inode_t* inode = get_inode_by_id(id);
         if (!inode) return FILE_INVALID_FD;
         int result;
-        if (inode->type == FS_TYPE_FILE) {
+        if (inode->type != FS_TYPE_DIR) {
             result = delete_file_by_inode(dir,inode);
         }else{
             result = delete_dir_recursive(dir,inode);
@@ -794,16 +821,14 @@ int delete_file_by_inode(inode_t* parent_dir,inode_t* inode){
 int create_file(inode_t* parent_dir, unsigned char* name, uint8_t name_length, uint8_t type,uint8_t perms){
 
     string_array_t* strs_in_parent_dir = get_all_names_in_dir(parent_dir);
-    if (strs_in_parent_dir){
-        for (uint32_t i = 0; i < strs_in_parent_dir->n_strings;i++){
-            if(strneq(name,strs_in_parent_dir->strings[i].str,name_length,strs_in_parent_dir->strings[i].length)) {
-                free_string_arr(strs_in_parent_dir);
-                return FS_FILE_ALREADY_EXISTS;
-            }
+    
+    for (uint32_t i = 0; i < strs_in_parent_dir->n_strings;i++){
+        if(strneq(name,strs_in_parent_dir->strings[i].str,name_length,strs_in_parent_dir->strings[i].length)) {
+            free_string_arr(strs_in_parent_dir);
+            return FS_FILE_ALREADY_EXISTS;
         }
-        free_string_arr(strs_in_parent_dir);
     }
-
+    free_string_arr(strs_in_parent_dir);
 
     if (parent_dir->data_sectors[0] == 0){
         parent_dir->data_sectors[0] = allocate_sector();
@@ -847,12 +872,11 @@ void change_file_permissions(inode_t* file,uint8_t perms){
     file->perms = perms; 
 }
 
-void write_inode_to_disk(inode_t* inode,uint8_t is_root){
-    
-    uint32_t sector_idx = (inode->id / 8) + (is_root != 1); // add one if it is not root
+void write_inode_to_disk(inode_t* inode){
+    uint32_t sector_idx = (inode->id / FS_INODES_PER_SECTOR) + 1; 
 
-    uint32_t sector_start = (inode->id % 8) * SECTOR_BITMAP_SIZE;
-    if (is_root){
+    uint32_t sector_start = (inode->id % FS_INODES_PER_SECTOR) * SECTOR_BITMAP_SIZE;
+    if (inode->id == FS_ROOT_DIR_ID){
         sector_idx = 0;
         sector_start = 0;
     }
@@ -862,22 +886,43 @@ void write_inode_to_disk(inode_t* inode,uint8_t is_root){
     }
 
     *(uint32_t*)&last_read_sector[sector_start] = inode->id;
-    *(uint32_t*)&last_read_sector[sector_start + 0x4] = inode->size;
-    last_read_sector[sector_start + 0x8] = inode->type;
-    last_read_sector[sector_start + 0x9] = 0x0;
-    last_read_sector[sector_start + 0xa] = 0x0;
-    last_read_sector[sector_start + 0xb] = 0x0;
-    *(uint32_t*)&last_read_sector[sector_start + 0xc] = inode->indirect_sector;
-    memcpy(&last_read_sector[sector_start + 0x10],inode->data_sectors,sizeof(uint32_t) * NUM_DATA_SECTORS_PER_FILE);
+    *(uint32_t*)&last_read_sector[sector_start + sizeof(uint32_t)] = inode->size;
+    last_read_sector[sector_start + sizeof(uint32_t) * 2] = inode->type;
+    last_read_sector[sector_start + sizeof(uint32_t) * 2 + sizeof(uint8_t)] = inode->perms;
+    last_read_sector[sector_start + sizeof(uint32_t) * 2 + sizeof(uint8_t) * 2] = 0x0;
+    last_read_sector[sector_start + sizeof(uint32_t) * 2 + sizeof(uint8_t) * 3] = 0x0;
+    *(uint32_t*)&last_read_sector[sector_start + sizeof(uint32_t) * 3] = inode->indirect_sector;
+    memcpy(&last_read_sector[sector_start + sizeof(uint32_t) * 4],inode->data_sectors,sizeof(uint32_t) * NUM_DATA_SECTORS_PER_FILE);
 
     write_sectors(ATA_PRIMARY_BUS_IO,1,last_read_sector,sector_idx);
 }
 
 void write_to_disk(){
     for (uint32_t i = 0; i < inodes.size;i++){
-        write_inode_to_disk((inode_t*)inodes.data[i], i == 0);
+        inode_t* inode = (inode_t*)inodes.data[i];
+        write_inode_to_disk(inode);
     }
     log("Wrote all inodes to disk");
     write_bitmaps_to_disk();
     log("Wrote all bitmaps to disk");
+}
+
+void cleanup_tmp(){
+    active_dir = get_inode_by_full_file_path("tmp/");
+
+    string_array_t* names = get_all_names_in_dir(active_dir);
+
+    for (uint32_t i = 0; i < names->n_strings;i++){
+        inode_t* entry = get_inode_by_relative_file_path(names->strings[i].str);
+
+        if (entry->type == TYPE_DIR) {
+            if (delete_dir_recursive(active_dir,entry) < 0) error("Failed to delete dir in /tmp");
+        }
+        else {
+            if (delete_file_by_inode(active_dir,entry) < 0) error("Failed to delete file in /tmp");
+        }
+    }
+
+    free_string_arr(names);
+    active_dir = get_inode_by_id(FS_ROOT_DIR_ID);
 }
