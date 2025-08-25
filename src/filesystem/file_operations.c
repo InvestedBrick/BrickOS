@@ -6,6 +6,7 @@
 #include "../drivers/ATA_PIO/ata.h"
 #include "fs_defines.h"
 #include "devices/devs.h"
+#include "IPC/pipes.h"
 
 vfs_handles_t fs_ops = {
     .open = fs_open,
@@ -66,13 +67,10 @@ uint32_t get_sector_for_rw(inode_t* inode, uint32_t sector_idx, uint8_t is_write
 
 generic_file_t* fs_open(unsigned char* filepath,uint8_t flags){
     
-    inode_t* inode;
-    if(dir_contains_name(active_dir,filepath)){
-        inode = get_inode_by_id(get_inode_id_by_name(active_dir->id,filepath));
-    }else{
-        inode = get_inode_by_full_file_path(filepath);
-    }
+    inode_t* inode = get_inode_by_path(filepath);
+    
     if (inode && inode->type == FS_TYPE_DEV) return dev_open(inode);
+    if (inode && inode->type == FS_TYPE_PIPE) return open_pipe(inode,flags);
 
     if (inode && flags & FILE_FLAG_CREATE) return nullptr;
     if (!inode) {
