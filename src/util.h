@@ -4,6 +4,9 @@
 
 #define CEIL_DIV(a,b) (((a + b) - 1 )/ b)
 #define ALIGN_DOWN(a, b) ((b) ? ((a) - ((a) % (b))) : (a))
+
+#define nullptr 0
+
 #include <stdint.h>
 typedef struct {
     uint32_t length;
@@ -94,6 +97,17 @@ void free_string_arr(string_array_t* str_arr);
  * 
  *         (uint32_t)-1 of not found
  */
-
 uint32_t find_char(unsigned char* str,unsigned char c);
+
+/**
+ * rfind_char: 
+ * Finds the last occurance of a byte in a C-Style string and returns the index of it
+ * @param str The string
+ * @param c The character to find
+ * @return The index of the character;
+ * 
+ *         (uint32_t)-1 of not found
+ */
+uint32_t rfind_char(unsigned char* str, unsigned char c);
+
 #endif
