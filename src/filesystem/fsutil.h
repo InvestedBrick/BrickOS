@@ -15,4 +15,14 @@
  */
 int get_full_active_path(unsigned char* path_buffer, uint32_t buf_len);
 
+
+/**
+ * split_filepath:
+ * Splits a filepath into preceding directories and last filename
+ * 
+ * @param path The path to split
+ * 
+ * @return A string array of either one or two strings, depending on if there are preceding directories
+ */
+string_array_t* split_filepath(unsigned char* path);
 #endif
