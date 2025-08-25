@@ -7,7 +7,7 @@
 // must be set so that the inode struct is exactly 64 bytes wide
 #define NUM_DATA_SECTORS_PER_FILE 12
 
-#define RESERVED_BITMAP_SECTORS  // (16 * 8) normal sector bitmaps + 1 sector for header + 2 big bitmaps
+#define RESERVED_BITMAP_SECTORS 17 // (16 * 8) normal sector bitmaps + 1 sector for header && 2 big bitmaps
 // we can create up to 800 files / directories. Will be enough for now
 #define RESERVED_INODE_SECTORS 100
 #define RESERVED_ROOT_SECTOR 1
@@ -46,8 +46,9 @@ typedef struct{
 
 #define FS_TYPE_FILE 1
 #define FS_TYPE_DIR 2
-#define FS_TYPE_DEV 4
 #define FS_TYPE_ERASED 3
+#define FS_TYPE_DEV 4
+#define FS_TYPE_PIPE 5
 
 #define FS_FILE_CREATION_SUCCESS 0
 #define FS_FILE_CREATION_FAILED -1
@@ -105,6 +106,15 @@ typedef struct {
  */
 void init_filesystem();
 
+
+/**
+ * get_inode_by_path:
+ * Tries to find an existing inode by either relative path or absolute path
+ * 
+ * @param path The file path
+ * @return A pointer to the inode
+ */
+inode_t* get_inode_by_path(unsigned char* path);
 
 /**
  * change_active_dir: 
@@ -177,7 +187,6 @@ uint32_t allocate_sector();
  * 
  * IMPORTANT: You need to free the returned strings, the string struct and the returned string array pointer (See free_string_arr() in util.h)
  * @param dir The directory of which to get the entires
- * @param add_slash A boolean value deciding if directories should get an added '/' when being returned
  * @return Array of strings which contain the data
  * 
  */
@@ -280,4 +289,10 @@ inode_t* get_file_if_exists(inode_t* parent_dir,unsigned char*);
  * @param perms The new permissions
  */
 void change_file_permissions(inode_t* file,uint8_t perms);
+
+/**
+ * cleanup_tmp:
+ * Tries to delete all files in /tmp, call upon shutdown
+ */
+void cleanup_tmp();
 #endif
