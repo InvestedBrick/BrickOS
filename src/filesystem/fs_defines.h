@@ -20,6 +20,7 @@
 
 #define TYPE_FILE 1
 #define TYPE_DIR 2
+#define TYPE_PIPE 5
 
 #define FS_FILE_PERM_NONE 0x0
 #define FS_FILE_PERM_READABLE 0x1
