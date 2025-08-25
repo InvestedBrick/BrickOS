@@ -18,6 +18,7 @@ C_SOURCES = \
     src/filesystem/*c \
     src/filesystem/vfs/*.c \
     src/filesystem/devices/*.c \
+    src/filesystem/IPC/*.c \
     src/screen/*.c 
 
 
