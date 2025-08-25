@@ -29,4 +29,5 @@ int sys_chdir(unsigned char* dir_name);
 
 int sys_rmfile(unsigned char* filename);
 
+int sys_mknod(unsigned char* filename,uint32_t type);
 #endif
