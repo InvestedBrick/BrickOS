@@ -60,3 +60,33 @@ int get_full_active_path(unsigned char* path_buffer, uint32_t buf_len){
 
     return 0;
 } 
+
+
+string_array_t* split_filepath(unsigned char* path){
+    string_array_t* str_arr = (string_array_t*)kmalloc(sizeof(string_array_t));
+    uint32_t split_idx = rfind_char(path,'/');
+    if (split_idx == (uint32_t)-1){
+        str_arr->n_strings = 1;
+        str_arr->strings = (string_t*)kmalloc(sizeof(string_t));
+        str_arr->strings[0].length = strlen(path);
+        str_arr->strings[0].str = (unsigned char*)kmalloc(str_arr->strings[0].length + 1);
+        memcpy(str_arr->strings[0].str,path,str_arr->strings[0].length + 1);
+        return str_arr;
+    }
+
+    str_arr->n_strings = 2;
+    // preceding dirs
+    str_arr->strings = (string_t*)kmalloc(sizeof(string_t) * 2);
+    str_arr->strings[0].length = split_idx;
+    str_arr->strings[0].str = (unsigned char*)kmalloc(str_arr->strings[0].length + 1);
+    memcpy(str_arr->strings[0].str,path,str_arr->strings[0].length);
+    str_arr->strings[0].str[str_arr->strings[0].length] = '\0';
+
+    // final filename
+    str_arr->strings[1].length = strlen(path) - split_idx - 1;
+    str_arr->strings[1].str = (unsigned char*)kmalloc(str_arr->strings[1].length + 1);
+    memcpy(str_arr->strings[1].str,&path[split_idx + 1],str_arr->strings[1].length);
+    str_arr->strings[1].str[str_arr->strings[1].length] = '\0';
+
+    return str_arr;
+}
