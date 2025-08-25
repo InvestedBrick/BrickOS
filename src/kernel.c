@@ -13,6 +13,7 @@
 #include "filesystem/filesystem.h"
 #include "filesystem/file_operations.h"
 #include "filesystem/devices/devs.h"
+#include "filesystem/IPC/pipes.h"
 #include "drivers/timer/pit.h"
 #include "processes/scheduler.h"
 #include "tables/syscalls.h"
@@ -53,7 +54,10 @@ void create_kernel_process(){
 void shutdown(){
 
     restore_kernel_memory_page_dir();
-    
+
+    cleanup_tmp();
+    log("Cleaned up /tmp");
+
     write_to_disk();
 
     panic("This is the end of the world");
@@ -130,9 +134,10 @@ void kmain(multiboot_info_t* boot_info)
         create_file(active_dir,"modules",strlen("modules"),FS_TYPE_DIR, FS_FILE_PERM_NONE);
         create_file(active_dir,"home",strlen("home"),FS_TYPE_DIR, FS_FILE_PERM_NONE);
         create_file(active_dir,"dev",strlen("dev"),FS_TYPE_DIR,FS_FILE_PERM_NONE);
-        log("Initialized /modules, /home and /dev directories");
+        create_file(active_dir,"tmp",strlen("tmp"),FS_TYPE_DIR,FS_FILE_PERM_NONE);
+        log("Initialized /modules, /home, /dev and /tmp directories");
     }
-    
+
     initialize_devices();
     log("Initialized devices");
 
