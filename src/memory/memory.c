@@ -39,6 +39,10 @@ shared_object_t* find_shared_object_by_id(uint32_t unique_id){
     return 0;
 }
 
+void append_shared_object(shared_object_t* shrd_obj){
+    vector_append(&shm_obj_vec,(uint32_t)shrd_obj);
+}
+
 void pmm_init(uint32_t mem_low, uint32_t mem_high){
     page_frame_min = CEIL_DIV(mem_low,MEMORY_PAGE_SIZE);
     page_frame_max = mem_high / MEMORY_PAGE_SIZE;
