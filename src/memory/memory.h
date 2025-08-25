@@ -52,6 +52,8 @@ typedef struct virt_mem_area{
 
 void init_shm_obj_vector();
 
+void append_shared_object(shared_object_t* shrd_obj);
+
 /**
  * find_shared_object_by_id:
  * returns a shared object with the given unique id if exists
