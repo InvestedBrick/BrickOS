@@ -14,6 +14,7 @@ vfs_handles_t fs_ops = {
     .write = fs_write,
     .read = fs_read,
     .seek = fs_seek,
+    .ioctl = 0,
 };
 
 int fs_seek(generic_file_t* file, uint32_t offset){
