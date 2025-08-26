@@ -76,7 +76,7 @@ void free_pid(uint32_t pid){
 }
 
 
-uint32_t create_user_process(unsigned char* binary, uint32_t size,unsigned char* process_name) {
+uint32_t create_user_process(unsigned char* binary, uint32_t size,unsigned char* process_name,uint8_t priv_lvl) {
     uint32_t int_save = get_interrupt_status();
     disable_interrupts();
 // To setup a user process:
@@ -100,6 +100,7 @@ uint32_t create_user_process(unsigned char* binary, uint32_t size,unsigned char*
     process->fd_table[FD_STDOUT] = &screen_file;
     process->vm_areas = nullptr;
     process->running = 0;
+    process->priv_lvl = priv_lvl;
     process->kernel_stack = kernel_stack;
     uint32_t name_len = strlen(process_name);
     process->process_name = (unsigned char*)kmalloc(name_len + 1);
@@ -118,8 +119,6 @@ uint32_t create_user_process(unsigned char* binary, uint32_t size,unsigned char*
     
     process->page_dir = pd;
     add_process_state(process);
-    
-    
     
     for (uint32_t i = 0; i < code_data_pages;i++){
         uint32_t code_data_mem = pmm_alloc_page_frame();
@@ -175,7 +174,6 @@ void dispatch_user_process(uint32_t pid){
     process->running = 1;
     mem_change_page_dir(process->page_dir); 
     set_kernel_stack(process->kernel_stack + MEMORY_PAGE_SIZE);
-    //enter_user_mode();
     load_registers();
 }
 
@@ -235,7 +233,7 @@ int kill_user_process(uint32_t pid){
     return 0;
 }
 
-void run(char* filepath){
+void run(char* filepath,uint8_t priv_lvl){
     inode_t* file = get_inode_by_full_file_path(filepath);
 
     if (!file){
@@ -259,7 +257,7 @@ void run(char* filepath){
     uint8_t old_int_status = get_interrupt_status();
     disable_interrupts();
 
-    uint32_t pid = create_user_process(binary,file->size,filepath);
+    uint32_t pid = create_user_process(binary,file->size,filepath,priv_lvl);
 
     if (!pid) {
         error("Creating user process failed");
