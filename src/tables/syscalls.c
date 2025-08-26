@@ -34,6 +34,7 @@ int sys_read(user_process_t* p,uint32_t fd, unsigned char* buf, uint32_t size){
 }
 
 int sys_open(user_process_t* p,unsigned char* filepath, uint8_t flags){
+
     generic_file_t* file = fs_open(filepath,flags);
 
     if (!file) return SYSCALL_FAIL;
@@ -63,6 +64,16 @@ int sys_seek(user_process_t* p,uint32_t fd, uint32_t offset){
     if (!file || !file->ops || !file->ops->seek) return SYSCALL_FAIL;
 
     return file->ops->seek(file,offset);
+}
+
+int sys_ioctl(user_process_t* p, uint32_t fd,uint32_t cmd, void* arg){
+    if (fd >= MAX_FDS) return SYSCALL_FAIL;
+
+    generic_file_t* file = p->fd_table[fd];
+
+    if (!file || !file->ops || !file->ops->ioctl) return SYSCALL_FAIL;
+
+    return file->ops->ioctl(file,cmd,arg);
 }
 
 int sys_exit(user_process_t* p,interrupt_stack_frame_t* stack_frame){
@@ -110,7 +121,9 @@ int sys_mmap(user_process_t *p, void *addr, uint32_t size,uint32_t prot, uint32_
             shrd_obj->shared_pages = (shared_page_t**)kmalloc(n_pages * sizeof(shared_page_t*));
             memset(shrd_obj->shared_pages,0x0,n_pages * sizeof(shared_page_t*));
             append_shared_object(shrd_obj);
-        }   
+        }else{
+            shrd_obj->ref_count++;
+        }
     
         if (n_pages > shrd_obj->n_pages){
 
@@ -151,6 +164,9 @@ int sys_getdents(user_process_t* p,uint32_t fd,dirent_t* ent_buffer,uint32_t siz
     open_file_t* open_file = (open_file_t*)file->generic_data;
 
     inode_t* inode = get_inode_by_id(open_file->inode_id);
+
+    if (!inode) return nullptr;
+
     string_array_t* names = get_all_names_in_dir(inode);
 
     uint32_t total_size = 0;
