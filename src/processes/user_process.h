@@ -18,6 +18,7 @@ typedef struct {
     unsigned char* process_name;
     uint8_t running;
     uint32_t page_alloc_start;
+    uint8_t priv_lvl;
     virt_mem_area_t* vm_areas;
     generic_file_t* fd_table[MAX_FDS];
 } __attribute__((packed)) user_process_t;
@@ -29,6 +30,10 @@ typedef struct {
 
 extern vector_t user_process_vector;
 
+#define PRIV_STD 2
+#define PRIV_SPECIAL 1
+#define PRIV_ALUCARD 0
+
 #define MAX_PIDS 32768
 /**
  * create_user_process:
@@ -37,9 +42,10 @@ extern vector_t user_process_vector;
  * @param binary A pointer to the first byte of the binary to be loaded into memory
  * @param size The size of the binary in bytes
  * @param process_name The name of the process
+ * @param priv_lvl The priviledge level of the user process (0 highest)
  * @return The proccess ID of the created process
  */
-uint32_t create_user_process(unsigned char* binary, uint32_t size,unsigned char* process_name);
+uint32_t create_user_process(unsigned char* binary, uint32_t size,unsigned char* process_name,uint8_t priv_lvl);
 /**
  * init_user_process_vector:
  * Sets up the user process vector
@@ -51,8 +57,6 @@ void init_user_process_vector();
  * @return Returns how successful the killing was
  */
 int kill_user_process(uint32_t pid);
-
-void enter_user_mode();
 
 /**
  * get_user_process_by_pid:
@@ -85,7 +89,8 @@ void free_pid(uint32_t pid);
  * run:
  * Executes a user process
  * @param filepath The path to the executable
+ * @param priv_lvl The priviledge level of the executable (0 highest priviledge level)
  */
-void run(char* filepath);
+void run(char* filepath,uint8_t priv_lvl);
 
 #endif
