@@ -1,4 +1,4 @@
-[LOG] Set up serial port
+[LOG] [LOG] Set up serial port
 [LOG] Initialized the PIT
 [LOG] Initialized the GDT
 [LOG] Initialited the IDT
@@ -7,6 +7,7 @@
 [LOG] Set up framebuffer
 [LOG] Initialized kmalloc
 [LOG] Saved module binaries
+[LOG] Initialized shared memory objects vector
 [LOG] Initialized user process vector
 [LOG] Set up kernel process
 [LOG] Selected Drive supports LBA48
@@ -14,13 +15,17 @@
 [LOG] 524288
 [LOG] Initialized disk driver
 [LOG] Initialized the filesystem
-[LOG] Initialized modules and home directory
+[LOG] Initialized /modules, /home, /dev and /tmp directories
+[LOG] Initialized devices
 [LOG] Wrote module binaries to files in the modules directory
 [LOG] Set up endless process
 [LOG] Initialized the scheduler
 [LOG] Shell setup complete
 [LOG] Process exited with error code
-[LOG] 1
+[LOG] 0
+[LOG] Process exited with error code
+[LOG] 0
+[LOG] Cleaned up /tmp
 [LOG] Wrote all inodes to disk
 [LOG] Wrote all bitmaps to disk
 [PANIC] This is the end of the world
