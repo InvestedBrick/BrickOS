@@ -10,7 +10,8 @@ typedef struct
     int (*read)(generic_file_t* file,unsigned char* buffer, uint32_t size);  
     int (*write)(generic_file_t* file,unsigned char* buffer, uint32_t size);
     int (*close)(generic_file_t* file); 
-    int (*seek)(generic_file_t*,uint32_t offset);
+    int (*seek)(generic_file_t* file, uint32_t offset);
+    int (*ioctl)(generic_file_t* file, uint32_t cmd, void* arg);
 } vfs_handles_t;
 
 typedef struct generic_file{
