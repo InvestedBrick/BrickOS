@@ -126,4 +126,17 @@ int rmfile(unsigned char* filename);
  * @return The offset (may be capped at the filesize)
  */
 int seek(uint32_t fd,uint32_t offset);
+
+/**
+ * ioctl:
+ * Sends a device specific command to a device file
+ * @param fd The file descriptor to the device file
+ * @param cmd The command to send
+ * @param arg An argument for the command
+ * 
+ * @return SYSCALL_FAIL if something failed, 
+ * 
+ *  else SYSCALL_SUCCESS
+ */
+int ioctl(uint32_t fd, uint32_t cmd,void* arg);
 #endif
