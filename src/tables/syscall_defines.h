@@ -16,6 +16,7 @@
 #define SYS_RMFILE 0xa
 #define SYS_SEEK 0xb
 #define SYS_MKNOD 0xc
+#define SYS_IOCTL 0xd 
 
 #define SYSCALL_FAIL -1
 #define SYSCALL_SUCCESS 0
