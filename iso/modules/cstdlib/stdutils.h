@@ -9,6 +9,9 @@ typedef struct {
     unsigned char* str;
 } string_t;
 
+#define EXIT_SUCCESS 0
+#define EXIT_FAILURE 1
+
 uint32_t strlen(const char* str);
 
 void* memset(void* dest, int val, uint32_t n);
