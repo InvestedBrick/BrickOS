@@ -96,6 +96,8 @@ int handle_software_interrupt(interrupt_stack_frame_t* stack_frame){
         return sys_rmfile((unsigned char*)stack_frame->ebx);
     case SYS_MKNOD:
         return sys_mknod((unsigned char*)stack_frame->ebx,stack_frame->ecx);
+    case SYS_IOCTL:
+        return sys_ioctl(get_current_user_process(),stack_frame->ebx,stack_frame->ecx,(void*)stack_frame->edx);
     default:
         break;
     }
@@ -134,6 +136,7 @@ void page_fault_handler(user_process_t* p,uint32_t fault_addr,interrupt_stack_fr
         if (stack_frame->error_code & 0x10) error("Non-Executable instruction fetch");
         if (stack_frame->error_code & 0x20) error("Protection key violation");
 
+        stack_frame->ebx = 1; // exit code
         sys_exit(p,stack_frame);
     }
 
