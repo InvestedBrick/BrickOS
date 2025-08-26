@@ -5,11 +5,14 @@
 #include <stdint.h>
 #include "../vfs/vfs.h"
 #include "../filesystem.h"
+#include "device_defines.h"
 typedef struct {
     uint32_t inode_id;
+    uint8_t priv_lvl;
     generic_file_t* gen_file;
 }device_t;
 
+extern framebuffer_t fb0;
 void init_dev_vec();
 
 /**
