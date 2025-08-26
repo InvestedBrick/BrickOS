@@ -108,6 +108,7 @@ vfs_handles_t pipe_handlers = {
     .write = pipe_write,
     .close = pipe_close,
     .seek = 0,
+    .ioctl = 0,
 };
 
 generic_file_t* open_pipe(inode_t* inode,uint32_t flags){
