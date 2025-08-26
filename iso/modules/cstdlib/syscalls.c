@@ -121,3 +121,14 @@ int seek(uint32_t fd,uint32_t offset){
     );
     return ret;
 }
+
+int ioctl(uint32_t fd, uint32_t cmd,void* arg){
+    int ret;
+    asm volatile (
+        "int $0x30"
+        : "=a"(ret)
+        : "a"(SYS_IOCTL), "b"(fd), "c"(cmd), "d"(arg)
+        : "memory"
+    );
+    return ret;
+}
