@@ -46,6 +46,7 @@ vfs_handles_t kb_ops = {
   .read = kb_read,
   .write = 0,
   .seek = 0,
+  .ioctl = 0
 };
 
 generic_file_t kb_file = {
