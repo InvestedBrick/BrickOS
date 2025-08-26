@@ -3,6 +3,7 @@
 #include "../io/log.h"
 #include "../drivers/keyboard/keyboard.h"
 #include "../filesystem/vfs/vfs.h"
+#include "../filesystem/devices/devs.h"
 #include "../util.h"
 #include "../memory/memory.h"
 #include "../multiboot.h"
@@ -73,6 +74,13 @@ void init_framebuffer(multiboot_info_t* mboot,uint32_t fb_start){
 
     screen_cursor_x_max = screen_width / COLUMNS_PER_CHAR;
     screen_cursor_y_max = screen_height / ROWS_PER_CHAR;
+
+    fb0.bpp            = mboot->framebuffer_bpp;
+    fb0.bytes_per_row  = mboot->framebuffer_pitch;
+    fb0.height         = mboot->framebuffer_height;
+    fb0.width          = mboot->framebuffer_width;
+    fb0.phys_addr      = fb_phys;
+    fb0.size           = fb_size;
 
     map_framebuffer(fb_phys,fb_start,fb_size);
 }
@@ -209,6 +217,7 @@ vfs_handles_t screen_ops = {
     .read = 0,
     .write = screen_write,
     .seek = 0,
+    .ioctl = 0,
 };
 
 generic_file_t screen_file = {
