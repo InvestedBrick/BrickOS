@@ -153,8 +153,10 @@ void kmain(multiboot_info_t* boot_info)
     sys_write(&global_kernel_process,FD_STDOUT,"Hello BrickOS!\n",15);
     sys_write(&global_kernel_process,FD_STDOUT,"Type 'help' for command list\n",29);
     
-    // running module
-    run("modules/shell.bin");
+    // running modules
+    run("modules/shell.bin",PRIV_STD);
+
+    run("modules/win_man.bin",PRIV_SPECIAL);
 
     setup_timer_switch();
     // need to manually enable since run just restores whatever was before that
