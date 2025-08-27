@@ -44,8 +44,6 @@ generic_file_t* dev_open(inode_t* inode){
     for (uint32_t i = 0; i < dev_vec.size;i++){
         device_t* dev = (device_t*)dev_vec.data[i];
         if (dev->inode_id == inode->id){
-            if (current_proc->priv_lvl > dev->priv_lvl) return nullptr;
-
             return dev->gen_file;
         }
     }
@@ -61,7 +59,7 @@ void create_device(unsigned char* name,vfs_handles_t* handles, void* gen_data,vo
     inode_t* old_dir = change_active_dir(dev_dir);
 
     if (!dir_contains_name(active_dir,name)){
-        if (create_file(active_dir,name,strlen(name),FS_TYPE_DEV,FS_FILE_PERM_NONE) < 0)
+        if (create_file(active_dir,name,strlen(name),FS_TYPE_DEV,FS_FILE_PERM_NONE,priv_lvl) < 0)
         error("Failed to create device");
     }
     
@@ -70,7 +68,6 @@ void create_device(unsigned char* name,vfs_handles_t* handles, void* gen_data,vo
     device_t* dev = (device_t*)kmalloc(sizeof(device_t));
 
     dev->inode_id = node->id;
-    dev->priv_lvl = priv_lvl;
     dev->gen_file = (generic_file_t*)kmalloc(sizeof(generic_file_t));
     dev->gen_file->generic_data = gen_data;
     dev->gen_file->ops = handles;
@@ -133,7 +130,42 @@ vfs_handles_t dev_fb0 = {
     .ioctl = dev_fb0_ioctl,
 };
 
+wm_pipes_t wm_pipes;
+
+void init_dev_wm(device_t* dev){
+
+    wm_pipes_t* pipes = (wm_pipes_t*)dev->gen_file->generic_data;
+    // set up two pipes for wm <-> kernel communication
+    if (sys_mknod("tmp/wm_to_k.tmp",TYPE_PIPE) < 0) error("Failed to create tmp/wm_to_k.tmp");
+    if (sys_mknod("tmp/k_to_wm.tmp",TYPE_PIPE) < 0) error("Failed to create tmp/k_to_wm.tmp");
+
+    change_file_priviledge_level("tmp/wm_to_k.tmp",PRIV_SPECIAL);
+    change_file_priviledge_level("tmp/k_to_wm.tmp",PRIV_SPECIAL);
+
+    pipes->wm_to_k_fd = sys_open(&global_kernel_process,"tmp/wm_to_k.tmp",FILE_FLAG_READ);
+    pipes->k_to_wm_fd = sys_open(&global_kernel_process,"tmp/k_to_wm.tmp",FILE_FLAG_WRITE);
+
+    if (pipes->wm_to_k_fd < 0) error("Failed to open tmp/wm_to_k.tmp");
+    if (pipes->k_to_wm_fd < 0) error("Failed to open tmp/k_to_wm.tmp");
+
+    sys_write(&global_kernel_process,pipes->k_to_wm_fd,"\nHello from kernel\n",sizeof("\nHello from kernel\n"));
+}
+
+int dev_wm_ioctl(generic_file_t* file, uint32_t cmd,void* arg){
+    // user process <-> window manager
+}
+
+vfs_handles_t dev_wm = {
+    .open = 0,
+    .close = dev_generic_close,
+    .read = 0,
+    .write = 0,
+    .seek = 0,
+    .ioctl = dev_wm_ioctl,
+};
+
 void initialize_devices(){
     create_device("null",&dev_null,0,0,PRIV_STD);
     create_device("fb0",&dev_fb0,&fb0,init_dev_fb0,PRIV_SPECIAL);
+    create_device("wm",&dev_wm,&wm_pipes,init_dev_wm,PRIV_STD);
 }
