@@ -2,6 +2,7 @@
 #define INCLUDE_DEVICE_COMMANDS_H
 #include <stdint.h>
 
+// these defines / structs are accessible for the userspace
 #define DEV_FB0_GET_METADATA 0x01
 
 typedef struct {
