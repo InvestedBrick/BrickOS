@@ -19,7 +19,7 @@
 #include "tables/syscalls.h"
 user_process_t global_kernel_process;
 extern uint32_t stack_top;
-
+uint8_t dispatched_user_mode = 0;
 
 uint32_t calc_phys_alloc_start(multiboot_info_t* boot_info){
     multiboot_module_t* mods = (multiboot_module_t*) boot_info->mods_addr;
@@ -43,12 +43,15 @@ void create_kernel_process(){
     global_kernel_process.kernel_stack = stack_top;
     global_kernel_process.page_dir = mem_get_current_page_dir();
     global_kernel_process.process_id = get_pid();
+    global_kernel_process.vm_areas = 0;
+    global_kernel_process.priv_lvl = PRIV_ALUCARD; // the all-powerful
     global_kernel_process.process_name = kmalloc(sizeof(uint8_t) * 5);
     
     memcpy(global_kernel_process.process_name,"root",sizeof("root"));
     global_kernel_process.running = 1;
-
+    
     vector_append(&user_process_vector,(uint32_t)&global_kernel_process);
+
 }
 
 void shutdown(){
@@ -131,10 +134,10 @@ void kmain(multiboot_info_t* boot_info)
     log("Initialized the filesystem");
 
     if (first_time_fs_init){
-        create_file(active_dir,"modules",strlen("modules"),FS_TYPE_DIR, FS_FILE_PERM_NONE);
-        create_file(active_dir,"home",strlen("home"),FS_TYPE_DIR, FS_FILE_PERM_NONE);
-        create_file(active_dir,"dev",strlen("dev"),FS_TYPE_DIR,FS_FILE_PERM_NONE);
-        create_file(active_dir,"tmp",strlen("tmp"),FS_TYPE_DIR,FS_FILE_PERM_NONE);
+        create_file(active_dir,"modules",strlen("modules"),FS_TYPE_DIR, FS_FILE_PERM_NONE,PRIV_STD);
+        create_file(active_dir,"home",strlen("home"),FS_TYPE_DIR, FS_FILE_PERM_NONE,PRIV_STD);
+        create_file(active_dir,"dev",strlen("dev"),FS_TYPE_DIR,FS_FILE_PERM_NONE,PRIV_STD);
+        create_file(active_dir,"tmp",strlen("tmp"),FS_TYPE_DIR,FS_FILE_PERM_NONE,PRIV_STD);
         log("Initialized /modules, /home, /dev and /tmp directories");
     }
 
@@ -161,6 +164,7 @@ void kmain(multiboot_info_t* boot_info)
     setup_timer_switch();
     // need to manually enable since run just restores whatever was before that
     log("Shell setup complete");
+    dispatched_user_mode = 1;
     enable_interrupts();
     
     panic("Not set up beyond here");
