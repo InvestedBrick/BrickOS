@@ -146,7 +146,7 @@ void page_fault_handler(user_process_t* p,uint32_t fault_addr,interrupt_stack_fr
 
     if (vma->shrd_obj){
         
-        int page_idx = (aligned_fault_addr - (uint32_t)vma->addr) / MEMORY_PAGE_SIZE;
+        int page_idx = ((aligned_fault_addr - (uint32_t)vma->addr) + vma->offset) / MEMORY_PAGE_SIZE;
 
         if (!vma->shrd_obj->shared_pages[page_idx]){
             frame = init_new_page(vma,p,aligned_fault_addr);
