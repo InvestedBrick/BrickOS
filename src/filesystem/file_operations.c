@@ -7,7 +7,7 @@
 #include "fs_defines.h"
 #include "devices/devs.h"
 #include "IPC/pipes.h"
-
+#include "../processes/user_process.h"
 vfs_handles_t fs_ops = {
     .open = fs_open,
     .close = fs_close,
@@ -70,6 +70,9 @@ generic_file_t* fs_open(unsigned char* filepath,uint8_t flags){
     
     inode_t* inode = get_inode_by_path(filepath);
     
+    user_process_t* active_proc = get_current_user_process();
+    if (inode && active_proc->priv_lvl > inode->priv_lvl) return nullptr;
+
     if (inode && inode->type == FS_TYPE_DEV) return dev_open(inode);
     if (inode && inode->type == FS_TYPE_PIPE) return open_pipe(inode,flags);
 
@@ -77,10 +80,10 @@ generic_file_t* fs_open(unsigned char* filepath,uint8_t flags){
     if (!inode) {
         if (flags & FILE_FLAG_CREATE){
             if (flags & FILE_CREATE_DIR){
-                if (create_file(active_dir,filepath,strlen(filepath),FS_TYPE_DIR,FS_FILE_PERM_NONE) < 0)
+                if (create_file(active_dir,filepath,strlen(filepath),FS_TYPE_DIR,FS_FILE_PERM_NONE,PRIV_STD) < 0)
                     return nullptr;
             }else {
-                if (create_file(active_dir,filepath,strlen(filepath),FS_TYPE_FILE,FS_FILE_PERM_READABLE | FS_FILE_PERM_WRITABLE) < 0)
+                if (create_file(active_dir,filepath,strlen(filepath),FS_TYPE_FILE,FS_FILE_PERM_READABLE | FS_FILE_PERM_WRITABLE,PRIV_STD) < 0)
                     return nullptr;
             }
             inode = get_inode_by_id(get_inode_id_by_name(active_dir->id,filepath));
