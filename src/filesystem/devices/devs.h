@@ -6,11 +6,17 @@
 #include "../vfs/vfs.h"
 #include "../filesystem.h"
 #include "device_defines.h"
+
+// Internal-exclusive structs
 typedef struct {
     uint32_t inode_id;
-    uint8_t priv_lvl;
     generic_file_t* gen_file;
 }device_t;
+
+typedef struct {
+    uint32_t k_to_wm_fd;
+    uint32_t wm_to_k_fd;
+}wm_pipes_t;
 
 extern framebuffer_t fb0;
 void init_dev_vec();
