@@ -8,6 +8,7 @@
 #include "../vector.h"
 #include "devices/devs.h"
 #include "IPC/pipes.h"
+#include "../processes/user_process.h"
 vector_t inodes;
 vector_t inode_name_pairs; // Note to self: do not free this with vector free, the names have to be freed too
 sectors_headerdata_t header_data; 
@@ -479,6 +480,7 @@ void init_filesystem(){
     // standard root dir stuff
     root_node->id = FS_ROOT_DIR_ID;
     root_node->type = FS_TYPE_DIR;
+    root_node->priv_lvl = PRIV_STD;
     if(!(last_read_sector[ATA_SECTOR_SIZE - 1] == FS_SECTOR_0_INIT_FLAG)){
         first_time_fs_init = 1;
         memset(root_node->data_sectors,0x0,NUM_DATA_SECTORS_PER_FILE * sizeof(uint32_t)); // no data in the root dir right now
@@ -486,7 +488,7 @@ void init_filesystem(){
         *(uint32_t*)&last_read_sector[0x0] = root_node->id;
         *(uint32_t*)&last_read_sector[sizeof(uint32_t)] = root_node->size;
         last_read_sector[sizeof(uint32_t) * 2] = root_node->type;
-        last_read_sector[sizeof(uint32_t) * 2 + sizeof(uint8_t)] = 0;
+        last_read_sector[sizeof(uint32_t) * 2 + sizeof(uint8_t)] = root_node->priv_lvl;
         last_read_sector[sizeof(uint32_t) * 2 + sizeof(uint8_t) * 2] = 0;
         last_read_sector[sizeof(uint32_t) * 2 + sizeof(uint8_t) * 3] = 0;
         *(uint32_t*)&last_read_sector[sizeof(uint32_t) * 3] = 0;
@@ -507,7 +509,7 @@ void init_filesystem(){
          * 0x00000004: root_size
          * 0x00000008: root_type
          * 0x00000009: perms
-         * 0x0000000a: flags 2
+         * 0x0000000a: priv_lvl
          * 0x0000000b: flags 3
          * 0x0000000c: indirect_sector
          * 0x00000010: root_data_sectors
@@ -516,7 +518,7 @@ void init_filesystem(){
         root_node->size = *(uint32_t*)&last_read_sector[sizeof(uint32_t)];
         root_node->type = last_read_sector[sizeof(uint32_t) * 2];
         root_node->perms = last_read_sector[sizeof(uint32_t) * 2 + sizeof(uint8_t)];
-        root_node->unused_flag_two = last_read_sector[sizeof(uint32_t) * 2 + sizeof(uint8_t) * 2];
+        root_node->priv_lvl = last_read_sector[sizeof(uint32_t) * 2 + sizeof(uint8_t) * 2];
         root_node->unused_flag_three = last_read_sector[sizeof(uint32_t) * 2 + sizeof(uint8_t) * 3];
         root_node->indirect_sector = *(uint32_t*)&last_read_sector[sizeof(uint32_t) * 3];
         memcpy(root_node->data_sectors,&last_read_sector[sizeof(uint32_t) * 4],NUM_DATA_SECTORS_PER_FILE * sizeof(uint32_t));
@@ -818,7 +820,7 @@ int delete_file_by_inode(inode_t* parent_dir,inode_t* inode){
     return FS_FILE_DELETION_SUCCESS;
 }
 
-int create_file(inode_t* parent_dir, unsigned char* name, uint8_t name_length, uint8_t type,uint8_t perms){
+int create_file(inode_t* parent_dir, unsigned char* name, uint8_t name_length, uint8_t type,uint8_t perms,uint8_t priv_lvl){
 
     string_array_t* strs_in_parent_dir = get_all_names_in_dir(parent_dir);
     
@@ -848,6 +850,7 @@ int create_file(inode_t* parent_dir, unsigned char* name, uint8_t name_length, u
     memset(file->data_sectors,0,NUM_DATA_SECTORS_PER_FILE * sizeof(uint32_t));
     file->indirect_sector = 0;
     file->size = 0;
+    file->priv_lvl = priv_lvl;
     vector_append(&inodes,(uint32_t)file);
 
     if (!write_directory_entry(parent_dir,file->id,name,name_length)) {
@@ -867,9 +870,25 @@ int create_file(inode_t* parent_dir, unsigned char* name, uint8_t name_length, u
     return FS_FILE_CREATION_SUCCESS;
 }
 
-void change_file_permissions(inode_t* file,uint8_t perms){
-    if (file->type != FS_TYPE_FILE) return;
+void change_file_permissions(unsigned char* filename,uint8_t perms){
+    inode_t* file = get_inode_by_path(filename);
+
+    if (!file) return;
+
+
+    if (file->type == FS_TYPE_DIR) return;
     file->perms = perms; 
+}
+
+void change_file_priviledge_level(unsigned char* filename,uint8_t priv){
+    inode_t* file = get_inode_by_path(filename);
+    if (!file) return;
+
+    user_process_t* curr_proc = get_current_user_process();
+
+    if (priv < curr_proc->priv_lvl) return;
+
+    file->priv_lvl = priv;
 }
 
 void write_inode_to_disk(inode_t* inode){
@@ -889,7 +908,7 @@ void write_inode_to_disk(inode_t* inode){
     *(uint32_t*)&last_read_sector[sector_start + sizeof(uint32_t)] = inode->size;
     last_read_sector[sector_start + sizeof(uint32_t) * 2] = inode->type;
     last_read_sector[sector_start + sizeof(uint32_t) * 2 + sizeof(uint8_t)] = inode->perms;
-    last_read_sector[sector_start + sizeof(uint32_t) * 2 + sizeof(uint8_t) * 2] = 0x0;
+    last_read_sector[sector_start + sizeof(uint32_t) * 2 + sizeof(uint8_t) * 2] = inode->priv_lvl;
     last_read_sector[sector_start + sizeof(uint32_t) * 2 + sizeof(uint8_t) * 3] = 0x0;
     *(uint32_t*)&last_read_sector[sector_start + sizeof(uint32_t) * 3] = inode->indirect_sector;
     memcpy(&last_read_sector[sector_start + sizeof(uint32_t) * 4],inode->data_sectors,sizeof(uint32_t) * NUM_DATA_SECTORS_PER_FILE);
