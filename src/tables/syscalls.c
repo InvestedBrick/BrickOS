@@ -216,7 +216,6 @@ int sys_mknod(unsigned char* filename,uint32_t type){
 
     if (type != FS_TYPE_PIPE) return SYSCALL_FAIL; // add other types later
 
-
     inode_t* creation_dir = active_dir;
 
     string_array_t* str_arr = split_filepath(filename);
@@ -235,7 +234,7 @@ int sys_mknod(unsigned char* filename,uint32_t type){
         file_name = str_arr->strings[0].str;
     }
 
-    if (create_file(creation_dir,file_name,strlen(file_name),type,FS_FILE_PERM_NONE) < 0) {
+    if (create_file(creation_dir,file_name,strlen(file_name),type,FS_FILE_PERM_NONE,PRIV_STD) < 0) {
         free_string_arr(str_arr);
         return SYSCALL_FAIL;
     }
