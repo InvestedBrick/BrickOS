@@ -65,7 +65,7 @@ int exit(uint32_t error_code);
  * @param size The size of the memory region to allocate (Will be rounded up to the next page border)
  * @param prot The protections of the page
  * @param flags The page flags
- * @param fd The file descriptor if the mapping is backed by a page
+ * @param fd The file descriptor if the mapping is backed by a file
  * @param offset The offset into the file
  * 
  * @return Pointer to the memory region
