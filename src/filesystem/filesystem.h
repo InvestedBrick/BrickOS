@@ -72,7 +72,7 @@ typedef struct {
     uint32_t size;
     uint8_t type;
     uint8_t perms;
-    uint8_t unused_flag_two;
+    uint8_t priv_lvl;
     uint8_t unused_flag_three;
     uint32_t indirect_sector;
     uint32_t data_sectors[NUM_DATA_SECTORS_PER_FILE];
@@ -201,9 +201,10 @@ string_array_t* get_all_names_in_dir(inode_t* dir);
  * @param name_length The length if the name
  * @param type The type of file to create (FS_TYPE_FILE or FS_TYPE_DIR)
  * @param perms The permissions of the file
+ * @param priv_lvl The priviledge level needed to access this file
  * @return whether the file creation was successful (return value == 0) or not (return value < 0)
  */
-int create_file(inode_t* parent_dir, unsigned char*, uint8_t name_length,uint8_t type,uint8_t perms);
+int create_file(inode_t* parent_dir, unsigned char*, uint8_t name_length,uint8_t type,uint8_t perms,uint8_t priv_lvl);
 
 /**
  * write_to_disk: 
@@ -285,11 +286,18 @@ inode_t* get_file_if_exists(inode_t* parent_dir,unsigned char*);
 /**
  * change_file_permissions:
  * Changes the permissions of a file
- * @param file The file
+ * @param filename The name of the file
  * @param perms The new permissions
  */
-void change_file_permissions(inode_t* file,uint8_t perms);
+void change_file_permissions(unsigned char* filename,uint8_t perms);
 
+/**
+ * change_file_priviledge_level:
+ * Changes the priviledge level of a file
+ * @param filename The name of the file
+ * @param priv The new priviledge level (must be >= current priv lvl)
+ */
+void change_file_priviledge_level(unsigned char* filename,uint8_t priv);
 /**
  * cleanup_tmp:
  * Tries to delete all files in /tmp, call upon shutdown
