@@ -59,7 +59,7 @@ void write_module_binaries_to_file(){
             sys_rmfile(name);
         }
 
-        int ret_code = create_file(module_dir,name,len,FS_TYPE_FILE,FS_FILE_PERM_WRITABLE | FS_FILE_PERM_READABLE);
+        int ret_code = create_file(module_dir,name,len,FS_TYPE_FILE,FS_FILE_PERM_WRITABLE | FS_FILE_PERM_READABLE,PRIV_STD);
         if (ret_code < 0) 
             {error("Failed to create module binary file"); continue;}
 
@@ -74,7 +74,7 @@ void write_module_binaries_to_file(){
         ret_code = sys_close(&global_kernel_process,fd);
         if (ret_code == FILE_INVALID_FD) error("Failed to close module binary file");
 
-        change_file_permissions(get_inode_by_id(get_inode_id_by_name(module_dir->id,name)), FS_FILE_PERM_EXECUTABLE | FS_FILE_PERM_READABLE);
+        change_file_permissions(name, FS_FILE_PERM_EXECUTABLE | FS_FILE_PERM_READABLE);
 
         change_active_dir(dir_save);
 
