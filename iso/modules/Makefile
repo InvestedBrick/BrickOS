@@ -12,12 +12,11 @@ NASM := nasm
 NASMFLAGS := -f bin
 NASMOBJFLAGS := -f elf32
 
-CC := gcc
-LD := ld
-OBJCOPY := objcopy
+CC := ../../tools/cross/bin/i386-elf-gcc
+OBJCOPY := ../../tools/cross/bin/i386-elf-objcopy
 
 CFLAGS := -m32 -O1 -ffreestanding -nostdlib -fno-builtin -fno-stack-protector -nostartfiles
-LDFLAGS := -m elf_i386 -T link_c.ld
+LDFLAGS := -T link_c.ld
 
 CSTDLIB_DIR := cstdlib
 CSTDLIB_SRCS := $(wildcard $(CSTDLIB_DIR)/*.c)
@@ -37,7 +36,7 @@ $(CSTDLIB_DIR)/%.o: $(CSTDLIB_DIR)/%.c
 
 # Link .o to .elf with code starting at 0x0, link with cstdlib objects
 %.elf: %.o $(CSTDLIB_OBJS)
-	$(LD) $(LDFLAGS) -o $@ $^ 
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ 
 
 # Convert .elf to flat binary
 %.bin: %.elf
