@@ -1,5 +1,5 @@
 #include "stdutils.h"
-
+#include "malloc.h"
 uint32_t strlen(const char* str){
     uint32_t len = 0;
     while(str[len] != '\0'){len++;}
@@ -38,4 +38,34 @@ void* memcpy(void* dest,void* src, uint32_t n){
     }
 
     return dest;
+}
+
+char* uint32_to_ascii(uint32_t value) {
+    char* buffer = (char*)malloc(11);
+    if (!buffer) return 0;
+
+    if (value == 0) {
+        buffer[0] = '0';
+        buffer[1] = '\0';
+        return buffer;
+    }
+
+    int i = 10; 
+    buffer[i] = '\0';
+    i--;
+
+    while (value > 0) {
+        buffer[i] = '0' + (value % 10);
+        value /= 10;
+        i--;
+    }
+
+    int start = i + 1;
+    int j = 0;
+    while (buffer[start]) {
+        buffer[j++] = buffer[start++];
+    }
+    buffer[j] = '\0';
+
+    return buffer;
 }
