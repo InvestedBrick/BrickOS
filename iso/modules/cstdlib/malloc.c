@@ -1,10 +1,10 @@
 #include "malloc.h"
 #include "syscalls.h"
 #include "stdutils.h"
-memory_block_t* head = 0;
+memory_block_t* malloc_head = 0;
 
 memory_block_t* find_free_block(uint32_t size){
-    memory_block_t* current = head;
+    memory_block_t* current = malloc_head;
     while (current != 0) {
         if (current->free && current->size >= size){
             return current;
@@ -39,7 +39,7 @@ void* malloc(uint32_t size){
     memory_block_t* block = find_free_block(size);
     
     if (!block){
-        memory_block_t* last = head;
+        memory_block_t* last = malloc_head;
         while (last && last->next) last = last->next;
 
         uint32_t total_size = size + MEMORY_BLOCK_SIZE;
@@ -48,7 +48,7 @@ void* malloc(uint32_t size){
         block->next = 0;
         block->size = CEIL_DIV(total_size,MEMORY_PAGE_SIZE) * MEMORY_BLOCK_SIZE;
 
-        if(last) last->next = block; else head = block;
+        if(last) last->next = block; else malloc_head = block;
     }
 
     split_block(block,size);
