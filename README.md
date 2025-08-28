@@ -1,17 +1,30 @@
-# Dependencies
-You need: `ld`, `gcc`, `genisoimage`, `nasm`, `qemu-system-i386` and `make`
+**Brick OS** is a work-in-progress 32-bit operating system created mainly for learning purposes. 
 
 # Branches
 The normal branch where I will be writing everything in C will be `main`
 
 The branch `unstable` is mostly for testing and trying to write this in `Brick-Lang` 
 
-# Compiling && Running
-To compile this project simply run `make iso` in this directory.
+# Building
 
+## Dependancies
+This project depends on you having installed the following binaries yourself:
+
+- `grub-mkrescue`
+- `qemu-system-i386`
+- `qemu-img` 
+- `make`
+- `nasm` 
+
+The rest of the needed binaries will be created once you build the toolchain using `build_toolchain.sh` in `tools/`
+
+## Compilation
+Once you have successfully created the cross-compiler, you can simply compile this project using `make iso`
+
+You will also need to create a virtual disk for the filesystem. This disk can be created using the `make_disk.sh` bash script
+
+## Running
 To start the virtual machine with the OS run `bash start_vm.sh` 
 
-To create a 256 MB disk for the filesystem, run `bash make_disk.sh` (requires `qemu-img`)
-
 # Notice
-The filesystem and the shell are both not very complex and probably not 100% bug free, if something breaks, try removing the disk and making a new one
+This project is still highly in development and kinda unstable, so if something breaks try to create a new disk or wait for a more stable version.
