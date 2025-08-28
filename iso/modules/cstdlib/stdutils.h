@@ -19,4 +19,6 @@ void* memset(void* dest, int val, uint32_t n);
 void* memcpy(void* dest,void* src, uint32_t n);
 
 uint8_t streq(const char* str1, const char* str2);
+
+char* uint32_to_ascii(uint32_t value);
 #endif
