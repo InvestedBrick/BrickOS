@@ -13,6 +13,8 @@
 #include <stdint.h>
 
 vector_t dev_vec;
+wm_pipes_t wm_pipes;
+framebuffer_t fb0;
 
 void init_dev_vec(){
     init_vector(&dev_vec);
@@ -101,8 +103,6 @@ vfs_handles_t dev_null = {
     .ioctl = 0,
 };
 
-framebuffer_t fb0;
-
 int dev_fb0_ioctl(generic_file_t* file, uint32_t cmd,void* arg){
     if (!arg) return -1;  
     framebuffer_t* fb0 = (framebuffer_t*)file->generic_data;
@@ -130,7 +130,6 @@ vfs_handles_t dev_fb0 = {
     .ioctl = dev_fb0_ioctl,
 };
 
-wm_pipes_t wm_pipes;
 
 void init_dev_wm(device_t* dev){
 
@@ -148,11 +147,27 @@ void init_dev_wm(device_t* dev){
     if (pipes->wm_to_k_fd < 0) error("Failed to open tmp/wm_to_k.tmp");
     if (pipes->k_to_wm_fd < 0) error("Failed to open tmp/k_to_wm.tmp");
 
-    sys_write(&global_kernel_process,pipes->k_to_wm_fd,"\nHello from kernel\n",sizeof("\nHello from kernel\n"));
+    sys_write(&global_kernel_process,pipes->k_to_wm_fd,"\nHello from kernel to window manager\n\n",sizeof("\nHello from kernel to window manager\n\n"));
 }
 
 int dev_wm_ioctl(generic_file_t* file, uint32_t cmd,void* arg){
-    // user process <-> window manager
+    user_process_t* curr_proc = get_current_user_process();
+    
+    // user process <-[kernel]-> window manager
+    switch (cmd)
+    {
+    case DEV_WM_REQUEST_WINDOW: {
+        window_req_t* data = (window_req_t*)arg;
+        uint32_t cmd_ptr[2] = {DEV_WM_REQUEST_WINDOW,curr_proc->process_id};
+        sys_write(&global_kernel_process,wm_pipes.k_to_wm_fd,(unsigned char*)cmd_ptr,sizeof(cmd_ptr));
+        sys_write(&global_kernel_process,wm_pipes.k_to_wm_fd,(unsigned char*)data,sizeof(window_req_t));
+        return 0;
+    }
+    default:
+        break;
+    }
+
+    return -1;
 }
 
 vfs_handles_t dev_wm = {
