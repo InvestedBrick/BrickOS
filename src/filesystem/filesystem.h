@@ -204,7 +204,7 @@ string_array_t* get_all_names_in_dir(inode_t* dir);
  * @param priv_lvl The priviledge level needed to access this file
  * @return whether the file creation was successful (return value == 0) or not (return value < 0)
  */
-int create_file(inode_t* parent_dir, unsigned char*, uint8_t name_length,uint8_t type,uint8_t perms,uint8_t priv_lvl);
+int create_file(inode_t* parent_dir, unsigned char* name, uint8_t name_length,uint8_t type,uint8_t perms,uint8_t priv_lvl);
 
 /**
  * write_to_disk: 
