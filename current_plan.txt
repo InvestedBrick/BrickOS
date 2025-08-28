@@ -2,9 +2,10 @@
 plan:
     [X] recursive dir deletion
     [X] Graphics mode switch
+    [X] correctly cross-compiling the kernel
     [ ] mouse driver
     [ ] window manager
     [ ] running more processes
     [ ] dynamic linked code
     [ ] text editor
-    [ ] better fileystem
+    [?] better fileystem
