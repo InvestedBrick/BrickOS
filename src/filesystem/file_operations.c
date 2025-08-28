@@ -83,7 +83,7 @@ generic_file_t* fs_open(unsigned char* filepath,uint8_t flags){
                 if (create_file(active_dir,filepath,strlen(filepath),FS_TYPE_DIR,FS_FILE_PERM_NONE,PRIV_STD) < 0)
                     return nullptr;
             }else {
-                if (create_file(active_dir,filepath,strlen(filepath),FS_TYPE_FILE,FS_FILE_PERM_READABLE | FS_FILE_PERM_WRITABLE,PRIV_STD) < 0)
+                if (create_file(active_dir,filepath,strlen(filepath),FS_TYPE_FILE,flags & (FILE_FLAG_EXEC | FILE_FLAG_READ | FILE_FLAG_WRITE),PRIV_STD) < 0)
                     return nullptr;
             }
             inode = get_inode_by_id(get_inode_id_by_name(active_dir->id,filepath));
