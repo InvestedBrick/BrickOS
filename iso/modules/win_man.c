@@ -2,6 +2,24 @@
 #include "cstdlib/syscalls.h"
 #include "cstdlib/stdio.h"
 #include "../../src/filesystem/devices/device_defines.h"
+#include "cstdlib/malloc.h"
+typedef struct {
+    uint32_t cmd;
+    uint32_t pid;
+    void* data;    
+}win_man_msg_t;
+
+typedef struct window{
+    uint32_t width;
+    uint32_t height;
+    uint32_t flags;
+    uint32_t owner_pid;
+    uint32_t backing_fd;;
+    struct window* next;
+}window_t;
+
+window_t* head = 0; 
+
 unsigned char* fb0 = 0;
 uint32_t screen_bytes_per_row = 0;
 uint32_t screen_bytespp = 0;
@@ -30,19 +48,54 @@ void main(){
     
     close(fb0_fd);
     if (!fb0) exit(5);
-
-
-    for (uint32_t i = 200; i < 230;i++){
-        for (uint32_t j = 300; j < 330;j++){
-            write_pixel(fb0,j,i,0xff00ff00);
-        }
-    }
-
+    
     unsigned char buffer[128] = {0};
-
-    if (read(k_to_wm_fd,buffer,128) < 0) exit(6);
+    memset(buffer,0,sizeof(buffer));
+    if (read(k_to_wm_fd,buffer,sizeof(buffer)) < 0) exit(6);
 
     print(buffer);
+
+    while(read(k_to_wm_fd,buffer,sizeof(buffer)) < 0){};
+    memset(buffer,0,sizeof(buffer));
+    uint32_t cmd = *(uint32_t*)&buffer[0];
+
+    switch (cmd)
+    {
+    case DEV_WM_REQUEST_WINDOW:{
+        win_man_msg_t* msg = (win_man_msg_t*)buffer;
+        window_req_t* req = (window_req_t*)msg->data;
+
+        if (req->height > fb_metadata.height) break;
+        if (req->width > fb_metadata.width) break;
+
+        window_t* new_win = (window_t*)malloc(sizeof(window_t));
+        
+        new_win->flags = req->flags;
+        new_win->width = req->width;
+        new_win->height = req->height;
+        new_win->owner_pid = msg->pid;
+        new_win->next = 0;
+        unsigned char* pid_str = uint32_to_ascii(new_win->owner_pid);
+        uint32_t filename_len = sizeof("win_") + strlen(pid_str);
+        unsigned char* backing_filename = (unsigned char*)malloc(filename_len);
+        memcpy(&backing_filename[sizeof("win_") - 1],pid_str,strlen(pid_str));
+        free(pid_str);
+
+        chdir("tmp"); // too layzy to parse directories when creating files rn
+        new_win->backing_fd = open(backing_filename,FILE_FLAG_CREATE);
+        chdir("..");
+        //TODO: map memory and return to user)
+        window_t* curr = head;
+        if (!curr) head = new_win;
+        else {
+            while(curr->next) curr = curr->next;
+            curr->next = new_win;
+        }
+
+        break;
+    }
+    
+    }
 
     exit(EXIT_SUCCESS);
 }
