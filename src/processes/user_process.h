@@ -93,4 +93,8 @@ void free_pid(uint32_t pid);
  */
 void run(char* filepath,uint8_t priv_lvl);
 
+
+void force_current_user_proc_as_kernel();
+
+void restore_current_user_proc_from_kernel();
 #endif
