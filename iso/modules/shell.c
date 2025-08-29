@@ -3,7 +3,10 @@
 #include "cstdlib/stdutils.h"
 #include "cstdlib/syscalls.h"
 #include "cstdlib/malloc.h"
+#include "../../src/filesystem/devices/device_defines.h"
 #include <stdint.h>
+
+//TODO: extract most commands to individual executables
 shell_command_t commands[] = {
     {"help", cmd_help, "Shows help menu"},
     {"exit", 0, "Exits the shell"},
@@ -208,6 +211,37 @@ command_t parse_line(unsigned char* line,uint32_t line_length){
 __attribute__((section(".text.start")))
 void main(){
     print("\nBrickOS Shell started\n");
+
+    /**
+     * window manager test
+     */
+
+    int wm_fd = open("dev/wm",FILE_FLAG_NONE);
+    window_req_t win_req;
+    win_req.flags = WINDOW_REQ_FLAG_DECORATION;
+    win_req.height = 300;
+    win_req.width = 500;
+    ioctl(wm_fd,DEV_WM_REQUEST_WINDOW,&win_req);
+
+    window_creation_wm_answer_t answer;
+    while (ioctl(wm_fd,DEV_WM_REQUEST_WINDOW_CREATION_ANSWER,&answer) < 0){}
+    print("Got filename: ");
+    print(answer.filename);
+    print("\n");
+
+    chdir("tmp");
+    int backing_fd = open(answer.filename,FILE_FLAG_NONE);
+    
+    unsigned char* fb = (unsigned char*)mmap(answer.width * answer.height * sizeof(uint32_t),PROT_READ | PROT_WRITE, MAP_SHARED,backing_fd,0);
+    if (!fb) print("Failed to map buffer\n"); 
+        else print("Mapped the shared buffer\n");
+    
+
+    close(backing_fd);
+    rmfile(answer.filename); // dispose of the connector
+    chdir("..");
+
+
     unsigned char* line = (unsigned char*)malloc(SCREEN_COLUMNS + 1);
     unsigned char* dir_buffer = (unsigned char*)malloc(100);
     command_t comd;
