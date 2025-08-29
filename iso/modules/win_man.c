@@ -6,7 +6,7 @@
 typedef struct {
     uint32_t cmd;
     uint32_t pid;
-    void* data;    
+    unsigned char data[];    
 }win_man_msg_t;
 
 typedef struct window{
@@ -14,7 +14,8 @@ typedef struct window{
     uint32_t height;
     uint32_t flags;
     uint32_t owner_pid;
-    uint32_t backing_fd;;
+    int backing_fd;
+    unsigned char* buffer;
     struct window* next;
 }window_t;
 
@@ -50,51 +51,71 @@ void main(){
     if (!fb0) exit(5);
     
     unsigned char buffer[128] = {0};
-    memset(buffer,0,sizeof(buffer));
-    if (read(k_to_wm_fd,buffer,sizeof(buffer)) < 0) exit(6);
-
-    print(buffer);
-
-    while(read(k_to_wm_fd,buffer,sizeof(buffer)) < 0){};
-    memset(buffer,0,sizeof(buffer));
-    uint32_t cmd = *(uint32_t*)&buffer[0];
-
-    switch (cmd)
-    {
-    case DEV_WM_REQUEST_WINDOW:{
-        win_man_msg_t* msg = (win_man_msg_t*)buffer;
-        window_req_t* req = (window_req_t*)msg->data;
-
-        if (req->height > fb_metadata.height) break;
-        if (req->width > fb_metadata.width) break;
-
-        window_t* new_win = (window_t*)malloc(sizeof(window_t));
-        
-        new_win->flags = req->flags;
-        new_win->width = req->width;
-        new_win->height = req->height;
-        new_win->owner_pid = msg->pid;
-        new_win->next = 0;
-        unsigned char* pid_str = uint32_to_ascii(new_win->owner_pid);
-        uint32_t filename_len = sizeof("win_") + strlen(pid_str);
-        unsigned char* backing_filename = (unsigned char*)malloc(filename_len);
-        memcpy(&backing_filename[sizeof("win_") - 1],pid_str,strlen(pid_str));
-        free(pid_str);
-
-        chdir("tmp"); // too layzy to parse directories when creating files rn
-        new_win->backing_fd = open(backing_filename,FILE_FLAG_CREATE);
-        chdir("..");
-        //TODO: map memory and return to user)
-        window_t* curr = head;
-        if (!curr) head = new_win;
-        else {
-            while(curr->next) curr = curr->next;
-            curr->next = new_win;
-        }
-
-        break;
-    }
     
+    while(1){
+        memset(buffer,0,sizeof(buffer));        
+        while(read(k_to_wm_fd,buffer,sizeof(buffer)) <= 0){}
+        uint32_t cmd = *(uint32_t*)&buffer[0];
+        switch (cmd)
+        {
+        case DEV_WM_REQUEST_WINDOW:{
+            print("\n\nGOT WINDOW REQUEST\n");
+            win_man_msg_t* msg = (win_man_msg_t*)buffer;
+            window_req_t* req = (window_req_t*)msg->data;
+
+            if (req->height > fb_metadata.height) req->height = fb_metadata.height;
+            if (req->width > fb_metadata.width) req->width = fb_metadata.width;
+
+            window_t* new_win = (window_t*)malloc(sizeof(window_t));
+            
+            new_win->flags = req->flags;
+            new_win->width = req->width;
+            new_win->height = req->height;
+            new_win->owner_pid = msg->pid;
+            new_win->next = 0;
+            unsigned char* pid_str = uint32_to_ascii(new_win->owner_pid);
+            uint32_t filename_len = sizeof("win_") + strlen(pid_str);
+            unsigned char* backing_filename = (unsigned char*)malloc(filename_len);
+            memcpy(backing_filename,"win_",sizeof("win_"));
+            memcpy(&backing_filename[sizeof("win_") - 1],pid_str,strlen(pid_str));
+            backing_filename[filename_len - 1] = '\0';
+            free(pid_str);
+
+            chdir("tmp"); // too lazy to parse directories when creating files rn
+            new_win->backing_fd = open(backing_filename,FILE_FLAG_CREATE);
+            chdir("..");
+            
+            new_win->buffer = (unsigned char*)mmap(new_win->width * new_win->height * sizeof(uint32_t),PROT_READ | PROT_WRITE,MAP_SHARED,new_win->backing_fd,0);
+            // be sure that all pages are present, so that when the user process maps it, the file can be isntantly deleted (not good practise but eh, probably only temporary solution)
+            memset(new_win->buffer,0,new_win->width * new_win->height * sizeof(uint32_t));
+            close(new_win->backing_fd);
+            
+            window_creation_ans_t creation_ans =
+            {.width = new_win->width,
+                    .height = new_win->height, 
+                    .filename_len = filename_len,
+                    .pid = new_win->owner_pid,
+                    .answer_type = DEV_WM_ANS_TYPE_WIN_CREATION,
+                };
+            print("Sending name to kernel: ");
+            print(backing_filename);
+            print("\n");
+            // always pass the answer type first
+            write(wm_to_k_fd,(unsigned char*)&creation_ans,sizeof(window_creation_ans_t)); 
+            write(wm_to_k_fd,backing_filename,filename_len);
+
+            window_t* curr = head;
+            if (!curr) head = new_win;
+            else {
+                while(curr->next) curr = curr->next;
+                curr->next = new_win;
+            }
+
+            free(backing_filename);
+            break;
+        }
+    
+        }
     }
 
     exit(EXIT_SUCCESS);
