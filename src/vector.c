@@ -53,6 +53,14 @@ uint32_t vector_find(vector_t* vec, uint32_t data){
     return (uint32_t)-1;
 }
 
+uint32_t vector_erase_item(vector_t* vec, uint32_t data){
+    uint32_t idx = vector_find(vec,data);
+    if (idx == (uint32_t)-1) return idx;
+
+    uint32_t item = vector_erase(vec,idx);
+    return item;
+}
+
 void init_vector(vector_t* vec){
     vec->size = 0;
     vec->capacity = 1;
