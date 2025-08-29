@@ -64,4 +64,13 @@ uint32_t vector_find(vector_t* vec, uint32_t data);
  */
 void vector_free(vector_t* vec, uint8_t ptrs);
 
+/**
+ * vector_erase_item:
+ * Erases an item from a vector
+ * @param vec The vector
+ * @param data The item to erase
+ * 
+ * @return The erased item (or (uint32_t)-1) if data was not found
+ */
+uint32_t vector_erase_item(vector_t* vec, uint32_t data);
 #endif
