@@ -13,6 +13,7 @@
 #include <stdint.h>
 
 vector_t dev_vec;
+vector_t wm_answers;
 wm_pipes_t wm_pipes;
 framebuffer_t fb0;
 
@@ -133,6 +134,7 @@ vfs_handles_t dev_fb0 = {
 
 void init_dev_wm(device_t* dev){
 
+    init_vector(&wm_answers);
     wm_pipes_t* pipes = (wm_pipes_t*)dev->gen_file->generic_data;
     // set up two pipes for wm <-> kernel communication
     if (sys_mknod("tmp/wm_to_k.tmp",TYPE_PIPE) < 0) error("Failed to create tmp/wm_to_k.tmp");
@@ -147,21 +149,88 @@ void init_dev_wm(device_t* dev){
     if (pipes->wm_to_k_fd < 0) error("Failed to open tmp/wm_to_k.tmp");
     if (pipes->k_to_wm_fd < 0) error("Failed to open tmp/k_to_wm.tmp");
 
-    sys_write(&global_kernel_process,pipes->k_to_wm_fd,"\nHello from kernel to window manager\n\n",sizeof("\nHello from kernel to window manager\n\n"));
+    //unsigned char msg[] = "\nHello from kernel to window manager\n\n";
+    //sys_write(&global_kernel_process,pipes->k_to_wm_fd,msg,sizeof(msg));
+}
+
+void dev_wm_collect_pipe(){
+    unsigned char* buffer = (unsigned char*)kmalloc(MEMORY_PAGE_SIZE);
+    force_current_user_proc_as_kernel();
+    int n_read = sys_read(&global_kernel_process,wm_pipes.wm_to_k_fd,buffer,MEMORY_PAGE_SIZE);
+    restore_current_user_proc_from_kernel();
+    if (n_read <= 0) {
+        kfree(buffer); 
+        return;
+    }
+    uint32_t bytes_parsed = 0;
+    while (bytes_parsed < n_read){
+        uint32_t answer_type = *(uint32_t*)&buffer[bytes_parsed];
+        
+        switch (answer_type)
+        {
+        case DEV_WM_ANS_TYPE_WIN_CREATION: {
+
+            window_creation_ans_t* answer = (window_creation_ans_t*)kmalloc(sizeof(window_creation_ans_t));
+            memcpy(answer,&buffer[bytes_parsed],sizeof(window_creation_ans_t));
+            // make space for the following name
+            answer = (window_creation_ans_t*)realloc(answer,sizeof(window_creation_ans_t),sizeof(window_creation_ans_t) + answer->filename_len);
+            bytes_parsed += sizeof(window_creation_ans_t);  // the pointer is not actually passed, just part of the struct
+            
+            memcpy(answer->filename,&buffer[bytes_parsed],answer->filename_len);
+            bytes_parsed += answer->filename_len;
+
+            vector_append(&wm_answers,(uint32_t)answer);
+            break;
+        }        
+        default:
+            break;
+        }
+    }
 }
 
 int dev_wm_ioctl(generic_file_t* file, uint32_t cmd,void* arg){
     user_process_t* curr_proc = get_current_user_process();
     
+    typedef struct {
+        uint32_t answer_type;
+        uint32_t pid;
+    }answer_header_t;
+
     // user process <-[kernel]-> window manager
     switch (cmd)
     {
     case DEV_WM_REQUEST_WINDOW: {
+        log("got dev wm request");
         window_req_t* data = (window_req_t*)arg;
-        uint32_t cmd_ptr[2] = {DEV_WM_REQUEST_WINDOW,curr_proc->process_id};
-        sys_write(&global_kernel_process,wm_pipes.k_to_wm_fd,(unsigned char*)cmd_ptr,sizeof(cmd_ptr));
+        uint32_t cmd_hdr[2] = {DEV_WM_REQUEST_WINDOW,curr_proc->process_id};
+        force_current_user_proc_as_kernel();
+        sys_write(&global_kernel_process,wm_pipes.k_to_wm_fd,(unsigned char*)cmd_hdr,sizeof(cmd_hdr));
         sys_write(&global_kernel_process,wm_pipes.k_to_wm_fd,(unsigned char*)data,sizeof(window_req_t));
+        restore_current_user_proc_from_kernel();
         return 0;
+    }
+    case DEV_WM_REQUEST_WINDOW_CREATION_ANSWER: {
+        dev_wm_collect_pipe();
+        for (uint32_t i = 0; i < wm_answers.size;i++){
+            answer_header_t* hdr = (answer_header_t*)wm_answers.data[i];
+
+            if (hdr->answer_type == DEV_WM_ANS_TYPE_WIN_CREATION && hdr->pid == curr_proc->process_id){
+                // got some mail for you!
+                window_creation_wm_answer_t* answer = (window_creation_wm_answer_t*)arg;
+                window_creation_ans_t* data = (window_creation_ans_t*)wm_answers.data[i]; // I really need to rename these structs
+                answer->height = data->height;
+                answer->width = data->width;
+                answer->filename_len = data->filename_len;
+                memcpy(answer->filename,data->filename,data->filename_len);
+
+                vector_erase(&wm_answers,i);
+
+                return 0;
+            
+            }
+        }
+
+        break;
     }
     default:
         break;
