@@ -7,7 +7,8 @@
 #include "../../memory/kmalloc.h"
 #include "../../memory/memory.h"
 #include "../vfs/vfs.h"
-
+#include "../../io/log.h"
+#include "../../kernel_header.h"
 #include <stdint.h>
 #include <stdbool.h>
 vector_t pipe_vec;
@@ -90,9 +91,7 @@ int pipe_close(generic_file_t* file){
         
         kfree(pipe->buffer);
 
-        uint32_t idx = vector_find(&pipe_vec,(uint32_t)pipe);
-
-        vector_erase(&pipe_vec,idx);
+        vector_erase_item(&pipe_vec,(uint32_t)pipe);
 
         kfree(pipe);
 
