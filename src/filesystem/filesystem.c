@@ -807,14 +807,12 @@ int delete_file_by_inode(inode_t* parent_dir,inode_t* inode){
     erase_directory_entry(parent_dir,inode->id);
     
     inode_name_pair_t* pair = get_name_by_inode_id(inode->id);
-    uint32_t name_pair_idx = vector_find(&inode_name_pairs,(uint32_t)pair);
-    vector_erase(&inode_name_pairs,name_pair_idx);
+    vector_erase_item(&inode_name_pairs,(uint32_t)pair);
     kfree(pair->name);
     kfree(pair);
 
     free_inode_section(inode->id);
-    uint32_t idx = vector_find(&inodes, (uint32_t)inode);
-    vector_erase(&inodes,idx);
+    vector_erase_item(&inodes,(uint32_t)inode);
     kfree(inode);
 
     return FS_FILE_DELETION_SUCCESS;
