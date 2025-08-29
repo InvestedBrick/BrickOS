@@ -41,6 +41,15 @@ user_process_t* get_current_user_process(){
 
 }
 
+// this is the stuff that is created when you just want stuff to work
+void force_current_user_proc_as_kernel(){
+    dispatched_user_mode = 0;
+}
+
+void restore_current_user_proc_from_kernel(){
+    dispatched_user_mode = 1;
+}
+
 int get_pid(){
     for (uint32_t i = 0; i < MAX_PIDS; ++i) {
         uint32_t pid = next_pid;
