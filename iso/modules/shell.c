@@ -232,8 +232,6 @@ unsigned char* request_window(uint32_t width,uint32_t height){
     
     unsigned char* fb = (unsigned char*)mmap(answer.width * answer.height * sizeof(uint32_t),PROT_READ | PROT_WRITE, MAP_SHARED,backing_fd,0);
     if (!fb) print("Failed to map buffer\n"); 
-        else print("Mapped the shared buffer\n");
-    
 
     close(backing_fd);
     rmfile(answer.filename); // dispose of the connector
@@ -246,9 +244,7 @@ unsigned char* request_window(uint32_t width,uint32_t height){
 
 void commit_window(){
     int wm_fd = open("dev/wm",FILE_FLAG_NONE);
-    print("opened wm \n");
     ioctl(wm_fd,DEV_WM_COMMIT_WINDOW,0);
-    print("sent commit ioctl \n");
     close(wm_fd);
     
 }
