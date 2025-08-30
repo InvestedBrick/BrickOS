@@ -250,8 +250,14 @@ void commit_window(){
 }
 
 __attribute__((section(".text.start")))
-void main(){
+void main(int argc, char* argv[]){
     print("\nBrickOS Shell started\n");
+    print("args: ");
+    for (uint32_t i = 0; i < argc;i++){
+        print(argv[i]);
+        print(" ");
+    }
+    print("\n");
 
     unsigned char* fb = request_window(WINDOW_WIDTH,WINDOW_HEIGHT);
 
