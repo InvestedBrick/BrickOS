@@ -24,8 +24,7 @@ void init_scheduler(){
     p_queue->next = 0;
     current_proc = 0;
 
-    unsigned char* empty_args[] = {0};
-    run("modules/loop.bin",empty_args,PRIV_STD);
+    run("modules/loop.bin",0,PRIV_STD);
     restore_kernel_memory_page_dir();
 
     // since the endless proc got attached to p_queue->next, we need to re-arrange this

@@ -160,8 +160,7 @@ void kmain(multiboot_info_t* boot_info)
     unsigned char* shell_args[] = {"Hello world\0",0};
     run("modules/shell.bin",shell_args,PRIV_STD);
 
-    unsigned char* empty_args[] = {0};
-    run("modules/win_man.bin",empty_args,PRIV_SPECIAL);
+    run("modules/win_man.bin",0,PRIV_SPECIAL);
 
     setup_timer_switch();
     // need to manually enable since run just restores whatever was before that
