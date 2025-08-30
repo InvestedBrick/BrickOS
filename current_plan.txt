@@ -3,6 +3,7 @@ plan:
     [X] recursive dir deletion
     [X] Graphics mode switch
     [X] correctly cross-compiling the kernel
+    [X] process commandline args
     [ ] mouse driver
     [ ] window manager
     [ ] running more processes
