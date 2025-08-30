@@ -43,9 +43,10 @@ extern vector_t user_process_vector;
  * @param size The size of the binary in bytes
  * @param process_name The name of the process
  * @param priv_lvl The priviledge level of the user process (0 highest)
+ * @param argv An array of null terminated strings with the last index of the array being null
  * @return The proccess ID of the created process
  */
-uint32_t create_user_process(unsigned char* binary, uint32_t size,unsigned char* process_name,uint8_t priv_lvl);
+uint32_t create_user_process(unsigned char* binary, uint32_t size,unsigned char* process_name,uint8_t priv_lvl,unsigned char* argv[]);
 /**
  * init_user_process_vector:
  * Sets up the user process vector
@@ -89,9 +90,10 @@ void free_pid(uint32_t pid);
  * run:
  * Executes a user process
  * @param filepath The path to the executable
+ * @param argv An array of null terminated strings with the last index of the array being null
  * @param priv_lvl The priviledge level of the executable (0 highest priviledge level)
  */
-void run(char* filepath,uint8_t priv_lvl);
+void run(char* filepath,unsigned char* argv[],uint8_t priv_lvl);
 
 
 void force_current_user_proc_as_kernel();
