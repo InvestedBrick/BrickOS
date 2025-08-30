@@ -42,12 +42,13 @@ void init_dev_fb0(device_t* dev){
 }
 
 generic_file_t* dev_open(inode_t* inode){
-    user_process_t* current_proc = get_current_user_process();
-
     for (uint32_t i = 0; i < dev_vec.size;i++){
         device_t* dev = (device_t*)dev_vec.data[i];
         if (dev->inode_id == inode->id){
-            return dev->gen_file;
+            // create copy of generic file, since we want the original to be always available
+            generic_file_t* file = (generic_file_t*)kmalloc(sizeof(generic_file_t));
+            memcpy(file,dev->gen_file,sizeof(generic_file_t));
+            return file;
         }
     }
 
@@ -190,7 +191,6 @@ void dev_wm_collect_pipe(){
 
 int dev_wm_ioctl(generic_file_t* file, uint32_t cmd,void* arg){
     user_process_t* curr_proc = get_current_user_process();
-    
     typedef struct {
         uint32_t answer_type;
         uint32_t pid;
@@ -200,7 +200,6 @@ int dev_wm_ioctl(generic_file_t* file, uint32_t cmd,void* arg){
     switch (cmd)
     {
     case DEV_WM_REQUEST_WINDOW: {
-        log("got dev wm request");
         window_req_t* data = (window_req_t*)arg;
         uint32_t cmd_hdr[2] = {DEV_WM_REQUEST_WINDOW,curr_proc->process_id};
         force_current_user_proc_as_kernel();
@@ -231,6 +230,14 @@ int dev_wm_ioctl(generic_file_t* file, uint32_t cmd,void* arg){
         }
 
         break;
+    }
+    case DEV_WM_COMMIT_WINDOW: {
+
+        uint32_t cmd_hdr[2] = {DEV_WM_COMMIT_WINDOW,curr_proc->process_id};
+        force_current_user_proc_as_kernel();
+        sys_write(&global_kernel_process,wm_pipes.k_to_wm_fd,(unsigned char*)cmd_hdr,sizeof(cmd_hdr));
+        restore_current_user_proc_from_kernel();
+        return 0;
     }
     default:
         break;
