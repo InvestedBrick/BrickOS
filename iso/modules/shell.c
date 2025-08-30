@@ -6,6 +6,14 @@
 #include "../../src/filesystem/devices/device_defines.h"
 #include <stdint.h>
 
+#define WINDOW_HEIGHT 350
+#define WINDOW_WIDTH 500
+
+void write_pixel(unsigned char* fb,uint32_t x, uint32_t y, uint32_t color){
+
+    *(volatile uint32_t*)(fb + y * WINDOW_WIDTH * sizeof(uint32_t) + x * sizeof(uint32_t)) = color;
+}
+
 //TODO: extract most commands to individual executables
 shell_command_t commands[] = {
     {"help", cmd_help, "Shows help menu"},
@@ -208,26 +216,16 @@ command_t parse_line(unsigned char* line,uint32_t line_length){
 
 }
 
-__attribute__((section(".text.start")))
-void main(){
-    print("\nBrickOS Shell started\n");
-
-    /**
-     * window manager test
-     */
-
+unsigned char* request_window(uint32_t width,uint32_t height){
     int wm_fd = open("dev/wm",FILE_FLAG_NONE);
     window_req_t win_req;
     win_req.flags = WINDOW_REQ_FLAG_DECORATION;
-    win_req.height = 300;
-    win_req.width = 500;
+    win_req.height = height;
+    win_req.width = width;
     ioctl(wm_fd,DEV_WM_REQUEST_WINDOW,&win_req);
 
     window_creation_wm_answer_t answer;
     while (ioctl(wm_fd,DEV_WM_REQUEST_WINDOW_CREATION_ANSWER,&answer) < 0){}
-    print("Got filename: ");
-    print(answer.filename);
-    print("\n");
 
     chdir("tmp");
     int backing_fd = open(answer.filename,FILE_FLAG_NONE);
@@ -241,7 +239,34 @@ void main(){
     rmfile(answer.filename); // dispose of the connector
     chdir("..");
 
+    close(wm_fd);
 
+    return fb;
+}
+
+void commit_window(){
+    int wm_fd = open("dev/wm",FILE_FLAG_NONE);
+    print("opened wm \n");
+    ioctl(wm_fd,DEV_WM_COMMIT_WINDOW,0);
+    print("sent commit ioctl \n");
+    close(wm_fd);
+    
+}
+
+__attribute__((section(".text.start")))
+void main(){
+    print("\nBrickOS Shell started\n");
+
+    unsigned char* fb = request_window(WINDOW_WIDTH,WINDOW_HEIGHT);
+
+    for (uint32_t y = 0; y < WINDOW_HEIGHT;y++){
+        for (uint32_t x = 0; x < WINDOW_WIDTH;x++){
+            write_pixel(fb,x,y,0xff948c76);
+        }
+    }
+
+    commit_window();
+    
     unsigned char* line = (unsigned char*)malloc(SCREEN_COLUMNS + 1);
     unsigned char* dir_buffer = (unsigned char*)malloc(100);
     command_t comd;
