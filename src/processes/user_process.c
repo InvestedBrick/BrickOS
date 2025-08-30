@@ -86,8 +86,66 @@ void free_pid(uint32_t pid){
     }
 }
 
+void setup_arguments(user_process_t* proc,unsigned char* argv[]){
+    uint32_t page_phys = pmm_alloc_page_frame();
 
-uint32_t create_user_process(unsigned char* binary, uint32_t size,unsigned char* process_name,uint8_t priv_lvl) {
+    // map temporarily to write memory into it
+    mem_map_page(TEMP_KERNEL_COPY_ADDR,page_phys,PAGE_FLAG_WRITE | PAGE_FLAG_PRESENT);
+    unsigned char* page = (unsigned char*)TEMP_KERNEL_COPY_ADDR;
+    memset(page,0x0,MEMORY_PAGE_SIZE);
+    uint32_t argc = 0;
+    for(uint32_t i = 0; argv[i];i++) {argc++;}
+    uint32_t* arg_ptrs = (uint32_t*)kmalloc(argc * sizeof(uint32_t));
+
+    uint32_t sp = KERNEL_START;
+    uint32_t write_ptr = MEMORY_PAGE_SIZE;
+
+    // argv data
+    for (int i = argc - 1; i >= 0; i--){
+        uint32_t len = strlen(argv[i]) + 1;
+        sp -= len;
+        write_ptr -= len;
+        memcpy(&page[write_ptr],argv[i],len);
+        arg_ptrs[i] = sp;
+
+    }
+    // align the pointers
+    sp &= ~0x0f;
+    write_ptr &= ~0x0f;
+
+
+    sp -= sizeof(char*);
+    write_ptr -= sizeof(char*);
+    *(uint32_t*)&page[write_ptr] = 0;
+
+    // argv pointers
+    for (int i = argc - 1; i >= 0; i--){
+        sp -= sizeof(char*);
+        write_ptr -= sizeof(char*);
+        *(uint32_t*)&page[write_ptr] = arg_ptrs[i];
+    }
+
+    sp -= sizeof(char*);
+    write_ptr -= sizeof(char*);
+    *(uint32_t*)&page[write_ptr] = sp + sizeof(char*);
+
+    sp -= sizeof(char*);
+    write_ptr -= sizeof(char*);
+    *(uint32_t*)&page[write_ptr] = argc;
+
+    sp -= sizeof(char*); // go one lower since [esp] is expected to be the return address
+
+    process_state_t* state = get_process_state_by_page_dir(proc->page_dir);
+    state->regs.esp = sp;
+    state->regs.ebp = sp;
+
+    kfree(arg_ptrs);
+
+    mem_unmap_page(TEMP_KERNEL_COPY_ADDR);
+    mem_map_page_in_dir(proc->page_dir,KERNEL_START - MEMORY_PAGE_SIZE,page_phys, PAGE_FLAG_USER | PAGE_FLAG_WRITE);
+}
+
+uint32_t create_user_process(unsigned char* binary, uint32_t size,unsigned char* process_name,uint8_t priv_lvl, unsigned char* argv[]) {
     uint32_t int_save = get_interrupt_status();
     disable_interrupts();
 // To setup a user process:
@@ -147,9 +205,14 @@ uint32_t create_user_process(unsigned char* binary, uint32_t size,unsigned char*
         mem_unmap_page(TEMP_KERNEL_COPY_ADDR);
         mem_map_page_in_dir(process->page_dir,USER_CODE_DATA_VMEMORY_START + i * MEMORY_PAGE_SIZE,code_data_mem,PAGE_FLAG_WRITE | PAGE_FLAG_USER);
     }
-    for (uint32_t i = 0; i < USER_STACK_PAGES_PER_PROCESS;i++){
+
+    setup_arguments(process,argv);
+
+    // first page is managed by the argv setup
+    for (uint32_t i = 1; i < USER_STACK_PAGES_PER_PROCESS;i++){
         uint32_t stack_mem = pmm_alloc_page_frame();
-        mem_map_page_in_dir(process->page_dir,USER_STACK_VMEMORY_START - (i * MEMORY_PAGE_SIZE),stack_mem,PAGE_FLAG_WRITE | PAGE_FLAG_USER);
+        mem_map_page_in_dir(process->page_dir,USER_STACK_VMEMORY_START - ((i + 1) * MEMORY_PAGE_SIZE),stack_mem,PAGE_FLAG_WRITE | PAGE_FLAG_USER);
+        
     }
     
     set_interrupt_status(int_save);
@@ -173,8 +236,7 @@ void load_registers(){
     state->regs.cs = (0x18 | 0x3);
     state->regs.eflags = (1 << 9) | (3 << 12); // enable interrupts for user
     state->regs.eip = USER_CODE_DATA_VMEMORY_START;
-    state->regs.esp = USER_STACK_VMEMORY_START;
-    state->regs.ebp = USER_STACK_VMEMORY_START;
+    //esp and ebp are already set up
     state->regs.ss = user_mode_data_segment_selector;
     set_interrupt_status(int_save);
 }
@@ -244,7 +306,7 @@ int kill_user_process(uint32_t pid){
     return 0;
 }
 
-void run(char* filepath,uint8_t priv_lvl){
+void run(char* filepath,unsigned char* argv[],uint8_t priv_lvl){
     inode_t* file = get_inode_by_full_file_path(filepath);
 
     if (!file){
@@ -268,7 +330,12 @@ void run(char* filepath,uint8_t priv_lvl){
     uint8_t old_int_status = get_interrupt_status();
     disable_interrupts();
 
-    uint32_t pid = create_user_process(binary,file->size,filepath,priv_lvl);
+    if (!argv) {
+        unsigned char* argv2[] = {0};
+        argv = argv2;
+    }
+
+    uint32_t pid = create_user_process(binary,file->size,filepath,priv_lvl,argv);
 
     if (!pid) {
         error("Creating user process failed");
