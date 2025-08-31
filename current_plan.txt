@@ -5,6 +5,7 @@ plan:
     [X] correctly cross-compiling the kernel
     [X] process commandline args
     [ ] add correct shutdown procedure
+    [ ] improve scheduler + spinlocks etc
     [ ] mouse driver
     [ ] window manager
     [ ] running more processes
