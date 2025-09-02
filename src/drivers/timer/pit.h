@@ -13,8 +13,8 @@
  */
 #define PIT_SETTINGS 0x36 
 #define PIT_FREQUENCY 1193182
-// desire a PIT frequency of about 100 Hz
-#define DESIRED_STANDARD_FREQ 100
+// desire a PIT frequency of around 1 kHz
+#define DESIRED_STANDARD_FREQ 1000
 
 /**
  * init_pit:
