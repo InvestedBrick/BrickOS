@@ -269,6 +269,10 @@ void main(int argc, char* argv[]){
 
     commit_window();
     
+    print("Before sleep\n");
+    mssleep(5000);
+    print("After sleep\n");
+
     unsigned char* line = (unsigned char*)malloc(SCREEN_COLUMNS + 1);
     unsigned char* dir_buffer = (unsigned char*)malloc(100);
     command_t comd;
