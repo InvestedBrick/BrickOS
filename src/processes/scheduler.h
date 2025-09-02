@@ -6,7 +6,13 @@
 #include "../drivers/timer/pit.h"
 #include "user_process.h"
 
+#define EXEC_STATE_INIT 0x1
+#define EXEC_STATE_RUNNING 0x2
+#define EXEC_STATE_SLEEPING 0x3
+#define EXEC_STATE_DEAD 0x4
+
 typedef struct process_state_struct{
+    uint8_t exec_state;
     uint32_t pid;
     interrupt_stack_frame_t regs;
     uint32_t* pd;
@@ -14,7 +20,12 @@ typedef struct process_state_struct{
     uint32_t kernel_stack_top;
 } process_state_t;
 
-#define TASK_SWITCH_DELAY_MS 20
+typedef struct {
+    process_state_t* proc;
+    uint32_t wakeup_tick;
+}sleeping_proc_t;
+
+#define TASK_SWITCH_DELAY_MS 10
 #define TASK_SWITCH_TICKS ((TASK_SWITCH_DELAY_MS * DESIRED_STANDARD_FREQ) / 1000)
 
 
@@ -23,13 +34,6 @@ typedef struct process_state_struct{
  * Initializes the scheduler
  */
 void init_scheduler();
-
-/**
- * init_scheduler:
- * NOTE: This function is called by the interrupt handler when initializing the scheduler
- * do not manually call
- */
-void setup_kernel_process(interrupt_stack_frame_t* regs);
 
 /**
  * switch_task:
@@ -57,6 +61,19 @@ void remove_process_state(process_state_t* proc);
  */
 process_state_t* get_process_state_by_page_dir(uint32_t* page_dir);
 
-
 process_state_t* get_current_process_state();
+
+/**
+ * manage_sleeping_processes:
+ * Wakes up sleeping processes if their wakeup tick has passed
+ */
+void manage_sleeping_processes();
+
+/**
+ * add_sleeping_process:
+ * Add a process to the sleeping queue
+ * @param proc The process to send to sleep
+ * @param sleep_ticks The number of ticks to make the process sleep
+ */
+void add_sleeping_process(process_state_t* proc,uint32_t sleep_ticks);
 #endif
