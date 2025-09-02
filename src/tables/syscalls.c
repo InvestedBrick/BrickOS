@@ -253,3 +253,6 @@ int sys_mssleep(interrupt_stack_frame_t* stack_frame, uint32_t time){
     return SYSCALL_SUCCESS;
 }
 
+int sys_spawn(unsigned char* filename, unsigned char* argv[]){
+    return run(filename,argv,PRIV_STD);
+}
