@@ -66,6 +66,8 @@ typedef struct {
     uint32_t interrupt_number,error_code,eip,cs,eflags,esp,ss;
 }__attribute__((packed)) interrupt_stack_frame_t;
 
+extern uint32_t ticks;
+
 /**
  * set_idt_entry:
  * creates an idt entry with the given parameters
