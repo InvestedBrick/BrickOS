@@ -98,6 +98,8 @@ int handle_software_interrupt(interrupt_stack_frame_t* stack_frame){
         return sys_mknod((unsigned char*)stack_frame->ebx,stack_frame->ecx);
     case SYS_IOCTL:
         return sys_ioctl(get_current_user_process(),stack_frame->ebx,stack_frame->ecx,(void*)stack_frame->edx);
+    case SYS_MSSLEEP:
+        return sys_mssleep(stack_frame,stack_frame->ebx);
     default:
         break;
     }
@@ -181,6 +183,9 @@ void interrupt_handler(interrupt_stack_frame_t* stack_frame) {
             break;
         case INT_TIMER:
             ticks++;
+
+            manage_sleeping_processes();
+
             if (ticks % TASK_SWITCH_TICKS == 0 || force_switch) {
                 if (force_switch) force_switch = 0;
                 switch_task(stack_frame);
