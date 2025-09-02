@@ -100,6 +100,8 @@ int handle_software_interrupt(interrupt_stack_frame_t* stack_frame){
         return sys_ioctl(get_current_user_process(),stack_frame->ebx,stack_frame->ecx,(void*)stack_frame->edx);
     case SYS_MSSLEEP:
         return sys_mssleep(stack_frame,stack_frame->ebx);
+    case SYS_SPAWN:
+        return sys_spawn((unsigned char*)stack_frame->ebx,(unsigned char**)stack_frame->ecx);
     default:
         break;
     }
