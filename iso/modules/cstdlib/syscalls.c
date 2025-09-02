@@ -132,3 +132,14 @@ int ioctl(uint32_t fd, uint32_t cmd,void* arg){
     );
     return ret;
 }
+
+int mssleep(uint32_t time){
+    int ret;
+    asm volatile (
+        "int $0x30"
+        : "=a"(ret)
+        : "a"(SYS_MSSLEEP), "b"(time)
+        : "memory"
+    );
+    return ret;
+}
