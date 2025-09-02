@@ -32,4 +32,8 @@ int sys_rmfile(unsigned char* filename);
 int sys_mknod(unsigned char* filename,uint32_t type);
 
 int sys_ioctl(user_process_t* p, uint32_t fd,uint32_t cmd, void* arg);
+
+int sys_mssleep(interrupt_stack_frame_t* stack_frame, uint32_t time);
+
+int sys_spawn(unsigned char* filename, unsigned char* argv[]);
 #endif
