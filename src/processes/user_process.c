@@ -238,6 +238,7 @@ void load_registers(){
     state->regs.eip = USER_CODE_DATA_VMEMORY_START;
     //esp and ebp are already set up
     state->regs.ss = user_mode_data_segment_selector;
+    state->exec_state = EXEC_STATE_RUNNING;
     set_interrupt_status(int_save);
 }
 
@@ -306,27 +307,33 @@ int kill_user_process(uint32_t pid){
     return 0;
 }
 
-void run(char* filepath,unsigned char* argv[],uint8_t priv_lvl){
-    inode_t* file = get_inode_by_full_file_path(filepath);
+int run(char* filepath,unsigned char* argv[],uint8_t priv_lvl){
+    inode_t* file = get_inode_by_path(filepath);
 
     if (!file){
         error("Fetching file failed");
-        return;
+        return -1;
     }
 
-    unsigned char* binary = (unsigned char*)kmalloc(file->size);
-    int fd = sys_open(&global_kernel_process,filepath,FILE_FLAG_READ);
-
+    int fd = sys_open(&global_kernel_process,filepath,FILE_FLAG_READ | FILE_FLAG_EXEC);
+    
     if (fd < 0){
         error("FD failed");
-        return;
+        return -1;
+    }
+    
+    unsigned char* binary = (unsigned char*)kmalloc(file->size);
+    
+    int ret_val = sys_read(&global_kernel_process,fd,binary,file->size);
+    
+    sys_close(&global_kernel_process,fd);
+    if (ret_val < 0){
+        kfree(binary);
+        error("Failed to read executable file");
+        return -1;
     }
 
-    int ret_val = sys_read(&global_kernel_process,fd,binary,file->size);
-    if (ret_val < 0){
-        panic("Failed to read executable file");
-        return;
-    }
+
     uint8_t old_int_status = get_interrupt_status();
     disable_interrupts();
 
@@ -338,11 +345,14 @@ void run(char* filepath,unsigned char* argv[],uint8_t priv_lvl){
     uint32_t pid = create_user_process(binary,file->size,filepath,priv_lvl,argv);
 
     if (!pid) {
+        kfree(binary);
         error("Creating user process failed");
-        return;
+        return -1;
     }
 
     dispatch_user_process(pid);
     set_interrupt_status(old_int_status);
+
+    return 0;
 
 }
