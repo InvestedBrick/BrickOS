@@ -92,8 +92,12 @@ void free_pid(uint32_t pid);
  * @param filepath The path to the executable
  * @param argv An array of null terminated strings with the last index of the array being null
  * @param priv_lvl The priviledge level of the executable (0 highest priviledge level)
+ * 
+ * @return 0 if the process creation and running worked 
+ *          
+ *         else -1
  */
-void run(char* filepath,unsigned char* argv[],uint8_t priv_lvl);
+int run(char* filepath,unsigned char* argv[],uint8_t priv_lvl);
 
 
 void force_current_user_proc_as_kernel();
