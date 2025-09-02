@@ -147,4 +147,16 @@ int ioctl(uint32_t fd, uint32_t cmd,void* arg);
  * @return SYSCALL_SUCCESS
  */
 int mssleep(uint32_t time);
+
+/**
+ * spawn:
+ * Spawns a new process, which is completely independant of the spawning process
+ * @param filename The name of the file, which contains the binary for the process
+ * @param argv The argument vector for the new process, can either be 0 for no arguments or an array of null-terminated strings which the last entry is a null-entry
+ *      e. g. unsigned char* argv[] = {"arg_one", "arg_two",...,0}
+ * @return SYSCALL_FAIL if something failed, 
+ * 
+ *  else SYSCALL_SUCCESS
+ */
+int spawn(unsigned char* filename, unsigned char* argv[]);
 #endif
