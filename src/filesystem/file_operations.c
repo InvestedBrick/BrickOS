@@ -94,6 +94,7 @@ generic_file_t* fs_open(unsigned char* filepath,uint8_t flags){
 
     if ((!(inode->perms & FS_FILE_PERM_READABLE)) && (flags & FILE_FLAG_READ)) return nullptr;
     if ((!(inode->perms & FS_FILE_PERM_WRITABLE)) && (flags & FILE_FLAG_WRITE)) return nullptr;
+    if ((!(inode->perms & FS_FILE_PERM_EXECUTABLE) && (flags & FILE_FLAG_EXEC))) return nullptr;
 
     open_file_t* open_file = (open_file_t*)kmalloc(sizeof(open_file_t));
     open_file->inode_id = inode->id;
