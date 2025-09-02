@@ -139,4 +139,12 @@ int seek(uint32_t fd,uint32_t offset);
  *  else SYSCALL_SUCCESS
  */
 int ioctl(uint32_t fd, uint32_t cmd,void* arg);
+
+/**
+ * mssleep:
+ * Sends the current process to sleep for at least the specified time
+ * @param time The number of milliseconds to go to sleep
+ * @return SYSCALL_SUCCESS
+ */
+int mssleep(uint32_t time);
 #endif
