@@ -9,6 +9,7 @@
 #include "../../memory/kmalloc.h"
 #include "../../memory/memory.h"
 #include "../../processes/user_process.h"
+#include "../../drivers/keyboard/keyboard.h"
 #include "device_defines.h"
 #include <stdint.h>
 
@@ -259,4 +260,5 @@ void initialize_devices(){
     create_device("null",&dev_null,0,0,PRIV_STD);
     create_device("fb0",&dev_fb0,&fb0,init_dev_fb0,PRIV_SPECIAL);
     create_device("wm",&dev_wm,&wm_pipes,init_dev_wm,PRIV_STD);
+    create_device("kb0",&kb_ops,0,0,PRIV_SPECIAL);
 }
