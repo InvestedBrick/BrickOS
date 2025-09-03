@@ -49,11 +49,6 @@ vfs_handles_t kb_ops = {
   .ioctl = 0
 };
 
-generic_file_t kb_file = {
-  .ops = &kb_ops,
-  .generic_data = 0,
-};
-
 uint32_t KB_STATUS = KB_LOWER; 
 // IMPORTANT: This keyboard map is for a full german keyboard layout, you will need to change it if you have a different layout
 // Umlaute have been replaced by their regular counterpart
