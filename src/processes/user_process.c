@@ -145,7 +145,7 @@ void setup_arguments(user_process_t* proc,unsigned char* argv[]){
     mem_map_page_in_dir(proc->page_dir,KERNEL_START - MEMORY_PAGE_SIZE,page_phys, PAGE_FLAG_USER | PAGE_FLAG_WRITE);
 }
 
-uint32_t create_user_process(unsigned char* binary, uint32_t size,unsigned char* process_name,uint8_t priv_lvl, unsigned char* argv[]) {
+uint32_t create_user_process(unsigned char* binary, uint32_t size,unsigned char* process_name,uint8_t priv_lvl, unsigned char* argv[],process_fds_init_t* start_fds) {
     uint32_t int_save = get_interrupt_status();
     disable_interrupts();
 // To setup a user process:
@@ -162,11 +162,32 @@ uint32_t create_user_process(unsigned char* binary, uint32_t size,unsigned char*
 
     //allocate a kernel stack
     uint32_t kernel_stack = (uint32_t)kmalloc(MEMORY_PAGE_SIZE);
-
+    
     user_process_t* process = (user_process_t*)kmalloc(sizeof(user_process_t));
     memset(process->fd_table,0,MAX_FDS);
-    process->fd_table[FD_STDIN] = &kb_file; 
-    process->fd_table[FD_STDOUT] = &screen_file;
+
+    generic_file_t* stdin;
+    generic_file_t* stdout;
+    generic_file_t* stderr;
+
+    if (!start_fds){
+        stdin = fs_open("dev/null",FILE_FLAG_NONE);
+        stdout = stdin;
+        stderr = stdin;
+    }else{
+        stdin = fs_open(start_fds->stdin_filename,FILE_FLAG_READ);
+        if (!stdin) stdin = fs_open("dev/null",FILE_FLAG_NONE);
+
+        stdout = fs_open(start_fds->stdout_filename,FILE_FLAG_WRITE);
+        if (!stdout) stdout = fs_open("dev/null",FILE_FLAG_NONE);
+
+        stderr = fs_open(start_fds->stderr_filename,FILE_FLAG_WRITE);
+        if (!stderr) stderr = fs_open("dev/null",FILE_FLAG_NONE);
+    }
+    process->fd_table[FD_STDIN] = stdin;
+    process->fd_table[FD_STDOUT] = stdout;
+    process->fd_table[FD_STDERR] = stderr;
+    
     process->vm_areas = nullptr;
     process->running = 0;
     process->priv_lvl = priv_lvl;
@@ -307,7 +328,7 @@ int kill_user_process(uint32_t pid){
     return 0;
 }
 
-int run(char* filepath,unsigned char* argv[],uint8_t priv_lvl){
+int run(char* filepath,unsigned char* argv[],process_fds_init_t* start_fds,uint8_t priv_lvl){
     inode_t* file = get_inode_by_path(filepath);
 
     if (!file){
@@ -342,7 +363,7 @@ int run(char* filepath,unsigned char* argv[],uint8_t priv_lvl){
         argv = argv2;
     }
 
-    uint32_t pid = create_user_process(binary,file->size,filepath,priv_lvl,argv);
+    uint32_t pid = create_user_process(binary,file->size,filepath,priv_lvl,argv,start_fds);
 
     if (!pid) {
         kfree(binary);
