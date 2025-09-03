@@ -144,12 +144,12 @@ int mssleep(uint32_t time){
     return ret;
 }
 
-int spawn(unsigned char* filename, unsigned char* argv[]){
+int spawn(unsigned char* filename, unsigned char* argv[],process_fds_init_t* start_fds){
     int ret;
     asm volatile (
         "int $0x30"
         : "=a"(ret)
-        : "a"(SYS_SPAWN), "b"(filename), "c"(argv)
+        : "a"(SYS_SPAWN), "b"(filename), "c"(argv) , "d"(start_fds)
         : "memory"
     );
     return ret;
