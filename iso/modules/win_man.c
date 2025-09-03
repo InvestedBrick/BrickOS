@@ -9,20 +9,65 @@ typedef struct {
     unsigned char data[];    
 }win_man_msg_t;
 
-typedef struct window{
+typedef struct window {
     uint32_t origin_x;
     uint32_t origin_y;
     uint32_t width;
     uint32_t height;
     uint32_t flags;
+    uint32_t z;
     uint32_t owner_pid;
     int backing_fd;
-    unsigned char* buffer;
+    uint32_t buffer_size;
+    unsigned char* live_buffer;
+    unsigned char* comitted_buffer;
     struct window* next;
 }window_t;
 
 window_t* head = 0; 
 
+window_t* find_window_by_z(uint32_t z){
+    window_t* current = head;
+    while(current){
+        if (current->z == z) return current;
+        current = current->next;
+    }   
+    return 0;
+}
+
+uint32_t find_largest_z(){
+    window_t* current = head;
+    uint32_t largest_z = 0;
+    while (current) {
+        if (current->z > largest_z) largest_z = current->z;
+        current = current->next; 
+    }
+
+    return largest_z;
+}
+
+uint32_t find_lowest_z(){
+    window_t* current = head;
+    uint32_t lowest_z = (uint32_t)-1;
+    while (current) {
+        if (current->z < lowest_z) lowest_z = current->z;
+        current = current->next; 
+    }
+
+    return lowest_z;
+}
+
+window_t* find_window_with_next_larger_z(uint32_t current_z){
+    uint32_t best_z = (uint32_t)-1;
+    window_t* current = head;
+
+    while (current){
+        if (current->z > current_z && current->z < best_z) best_z = current->z;
+        current = current->next;
+    }
+
+    return find_window_by_z(best_z);
+}
 unsigned char* fb0 = 0;
 uint32_t screen_bytes_per_row = 0;
 uint32_t screen_bytespp = 0;
@@ -58,7 +103,9 @@ void handle_window_request(framebuffer_t* fb_metadata,win_man_msg_t* msg){
     new_win->width = req->width;
     new_win->height = req->height;
     new_win->owner_pid = msg->pid;
+    new_win->buffer_size = new_win->width * new_win->height * sizeof(uint32_t);
     new_win->next = 0;
+    new_win->z = find_largest_z() + 1;
     new_win->origin_x = (fb_metadata->width / 2) - 50;
     new_win->origin_y = (fb_metadata->height / 2) - 50;
     unsigned char* pid_str = uint32_to_ascii(new_win->owner_pid);
@@ -72,9 +119,10 @@ void handle_window_request(framebuffer_t* fb_metadata,win_man_msg_t* msg){
     new_win->backing_fd = open(backing_filename,FILE_FLAG_CREATE);
     chdir("..");
     
-    new_win->buffer = (unsigned char*)mmap(new_win->width * new_win->height * sizeof(uint32_t),PROT_READ | PROT_WRITE,MAP_SHARED,new_win->backing_fd,0);
+    new_win->live_buffer = (unsigned char*)mmap(new_win->buffer_size,PROT_READ | PROT_WRITE,MAP_SHARED,new_win->backing_fd,0);
+    new_win->comitted_buffer = (unsigned char*)malloc(new_win->buffer_size);
     // be sure that all pages are present, so that when the user process maps it, the file can be isntantly deleted (not good practise but eh, probably only temporary solution)
-    memset(new_win->buffer,0,new_win->width * new_win->height * sizeof(uint32_t));
+    memset(new_win->live_buffer,0,new_win->buffer_size);
     close(new_win->backing_fd);
     
     window_creation_ans_t creation_ans =
@@ -95,6 +143,11 @@ void handle_window_request(framebuffer_t* fb_metadata,win_man_msg_t* msg){
 void handle_window_commit(framebuffer_t* fb_metadata,win_man_msg_t* msg){
     window_t* win = find_window_by_pid(msg->pid);
     if (!win) return;
+
+    memcpy(win->comitted_buffer,win->live_buffer,win->buffer_size);
+}
+
+void write_window_to_fb(framebuffer_t* fb_metadata,window_t* win){
     unsigned char* win_start = (fb0 + win->origin_y * fb_metadata->bytes_per_row + win->origin_x * screen_bytespp);
     // cap so that we dont copy beyond framebuffer boundaries
     uint32_t width_copy_size = ((win->origin_x + win->width > fb_metadata->width) ? (fb_metadata->width - win->origin_x) : win->width) * screen_bytespp;
@@ -103,17 +156,29 @@ void handle_window_commit(framebuffer_t* fb_metadata,win_man_msg_t* msg){
     uint32_t buffer_cpy_off = 0;
     for(uint32_t i = 0; i < rows_to_copy;i++){
         // no questions asked here
-        memcpy(win_start,&win->buffer[buffer_cpy_off],width_copy_size);
+        memcpy(win_start,&win->comitted_buffer[buffer_cpy_off],width_copy_size);
         win_start += fb_metadata->bytes_per_row;
+    }
+}
+
+void composite_windows(framebuffer_t* fb_metadata){
+    if (!head) return;
+    uint32_t current_z = 0; // 0 is guaranteed to not be a Z-layer
+    while(1){
+        window_t* win = find_window_with_next_larger_z(current_z);
+        if (!win) break;
+
+        write_window_to_fb(fb_metadata,win);
+        current_z = win->z;
     }
 }
 
 __attribute__((section(".text.start")))
 void main(){
     int fb0_fd = open("dev/fb0",FILE_FLAG_NONE);
+    int kb0_fd = open("dev/kb0",FILE_FLAG_NONE);
     wm_to_k_fd = open("tmp/wm_to_k.tmp",FILE_FLAG_WRITE);
     k_to_wm_fd = open("tmp/k_to_wm.tmp",FILE_FLAG_READ);
-
     if (fb0_fd < 0) exit(1);
     if (wm_to_k_fd < 0) exit(2);
     if (k_to_wm_fd < 0) exit(3);
@@ -145,7 +210,8 @@ void main(){
             break;
         }
 
-    
+        composite_windows(&fb_metadata);
+        mssleep(17); // update at ~59 fps
         }
     }
 
