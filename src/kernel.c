@@ -36,16 +36,16 @@ uint32_t calc_phys_alloc_start(multiboot_info_t* boot_info){
 
 void create_kernel_process(){
     memset(global_kernel_process.fd_table,0,MAX_FDS);
-    
-    global_kernel_process.fd_table[FD_STDIN] = &kb_file;
-    global_kernel_process.fd_table[FD_STDOUT] = &screen_file;
 
     global_kernel_process.kernel_stack = stack_top;
     global_kernel_process.page_dir = mem_get_current_page_dir();
     global_kernel_process.process_id = get_pid();
     global_kernel_process.vm_areas = 0;
     global_kernel_process.priv_lvl = PRIV_ALUCARD; // the all-powerful
-    global_kernel_process.process_name = kmalloc(sizeof(uint8_t) * 5);
+    global_kernel_process.process_name = kmalloc(sizeof("root"));
+
+    global_kernel_process.fd_table[FD_STDIN] = fs_open("dev/kb0",FILE_FLAG_NONE);
+    global_kernel_process.fd_table[FD_STDOUT] = &screen_file;
     
     memcpy(global_kernel_process.process_name,"root",sizeof("root"));
     global_kernel_process.running = 1;
@@ -157,10 +157,9 @@ void kmain(multiboot_info_t* boot_info)
     sys_write(&global_kernel_process,FD_STDOUT,"Type 'help' for command list\n",29);
     
     // running modules
-    unsigned char* shell_args[] = {"Hello world\0",0};
-    run("modules/shell.bin",shell_args,PRIV_STD);
+    run("modules/shell.bin",nullptr,nullptr,PRIV_STD);
 
-    run("modules/win_man.bin",0,PRIV_SPECIAL);
+    run("modules/win_man.bin",nullptr,nullptr,PRIV_SPECIAL); // window manager should open dev/kb0
 
     setup_timer_switch();
     // need to manually enable since run just restores whatever was before that
