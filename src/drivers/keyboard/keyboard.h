@@ -21,7 +21,7 @@
 
 #define KB_BUFFER_SIZE 256
 #include "../../filesystem/vfs/vfs.h"
-extern generic_file_t kb_file;
+extern vfs_handles_t kb_ops;
 /**
  * read_scan_code:
  * Reads a scancode from the keyboard
