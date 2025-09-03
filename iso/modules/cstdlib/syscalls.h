@@ -6,6 +6,13 @@
 #define FD_STDIN 0x0
 #define FD_STDOUT 0x1
 #define FD_STDERR 0x2
+
+typedef struct {
+    unsigned char* stdin_filename;
+    unsigned char* stdout_filename;
+    unsigned char* stderr_filename;
+}process_fds_init_t;
+
 #include "../../../src/tables/syscall_defines.h"
 #include <stdint.h>
 /**
@@ -154,9 +161,10 @@ int mssleep(uint32_t time);
  * @param filename The name of the file, which contains the binary for the process
  * @param argv The argument vector for the new process, can either be 0 for no arguments or an array of null-terminated strings which the last entry is a null-entry
  *      e. g. unsigned char* argv[] = {"arg_one", "arg_two",...,0}
+ * @param start_fds The stdin / stdout / stderr filenames (may be null which causes the file descriptor / all file descriptors to be /dev/null)
  * @return SYSCALL_FAIL if something failed, 
  * 
  *  else SYSCALL_SUCCESS
  */
-int spawn(unsigned char* filename, unsigned char* argv[]);
+int spawn(unsigned char* filename, unsigned char* argv[],process_fds_init_t* start_fds);
 #endif
