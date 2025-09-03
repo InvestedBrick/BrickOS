@@ -23,6 +23,13 @@ typedef struct {
     generic_file_t* fd_table[MAX_FDS];
 } __attribute__((packed)) user_process_t;
 
+
+typedef struct {
+    unsigned char* stdin_filename;
+    unsigned char* stdout_filename;
+    unsigned char* stderr_filename;
+}process_fds_init_t;
+
 #define USER_CODE_DATA_VMEMORY_START 0x00000000
 #define USER_STACK_VMEMORY_START     0xbffffffb
 
@@ -46,7 +53,7 @@ extern vector_t user_process_vector;
  * @param argv An array of null terminated strings with the last index of the array being null
  * @return The proccess ID of the created process
  */
-uint32_t create_user_process(unsigned char* binary, uint32_t size,unsigned char* process_name,uint8_t priv_lvl,unsigned char* argv[]);
+uint32_t create_user_process(unsigned char* binary, uint32_t size,unsigned char* process_name,uint8_t priv_lvl,unsigned char* argv[],process_fds_init_t* start_fds);
 /**
  * init_user_process_vector:
  * Sets up the user process vector
@@ -67,7 +74,6 @@ int kill_user_process(uint32_t pid);
  * @return The user process struct
  */
 user_process_t* get_user_process_by_pid(uint32_t pid);
-
 
 /**
  * dispatch_user_process:
@@ -92,13 +98,12 @@ void free_pid(uint32_t pid);
  * @param filepath The path to the executable
  * @param argv An array of null terminated strings with the last index of the array being null
  * @param priv_lvl The priviledge level of the executable (0 highest priviledge level)
- * 
+ * @param start_fds The stdin / stdout / stderr filenames (may be null which causes the file descriptor / all file descriptors to be /dev/null)
  * @return 0 if the process creation and running worked 
  *          
  *         else -1
  */
-int run(char* filepath,unsigned char* argv[],uint8_t priv_lvl);
-
+int run(char* filepath,unsigned char* argv[],process_fds_init_t* start_fds,uint8_t priv_lvl);
 
 void force_current_user_proc_as_kernel();
 
