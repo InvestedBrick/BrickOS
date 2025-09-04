@@ -154,3 +154,25 @@ int spawn(unsigned char* filename, unsigned char* argv[],process_fds_init_t* sta
     );
     return ret;
 }
+
+int mknod(unsigned char* filename, uint32_t type){
+    int ret;
+    asm volatile (
+        "int $0x30"
+        : "=a"(ret)
+        : "a"(SYS_MKNOD), "b"(filename), "c"(type)
+        : "memory"
+    );
+    return ret;
+}
+
+int getpid(){
+    int ret;
+    asm volatile (
+        "int $0x30"
+        : "=a"(ret)
+        : "a"(SYS_GETPID)
+        : "memory"
+    );
+    return ret;
+}
