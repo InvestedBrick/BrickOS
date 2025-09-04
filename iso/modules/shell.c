@@ -6,14 +6,6 @@
 #include "../../src/filesystem/devices/device_defines.h"
 #include <stdint.h>
 
-#define WINDOW_HEIGHT 350
-#define WINDOW_WIDTH 500
-
-void write_pixel(unsigned char* fb,uint32_t x, uint32_t y, uint32_t color){
-
-    *(volatile uint32_t*)(fb + y * WINDOW_WIDTH * sizeof(uint32_t) + x * sizeof(uint32_t)) = color;
-}
-
 //TODO: extract most commands to individual executables
 shell_command_t commands[] = {
     {"help", cmd_help, "Shows help menu"},
@@ -216,58 +208,9 @@ command_t parse_line(unsigned char* line,uint32_t line_length){
 
 }
 
-unsigned char* request_window(uint32_t width,uint32_t height){
-    int wm_fd = open("dev/wm",FILE_FLAG_NONE);
-    window_req_t win_req;
-    win_req.flags = WINDOW_REQ_FLAG_DECORATION;
-    win_req.height = height;
-    win_req.width = width;
-    ioctl(wm_fd,DEV_WM_REQUEST_WINDOW,&win_req);
-
-    window_creation_wm_answer_t answer;
-    while (ioctl(wm_fd,DEV_WM_REQUEST_WINDOW_CREATION_ANSWER,&answer) < 0){}
-
-    chdir("tmp");
-    int backing_fd = open(answer.filename,FILE_FLAG_NONE);
-    
-    unsigned char* fb = (unsigned char*)mmap(answer.width * answer.height * sizeof(uint32_t),PROT_READ | PROT_WRITE, MAP_SHARED,backing_fd,0);
-    if (!fb) print("Failed to map buffer\n"); 
-
-    close(backing_fd);
-    rmfile(answer.filename); // dispose of the connector
-    chdir("..");
-
-    close(wm_fd);
-
-    return fb;
-}
-
-void commit_window(){
-    int wm_fd = open("dev/wm",FILE_FLAG_NONE);
-    ioctl(wm_fd,DEV_WM_COMMIT_WINDOW,0);
-    close(wm_fd);
-    
-}
-
 __attribute__((section(".text.start")))
 void main(int argc, char* argv[]){
     print("\nBrickOS Shell started\n");
-    print("args: ");
-    for (uint32_t i = 0; i < argc;i++){
-        print(argv[i]);
-        print(" ");
-    }
-    print("\n");
-
-    unsigned char* fb = request_window(WINDOW_WIDTH,WINDOW_HEIGHT);
-
-    for (uint32_t y = 0; y < WINDOW_HEIGHT;y++){
-        for (uint32_t x = 0; x < WINDOW_WIDTH;x++){
-            write_pixel(fb,x,y,0xff948c76);
-        }
-    }
-
-    commit_window();
     
     print("Before sleep\n");
     mssleep(5000);
