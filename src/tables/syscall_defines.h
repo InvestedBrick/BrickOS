@@ -19,6 +19,7 @@
 #define SYS_IOCTL 0xd 
 #define SYS_MSSLEEP 0xe
 #define SYS_SPAWN 0xf
+#define SYS_GETPID 0x10 
 
 #define SYSCALL_FAIL -1
 #define SYSCALL_SUCCESS 0
