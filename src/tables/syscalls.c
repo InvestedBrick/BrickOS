@@ -256,3 +256,7 @@ int sys_mssleep(interrupt_stack_frame_t* stack_frame, uint32_t time){
 int sys_spawn(unsigned char* filename, unsigned char* argv[],process_fds_init_t* start_fds){
     return run(filename,argv,start_fds,PRIV_STD);
 }
+
+int sys_getpid(user_process_t* p){
+    return p->process_id;
+}
