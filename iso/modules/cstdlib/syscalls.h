@@ -167,4 +167,22 @@ int mssleep(uint32_t time);
  *  else SYSCALL_SUCCESS
  */
 int spawn(unsigned char* filename, unsigned char* argv[],process_fds_init_t* start_fds);
+
+/**
+ * mknod:
+ * Creates a file system node (currently just for making pipes)
+ * @param filename The name of the newly created file
+ * @param type currently just FS_TYPE_PIPE
+ * 
+ * @return SYSCALL_FAIL if something failed, 
+ * 
+ *  else SYSCALL_SUCCESS
+ */
+int mknod(unsigned char* filename, uint32_t type);
+/**
+ * getpid:
+ * Returns the process id of the calling process
+ * @return The pid
+ */
+int getpid();
 #endif
