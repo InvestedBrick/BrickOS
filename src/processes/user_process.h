@@ -105,7 +105,7 @@ void free_pid(uint32_t pid);
  */
 int run(char* filepath,unsigned char* argv[],process_fds_init_t* start_fds,uint8_t priv_lvl);
 
-void force_current_user_proc_as_kernel();
+void overwrite_current_proc(user_process_t* proc);
 
-void restore_current_user_proc_from_kernel();
+void restore_active_proc();
 #endif
