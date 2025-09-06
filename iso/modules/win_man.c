@@ -206,13 +206,14 @@ void main(){
             break;
         }
         case DEV_WM_COMMIT_WINDOW: {
+            debug("recieved commit");
             handle_window_commit(&fb_metadata,msg);
             break;
         }
 
+        }
         composite_windows(&fb_metadata);
         mssleep(17); // update at ~59 fps
-        }
     }
 
     exit(EXIT_SUCCESS);
