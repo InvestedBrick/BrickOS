@@ -89,6 +89,7 @@ void clamp_cursor() {
     if (gfx_cursor_y > screen_cursor_y_max) gfx_cursor_y = screen_cursor_y_max;
 }
 
+/* Removed framebuffer writing functions
 void write_pixel(uint32_t x, uint32_t y, uint32_t color){
     if (x >= screen_width || x < screen_origin_x) return;
     if (y >= screen_height || y < screen_origin_y) return;
@@ -197,14 +198,12 @@ void handle_screen_char_input(uint8_t c){
     clamp_cursor();
     update_cursor();
 }
+*/
 
 int screen_write(generic_file_t* f, unsigned char* buffer,uint32_t size){
     if (size > screen_width * screen_height) 
         return INVALID_ARGUMENT;
     
-    for(uint32_t i = 0; i < size;i++){
-        handle_screen_char_input(buffer[i]);
-    }
 
     return size;
         
