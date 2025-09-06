@@ -72,6 +72,12 @@ void init_idt(){
 int handle_software_interrupt(interrupt_stack_frame_t* stack_frame){
     switch (stack_frame->eax)
     {
+    case SYS_DEBUG:
+        {
+            //temporary
+            log((unsigned char*)stack_frame->ebx);
+            return 0;
+        }
     case SYS_EXIT: 
         return sys_exit(get_current_user_process(),stack_frame);
     case SYS_OPEN:
