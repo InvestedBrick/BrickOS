@@ -19,7 +19,7 @@
 vector_t user_process_vector;
 static uint8_t pid_used[MAX_PIDS] = {0};
 static uint32_t next_pid = 1;
-
+user_process_t* overwrite_proc = 0;
 
 user_process_t* get_user_process_by_pid(uint32_t pid){
     for (uint32_t i = 0; i < user_process_vector.size;i++){
@@ -33,6 +33,8 @@ user_process_t* get_user_process_by_pid(uint32_t pid){
 user_process_t* get_current_user_process(){
     if (!dispatched_user_mode) return &global_kernel_process; // useful for when I want to use syscalls internally
 
+    if (overwrite_proc) return overwrite_proc;
+
     process_state_t* state = get_current_process_state();
 
     uint32_t curr_pid = state->pid;
@@ -42,12 +44,12 @@ user_process_t* get_current_user_process(){
 }
 
 // this is the stuff that is created when you just want stuff to work
-void force_current_user_proc_as_kernel(){
-    dispatched_user_mode = 0;
+void overwrite_current_proc(user_process_t* proc){
+    overwrite_proc = proc;
 }
 
-void restore_current_user_proc_from_kernel(){
-    dispatched_user_mode = 1;
+void restore_active_proc(){
+    overwrite_proc = nullptr;
 }
 
 int get_pid(){
@@ -88,58 +90,61 @@ void free_pid(uint32_t pid){
 
 void setup_arguments(user_process_t* proc,unsigned char* argv[]){
     uint32_t page_phys = pmm_alloc_page_frame();
-
+    process_state_t* state = get_process_state_by_page_dir(proc->page_dir);
     // map temporarily to write memory into it
     mem_map_page(TEMP_KERNEL_COPY_ADDR,page_phys,PAGE_FLAG_WRITE | PAGE_FLAG_PRESENT);
     unsigned char* page = (unsigned char*)TEMP_KERNEL_COPY_ADDR;
     memset(page,0x0,MEMORY_PAGE_SIZE);
     uint32_t argc = 0;
     for(uint32_t i = 0; argv[i];i++) {argc++;}
-    uint32_t* arg_ptrs = (uint32_t*)kmalloc(argc * sizeof(uint32_t));
 
+    uint32_t* arg_ptrs = (uint32_t*)kmalloc(argc * sizeof(uint32_t));    
     uint32_t sp = KERNEL_START;
-    uint32_t write_ptr = MEMORY_PAGE_SIZE;
+    if (arg_ptrs){
+        uint32_t write_ptr = MEMORY_PAGE_SIZE;
+        
+        // argv data
+        for (int i = argc - 1; i >= 0; i--){
+            uint32_t len = strlen(argv[i]) + 1;
+            sp -= len;
+            write_ptr -= len;
+            memcpy(&page[write_ptr],argv[i],len);
+            arg_ptrs[i] = sp;
 
-    // argv data
-    for (int i = argc - 1; i >= 0; i--){
-        uint32_t len = strlen(argv[i]) + 1;
-        sp -= len;
-        write_ptr -= len;
-        memcpy(&page[write_ptr],argv[i],len);
-        arg_ptrs[i] = sp;
-
-    }
-    // align the pointers
-    sp &= ~0x0f;
-    write_ptr &= ~0x0f;
+        }
+        // align the pointers
+        sp &= ~0x0f;
+        write_ptr &= ~0x0f;
 
 
-    sp -= sizeof(char*);
-    write_ptr -= sizeof(char*);
-    *(uint32_t*)&page[write_ptr] = 0;
-
-    // argv pointers
-    for (int i = argc - 1; i >= 0; i--){
         sp -= sizeof(char*);
         write_ptr -= sizeof(char*);
-        *(uint32_t*)&page[write_ptr] = arg_ptrs[i];
+        *(uint32_t*)&page[write_ptr] = 0;
+
+        // argv pointers
+        for (int i = argc - 1; i >= 0; i--){
+            sp -= sizeof(char*);
+            write_ptr -= sizeof(char*);
+            *(uint32_t*)&page[write_ptr] = arg_ptrs[i];
+        }
+
+        sp -= sizeof(char*);
+        write_ptr -= sizeof(char*);
+        *(uint32_t*)&page[write_ptr] = sp + sizeof(char*);
+
+        sp -= sizeof(char*);
+        write_ptr -= sizeof(char*);
+        *(uint32_t*)&page[write_ptr] = argc;
+
+        sp -= sizeof(char*); // go one lower since [esp] is expected to be the return address
+        
+        kfree(arg_ptrs);
+    }else{
+        sp -= 0x5; // to 0xbffffffb
     }
-
-    sp -= sizeof(char*);
-    write_ptr -= sizeof(char*);
-    *(uint32_t*)&page[write_ptr] = sp + sizeof(char*);
-
-    sp -= sizeof(char*);
-    write_ptr -= sizeof(char*);
-    *(uint32_t*)&page[write_ptr] = argc;
-
-    sp -= sizeof(char*); // go one lower since [esp] is expected to be the return address
-
-    process_state_t* state = get_process_state_by_page_dir(proc->page_dir);
     state->regs.esp = sp;
     state->regs.ebp = sp;
 
-    kfree(arg_ptrs);
 
     mem_unmap_page(TEMP_KERNEL_COPY_ADDR);
     mem_map_page_in_dir(proc->page_dir,KERNEL_START - MEMORY_PAGE_SIZE,page_phys, PAGE_FLAG_USER | PAGE_FLAG_WRITE);
@@ -164,17 +169,32 @@ uint32_t create_user_process(unsigned char* binary, uint32_t size,unsigned char*
     uint32_t kernel_stack = (uint32_t)kmalloc(MEMORY_PAGE_SIZE);
     
     user_process_t* process = (user_process_t*)kmalloc(sizeof(user_process_t));
+    
+    int pid = get_pid();
+    if (pid == -1) return 0;
+    process->process_id = pid;
+    
     memset(process->fd_table,0,MAX_FDS);
 
     generic_file_t* stdin;
     generic_file_t* stdout;
     generic_file_t* stderr;
+    log("SPAWNING PROC");
+    log(process_name);
 
+    uint32_t name_len = strlen(process_name);
+    process->process_name = (unsigned char*)kmalloc(name_len + 1);
+    memcpy(process->process_name,process_name,name_len + 1);
+
+    process->priv_lvl = priv_lvl;
+
+    overwrite_current_proc(process);
     if (!start_fds){
         stdin = fs_open("dev/null",FILE_FLAG_NONE);
         stdout = stdin;
         stderr = stdin;
     }else{
+        //stderr should be 0 for now
         stdin = fs_open(start_fds->stdin_filename,FILE_FLAG_READ);
         if (!stdin) stdin = fs_open("dev/null",FILE_FLAG_NONE);
 
@@ -184,21 +204,15 @@ uint32_t create_user_process(unsigned char* binary, uint32_t size,unsigned char*
         stderr = fs_open(start_fds->stderr_filename,FILE_FLAG_WRITE);
         if (!stderr) stderr = fs_open("dev/null",FILE_FLAG_NONE);
     }
+    restore_active_proc();
     process->fd_table[FD_STDIN] = stdin;
     process->fd_table[FD_STDOUT] = stdout;
     process->fd_table[FD_STDERR] = stderr;
     
     process->vm_areas = nullptr;
     process->running = 0;
-    process->priv_lvl = priv_lvl;
     process->kernel_stack = kernel_stack;
-    uint32_t name_len = strlen(process_name);
-    process->process_name = (unsigned char*)kmalloc(name_len + 1);
-    memcpy(process->process_name,process_name,name_len + 1);
-
-    int pid = get_pid();
-    if (pid == -1) return 0;
-    process->process_id = pid;
+    
 
     uint32_t code_data_pages = CEIL_DIV(size,MEMORY_PAGE_SIZE);
     process->page_alloc_start = code_data_pages * MEMORY_PAGE_SIZE;
@@ -267,9 +281,11 @@ void dispatch_user_process(uint32_t pid){
     user_process_t* process = get_user_process_by_pid(pid);
     if (process->running) return;
     process->running = 1;
+    uint32_t* old_pd = mem_get_current_page_dir();
     mem_change_page_dir(process->page_dir); 
     set_kernel_stack(process->kernel_stack + MEMORY_PAGE_SIZE);
     load_registers();
+    mem_change_page_dir(old_pd);
 }
 
 
