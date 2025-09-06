@@ -80,6 +80,9 @@ int sys_exit(user_process_t* p,interrupt_stack_frame_t* stack_frame){
     uint32_t pid = p->process_id;
     log("Process exited with error code");
     log_uint(stack_frame->ebx);
+    log("Pid:");
+    log_uint(pid);
+    log(p->process_name);
     switch_task(stack_frame);
     return kill_user_process(pid);
 }
