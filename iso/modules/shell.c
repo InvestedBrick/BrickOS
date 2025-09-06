@@ -6,6 +6,7 @@
 #include "../../src/filesystem/devices/device_defines.h"
 #include <stdint.h>
 
+#define LINE_BUFFER_SIZE 256
 //TODO: extract most commands to individual executables
 shell_command_t commands[] = {
     {"help", cmd_help, "Shows help menu"},
@@ -212,20 +213,16 @@ __attribute__((section(".text.start")))
 void main(int argc, char* argv[]){
     print("\nBrickOS Shell started\n");
     
-    print("Before sleep\n");
-    mssleep(5000);
-    print("After sleep\n");
-
-    unsigned char* line = (unsigned char*)malloc(SCREEN_COLUMNS + 1);
+    unsigned char* line = (unsigned char*)malloc(LINE_BUFFER_SIZE + 1);
     unsigned char* dir_buffer = (unsigned char*)malloc(100);
     command_t comd;
     while(1){
-        memset(line,0x0,SCREEN_COLUMNS + 1);
+        memset(line,0x0,LINE_BUFFER_SIZE + 1);
         print("|-(");
         getcwd(dir_buffer,100);
         print(dir_buffer);
         print(")-> ");
-        int read_bytes = read_input(line,SCREEN_COLUMNS);
+        int read_bytes = read_input(line,LINE_BUFFER_SIZE);
         line[read_bytes] = '\0';
         print("\n");
         
