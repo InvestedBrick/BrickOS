@@ -7,8 +7,8 @@
 #include "../../src/screen/font_bitmaps.h"
 #include <stdint.h>
 
-#define WINDOW_HEIGHT 350
-#define WINDOW_WIDTH 500
+#define WINDOW_HEIGHT 400
+#define WINDOW_WIDTH 650
 
 static uint32_t term_cursor_x = 0;
 static uint32_t term_cursor_y = 0;
@@ -84,7 +84,7 @@ void term_newline(){
     term_update_cursor();
 }
 
-void term_handle_input(uint8_t c){
+void term_handle_input(unsigned char c){
     switch (c) {
         case '\n':
             term_newline();
@@ -166,22 +166,26 @@ void main(){
 
     term_fb = request_window(WINDOW_WIDTH,WINDOW_HEIGHT);
     if (!term_fb) exit(2);
-    term_clear_screen(VBE_COLOR_GRAY);
+
+    term_clear_screen(VBE_COLOR_BLACK);
     commit_window();
 
     process_fds_init_t fds = {
         .stdin_filename = stdin,
         .stdout_filename = stdout,
-        .stderr_filename = stdout,
+        .stderr_filename = 0,
     };
     spawn("modules/shell.bin",0,&fds);
-
     unsigned char buf[128];
-    //TODO input sharing
+    //TODO: input sharing
     while(1){
         memset(buf,0,sizeof(buf));
         int n = read(stdout_fd, buf, sizeof(buf));
         if (n > 0){
+            debug("read bytes:");
+            debug(uint32_to_ascii((uint32_t)n));
+            buf[n] = 0;
+            debug(buf);
             for (int i = 0; i < n; i++) {
                 term_handle_input(buf[i]);
             }
