@@ -106,8 +106,8 @@ void handle_window_request(framebuffer_t* fb_metadata,win_man_msg_t* msg){
     new_win->buffer_size = new_win->width * new_win->height * sizeof(uint32_t);
     new_win->next = 0;
     new_win->z = find_largest_z() + 1;
-    new_win->origin_x = (fb_metadata->width / 2) - 50;
-    new_win->origin_y = (fb_metadata->height / 2) - 50;
+    new_win->origin_x = (fb_metadata->width / 5);
+    new_win->origin_y = (fb_metadata->height / 5);
     unsigned char* pid_str = uint32_to_ascii(new_win->owner_pid);
     uint32_t filename_len = sizeof("win_") + strlen(pid_str);
     unsigned char* backing_filename = (unsigned char*)malloc(filename_len);
