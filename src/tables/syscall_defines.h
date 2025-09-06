@@ -4,6 +4,7 @@
 
 #include <stdint.h>
 
+#define SYS_DEBUG 0x0 
 #define SYS_EXIT 0x1
 #define SYS_READ 0x2
 #define SYS_WRITE 0x3
