@@ -185,4 +185,6 @@ int mknod(unsigned char* filename, uint32_t type);
  * @return The pid
  */
 int getpid();
+
+void debug(unsigned char* msg);
 #endif
