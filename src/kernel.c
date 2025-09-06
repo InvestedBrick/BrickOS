@@ -34,6 +34,11 @@ uint32_t calc_phys_alloc_start(multiboot_info_t* boot_info){
     return (highest_mod_end + 0xfff) & ~ 0xfff;
 }
 
+void setup_kernel_fds(){
+    global_kernel_process.fd_table[FD_STDIN] = fs_open("dev/kb0",FILE_FLAG_NONE);
+    global_kernel_process.fd_table[FD_STDOUT] = &screen_file;
+}
+
 void create_kernel_process(){
     memset(global_kernel_process.fd_table,0,MAX_FDS);
 
@@ -44,9 +49,6 @@ void create_kernel_process(){
     global_kernel_process.priv_lvl = PRIV_ALUCARD; // the all-powerful
     global_kernel_process.process_name = kmalloc(sizeof("root"));
 
-    global_kernel_process.fd_table[FD_STDIN] = fs_open("dev/kb0",FILE_FLAG_NONE);
-    global_kernel_process.fd_table[FD_STDOUT] = &screen_file;
-    
     memcpy(global_kernel_process.process_name,"root",sizeof("root"));
     global_kernel_process.running = 1;
     
@@ -91,8 +93,8 @@ void kmain(multiboot_info_t* boot_info)
     log("Initialized the GDT");
     
     //Set up Interrupt descriptor table
-    init_idt();
     disable_interrupts(); // We dont want interrupts right now, since we cant correctly return to kernel land once we interrupt
+    init_idt();
     log("Initialited the IDT");
     
     //Initialize keyboard
@@ -105,7 +107,7 @@ void kmain(multiboot_info_t* boot_info)
 
     init_framebuffer(boot_info,SCREEN_PIXEL_BUFFER_START);
     log("Set up framebuffer");
-    clear_screen(VBE_COLOR_BLACK);
+    //clear_screen(VBE_COLOR_BLACK);
 
     // Set up kernel malloc
     init_kmalloc(MEMORY_PAGE_SIZE);
@@ -122,9 +124,6 @@ void kmain(multiboot_info_t* boot_info)
 
     init_user_process_vector();
     log("Initialized user process vector");
-    
-    create_kernel_process();
-    log("Set up kernel process");
 
     init_disk_driver();
     log("Initialized disk driver");
@@ -141,8 +140,13 @@ void kmain(multiboot_info_t* boot_info)
         log("Initialized /modules, /home, /dev and /tmp directories");
     }
 
-    initialize_devices();
+    create_kernel_process();
+    log("Set up kernel process");
+
+    initialize_devices(); // needs the global kernel process
     log("Initialized devices");
+
+    setup_kernel_fds(); // needs devices
 
     // save the modules binaries to "modules/"
     write_module_binaries_to_file();
@@ -152,12 +156,7 @@ void kmain(multiboot_info_t* boot_info)
     log("Initialized the scheduler");
     
     // Everything is now set up
-    
-    sys_write(&global_kernel_process,FD_STDOUT,"Hello BrickOS!\n",15);
-    sys_write(&global_kernel_process,FD_STDOUT,"Type 'help' for command list\n",29);
-    
-    // running modules
-    run("modules/shell.bin",nullptr,nullptr,PRIV_STD);
+    run("modules/terminal.bin",nullptr,nullptr,PRIV_STD);
 
     run("modules/win_man.bin",nullptr,nullptr,PRIV_SPECIAL); // window manager should open dev/kb0
 
@@ -167,6 +166,7 @@ void kmain(multiboot_info_t* boot_info)
     dispatched_user_mode = 1;
     enable_interrupts();
     
+    while(1){};
     panic("Not set up beyond here");
 
 }
