@@ -157,9 +157,9 @@ void init_dev_wm(device_t* dev){
 
 void dev_wm_collect_pipe(){
     unsigned char* buffer = (unsigned char*)kmalloc(MEMORY_PAGE_SIZE);
-    force_current_user_proc_as_kernel();
+    overwrite_current_proc(&global_kernel_process);
     int n_read = sys_read(&global_kernel_process,wm_pipes.wm_to_k_fd,buffer,MEMORY_PAGE_SIZE);
-    restore_current_user_proc_from_kernel();
+    restore_active_proc();
     if (n_read <= 0) {
         kfree(buffer); 
         return;
@@ -203,10 +203,10 @@ int dev_wm_ioctl(generic_file_t* file, uint32_t cmd,void* arg){
     case DEV_WM_REQUEST_WINDOW: {
         window_req_t* data = (window_req_t*)arg;
         uint32_t cmd_hdr[2] = {DEV_WM_REQUEST_WINDOW,curr_proc->process_id};
-        force_current_user_proc_as_kernel();
+        overwrite_current_proc(&global_kernel_process);
         sys_write(&global_kernel_process,wm_pipes.k_to_wm_fd,(unsigned char*)cmd_hdr,sizeof(cmd_hdr));
         sys_write(&global_kernel_process,wm_pipes.k_to_wm_fd,(unsigned char*)data,sizeof(window_req_t));
-        restore_current_user_proc_from_kernel();
+        restore_active_proc();
         return 0;
     }
     case DEV_WM_REQUEST_WINDOW_CREATION_ANSWER: {
@@ -235,9 +235,9 @@ int dev_wm_ioctl(generic_file_t* file, uint32_t cmd,void* arg){
     case DEV_WM_COMMIT_WINDOW: {
 
         uint32_t cmd_hdr[2] = {DEV_WM_COMMIT_WINDOW,curr_proc->process_id};
-        force_current_user_proc_as_kernel();
+        overwrite_current_proc(&global_kernel_process);
         sys_write(&global_kernel_process,wm_pipes.k_to_wm_fd,(unsigned char*)cmd_hdr,sizeof(cmd_hdr));
-        restore_current_user_proc_from_kernel();
+        restore_active_proc();
         return 0;
     }
     default:
