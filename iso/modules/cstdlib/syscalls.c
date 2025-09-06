@@ -176,3 +176,12 @@ int getpid(){
     );
     return ret;
 }
+
+void debug(unsigned char* msg){
+    asm volatile (
+        "int $0x30"
+        :
+        : "a"(SYS_DEBUG), "b"(msg)
+        : "memory"
+    );
+}
