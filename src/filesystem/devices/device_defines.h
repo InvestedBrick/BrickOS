@@ -11,7 +11,6 @@
 #define DEV_WM_COMMIT_WINDOW 0x03
 
 #define DEV_WM_ANS_TYPE_WIN_CREATION 0x04
-#define WINDOW_REQ_FLAG_DECORATION 0x02
 typedef struct {
     uint32_t phys_addr;
     uint32_t width;
