@@ -30,10 +30,11 @@ void term_write_char(uint8_t ch, uint32_t fg, uint32_t bg){
     const uint8_t map_idx = ch - ' ';
     uint32_t px = term_cursor_x * COLUMNS_PER_CHAR;
     uint32_t py = term_cursor_y * ROWS_PER_CHAR;
+
     for (uint32_t i = 0; i < ROWS_PER_CHAR; i++) {
         uint8_t row = char_bitmap_8x16[map_idx][i];
         for (uint8_t bit_idx = 0; bit_idx < 8; bit_idx++) {
-            term_write_pixel(px + (7 - bit_idx), py, row & (1 << bit_idx) ? fg : bg);
+            term_write_pixel(px + (7 - bit_idx), py, (row & (1 << bit_idx)) ? fg : bg);
         }
         py++;
     }
@@ -115,7 +116,7 @@ void write_pixel(unsigned char* fb,uint32_t x, uint32_t y, uint32_t color){
 unsigned char* request_window(uint32_t width,uint32_t height){
     int wm_fd = open("dev/wm",FILE_FLAG_NONE);
     window_req_t win_req;
-    win_req.flags = WINDOW_REQ_FLAG_DECORATION;
+    win_req.flags = 0;
     win_req.height = height;
     win_req.width = width;
     ioctl(wm_fd,DEV_WM_REQUEST_WINDOW,&win_req);
@@ -182,14 +183,12 @@ void main(){
         memset(buf,0,sizeof(buf));
         int n = read(stdout_fd, buf, sizeof(buf));
         if (n > 0){
-            debug("read bytes:");
-            debug(uint32_to_ascii((uint32_t)n));
-            buf[n] = 0;
-            debug(buf);
             for (int i = 0; i < n; i++) {
                 term_handle_input(buf[i]);
             }
             commit_window();
         }
     }
+
+    exit(1);
 }
