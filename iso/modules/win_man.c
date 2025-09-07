@@ -141,25 +141,47 @@ void handle_window_request(framebuffer_t* fb_metadata,win_man_msg_t* msg){
 }
 
 void handle_window_commit(framebuffer_t* fb_metadata,win_man_msg_t* msg){
+    debug("recieved commit");
     window_t* win = find_window_by_pid(msg->pid);
     if (!win) return;
 
     memcpy(win->comitted_buffer,win->live_buffer,win->buffer_size);
 }
 
-void write_window_to_fb(framebuffer_t* fb_metadata,window_t* win){
-    unsigned char* win_start = (fb0 + win->origin_y * fb_metadata->bytes_per_row + win->origin_x * screen_bytespp);
-    // cap so that we dont copy beyond framebuffer boundaries
+void write_window_to_fb(framebuffer_t* fb_metadata, window_t* win) {
+    unsigned char* win_start = (unsigned char*)((uint32_t)fb0 + win->origin_y * fb_metadata->bytes_per_row + win->origin_x * screen_bytespp);
+
     uint32_t width_copy_size = ((win->origin_x + win->width > fb_metadata->width) ? (fb_metadata->width - win->origin_x) : win->width) * screen_bytespp;
     uint32_t rows_to_copy = (win->origin_y + win->height > fb_metadata->height) ? (fb_metadata->height - win->origin_y) : win->height;
-    
+
+    if (!win_start || width_copy_size == 0 || rows_to_copy == 0) return;
+
+    if (win->origin_y > 0) {
+        unsigned char* top_border = win_start - fb_metadata->bytes_per_row;
+        memset(top_border, 0xAA, width_copy_size);
+    }
+
     uint32_t buffer_cpy_off = 0;
-    for(uint32_t i = 0; i < rows_to_copy;i++){
-        // no questions asked here
-        memcpy(win_start,&win->comitted_buffer[buffer_cpy_off],width_copy_size);
+    for (uint32_t i = 0; i < rows_to_copy; i++) {
+        if (win->origin_x > 0) {
+            memset(win_start - screen_bytespp, 0xAA, screen_bytespp);
+        }
+
+        memcpy(win_start, &win->comitted_buffer[buffer_cpy_off], width_copy_size);
+
+        if (win->origin_x + win->width < fb_metadata->width) {
+            memset(win_start + width_copy_size, 0xAA, screen_bytespp);
+        }
+
         win_start += fb_metadata->bytes_per_row;
+        buffer_cpy_off += width_copy_size;
+    }
+
+    if (win->origin_y + rows_to_copy < fb_metadata->height) {
+        memset(win_start, 0xAA, width_copy_size); // draw 1px horizontal line
     }
 }
+
 
 void composite_windows(framebuffer_t* fb_metadata){
     if (!head) return;
@@ -201,19 +223,16 @@ void main(){
         win_man_msg_t* msg = (win_man_msg_t*)buffer;
         switch (msg->cmd)
         {
-        case DEV_WM_REQUEST_WINDOW:{
-            handle_window_request(&fb_metadata,msg);
-            break;
-        }
-        case DEV_WM_COMMIT_WINDOW: {
-            debug("recieved commit");
-            handle_window_commit(&fb_metadata,msg);
-            break;
-        }
-
+            case DEV_WM_REQUEST_WINDOW:{
+                handle_window_request(&fb_metadata,msg);
+                break;
+            }
+            case DEV_WM_COMMIT_WINDOW: {
+                handle_window_commit(&fb_metadata,msg);
+                break;
+            }
         }
         composite_windows(&fb_metadata);
-        mssleep(17); // update at ~59 fps
     }
 
     exit(EXIT_SUCCESS);
