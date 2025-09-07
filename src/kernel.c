@@ -107,7 +107,6 @@ void kmain(multiboot_info_t* boot_info)
 
     init_framebuffer(boot_info,SCREEN_PIXEL_BUFFER_START);
     log("Set up framebuffer");
-    //clear_screen(VBE_COLOR_BLACK);
 
     // Set up kernel malloc
     init_kmalloc(MEMORY_PAGE_SIZE);
