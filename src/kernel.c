@@ -85,9 +85,6 @@ void kmain(multiboot_info_t* boot_info)
     serial_configure_modem(SERIAL_COM1_BASE);
     log("Set up serial port");
     
-    init_pit(DESIRED_STANDARD_FREQ);
-    log("Initialized the PIT");
-
     // Set up global descriptor table
     init_gdt();
     log("Initialized the GDT");
@@ -97,6 +94,8 @@ void kmain(multiboot_info_t* boot_info)
     init_idt();
     log("Initialited the IDT");
     
+    init_pit(DESIRED_STANDARD_FREQ);
+    log("Initialized the PIT");
     //Initialize keyboard
     init_keyboard();
     log("Initialized keyboard");
