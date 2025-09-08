@@ -16,18 +16,21 @@ static uint32_t term_cursor_x_max = WINDOW_WIDTH / COLUMNS_PER_CHAR;
 static uint32_t term_cursor_y_max = WINDOW_HEIGHT / ROWS_PER_CHAR;
 
 static unsigned char* term_fb = 0;
+uint32_t kb_fd;
 
 #define VBE_COLOR_BLACK 0xFF000000
 #define VBE_COLOR_GRAY  0xFFAAAAAA
 
 void term_write_pixel(uint32_t x, uint32_t y, uint32_t color){
     if (x >= WINDOW_WIDTH || y >= WINDOW_HEIGHT) return;
-    *(volatile uint32_t*)(term_fb + y * WINDOW_WIDTH * sizeof(uint32_t) + x * sizeof(uint32_t)) = color;
+    volatile uint32_t *fb32 = (volatile uint32_t*)term_fb;
+    fb32[y * WINDOW_WIDTH + x] = color;
 }
 
 void term_write_char(uint8_t ch, uint32_t fg, uint32_t bg){
     if (ch < ' ' || ch > '~') return;
     const uint8_t map_idx = ch - ' ';
+
     uint32_t px = term_cursor_x * COLUMNS_PER_CHAR;
     uint32_t py = term_cursor_y * ROWS_PER_CHAR;
 
@@ -39,8 +42,8 @@ void term_write_char(uint8_t ch, uint32_t fg, uint32_t bg){
         py++;
     }
     term_cursor_x++;
-    if (term_cursor_x > term_cursor_x_max) { term_cursor_x = 0; term_cursor_y++; }
-    if (term_cursor_y > term_cursor_y_max) term_cursor_y = term_cursor_y_max;
+    if (term_cursor_x >= term_cursor_x_max) { term_cursor_x = 0; term_cursor_y++; }
+    if (term_cursor_y >= term_cursor_y_max) term_cursor_y = term_cursor_y_max - 1;
 }
 
 void term_clear_screen(uint32_t color){
@@ -58,8 +61,8 @@ void term_move_cursor_one_back(){
         term_cursor_x--;
     } else {
         if (term_cursor_y != 0) {
-            term_cursor_x = term_cursor_x_max;
-            term_cursor_y = 0;
+            term_cursor_x = term_cursor_x_max - 1;
+            term_cursor_y--;
         }
     }
 }
@@ -87,34 +90,36 @@ void term_newline(){
 
 void term_handle_input(unsigned char c){
     switch (c) {
-        case '\n':
+        case '\n': {
             term_newline();
             break;
-        case '\e':
+        }
+        case '\e':{
             term_clear_screen(VBE_COLOR_BLACK);
             break;
-        case '\t':
+        }
+        case '\t':{
             term_cursor_x += 4;
             break;
-        case '\b':
+        }
+        case '\b': {
             term_erase_one_char();
             break;
-        default:
+        }
+        default: {
             term_write_char(c, VBE_COLOR_GRAY, VBE_COLOR_BLACK);
             break;
+        }
     }
-    if (term_cursor_x > term_cursor_x_max) { term_cursor_x = 0; term_cursor_y++; }
-    if (term_cursor_y > term_cursor_y_max) term_cursor_y = term_cursor_y_max;
+    if (term_cursor_x >= term_cursor_x_max) { term_cursor_x = 0; term_cursor_y++; }
+    if (term_cursor_y >= term_cursor_y_max) term_cursor_y = term_cursor_y_max - 1;
     term_update_cursor();
-}
-
-void write_pixel(unsigned char* fb,uint32_t x, uint32_t y, uint32_t color){
-
-    *(volatile uint32_t*)(fb + y * WINDOW_WIDTH * sizeof(uint32_t) + x * sizeof(uint32_t)) = color;
 }
 
 unsigned char* request_window(uint32_t width,uint32_t height){
     int wm_fd = open("dev/wm",FILE_FLAG_NONE);
+    chdir("tmp"); 
+    
     window_req_t win_req;
     win_req.flags = 0;
     win_req.height = height;
@@ -123,15 +128,18 @@ unsigned char* request_window(uint32_t width,uint32_t height){
 
     window_creation_wm_answer_t answer;
     while (ioctl(wm_fd,DEV_WM_REQUEST_WINDOW_CREATION_ANSWER,&answer) < 0){}
+    unsigned char* pid_str = uint32_to_ascii(getpid());
+    chdir("wm");
+    chdir(pid_str);
 
-    chdir("tmp");
     int backing_fd = open(answer.filename,FILE_FLAG_NONE);
-    
+    kb_fd = answer.kb_fd;
     unsigned char* fb = (unsigned char*)mmap(answer.width * answer.height * sizeof(uint32_t),PROT_READ | PROT_WRITE, MAP_SHARED,backing_fd,0);
-
+    
     close(backing_fd);
     rmfile(answer.filename); // dispose of the connector
-    chdir("..");
+    chdir("../../..");
+    free(pid_str);
 
     close(wm_fd);
 
@@ -158,18 +166,22 @@ void main(){
     memcpy(stdout,"tmp/stdout_",sizeof("tmp/stdout_") - 1);
     memcpy(&stdout[sizeof("tmp/stdout_") - 1],pid_str,pid_strlen + 1);
 
-
-    mknod(stdin,TYPE_PIPE);
-    mknod(stdout,TYPE_PIPE);
-
-    int stdin_fd = open(stdin,FILE_FLAG_WRITE);
-    int stdout_fd = open(stdout,FILE_FLAG_READ);
-
     term_fb = request_window(WINDOW_WIDTH,WINDOW_HEIGHT);
     if (!term_fb) exit(2);
 
     term_clear_screen(VBE_COLOR_BLACK);
     commit_window();
+
+    mknod_params_t params = {
+        .type = TYPE_PIPE,
+        .flags = 0,
+    };
+
+    mknod(stdin,&params);
+    mknod(stdout,&params);
+
+    int stdin_fd = open(stdin,FILE_FLAG_WRITE);
+    int stdout_fd = open(stdout,FILE_FLAG_READ);
 
     process_fds_init_t fds = {
         .stdin_filename = stdin,
@@ -177,10 +189,14 @@ void main(){
         .stderr_filename = 0,
     };
     spawn("modules/shell.bin",0,&fds);
-    unsigned char buf[128];
-    //TODO: input sharing
+    unsigned char buf[256];
+
     while(1){
-        memset(buf,0,sizeof(buf));
+        int kb_n_bytes = read(kb_fd,buf,sizeof(buf));
+
+        if (kb_n_bytes > 0) {
+            write(stdin_fd,buf,kb_n_bytes);
+        }
         int n = read(stdout_fd, buf, sizeof(buf));
         if (n > 0){
             for (int i = 0; i < n; i++) {
@@ -188,6 +204,7 @@ void main(){
             }
             commit_window();
         }
+
     }
 
     exit(1);
