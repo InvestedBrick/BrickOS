@@ -82,8 +82,8 @@ void free_string_arr(string_array_t* str_arr){
 }
 
 uint32_t find_char(unsigned char* str,unsigned char c){
-    for(uint32_t i = 0; str[i] != '\0';i++){
-        if (str[i] == c) return i;
+    for(int i = 0; str[i] != '\0';i++){
+        if (str[i] == c) return (uint32_t)i;
     }
     return (uint32_t)-1;
 }
@@ -91,8 +91,8 @@ uint32_t find_char(unsigned char* str,unsigned char c){
 uint32_t rfind_char(unsigned char* str, unsigned char c){
     uint32_t str_len = strlen(str);
 
-    for (unsigned int i = str_len - 1; i >= 0; i--){
-        if (str[i] == c) return i;
+    for (int i = str_len - 1; i >= 0; i--){
+        if (str[i] == c) return (uint32_t)i;
     }
 
     return (uint32_t)-1;
