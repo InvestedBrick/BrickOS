@@ -4,10 +4,10 @@ plan:
     [X] Graphics mode switch
     [X] correctly cross-compiling the kernel
     [X] process commandline args
+    [X] window manager (needs to be optimized)
     [ ] add correct shutdown procedure
     [ ] improve scheduler + spinlocks etc
     [ ] mouse driver
-    [ ] window manager
     [ ] running more processes
     [ ] dynamic linked code
     [ ] text editor
