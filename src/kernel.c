@@ -158,6 +158,11 @@ void kmain(multiboot_info_t* boot_info)
 
     run("modules/win_man.bin",nullptr,nullptr,PRIV_SPECIAL); // window manager should open dev/kb0
 
+
+    sys_chdir("tmp");
+    create_file(active_dir,"wm",strlen("wm"),FS_TYPE_DIR,FS_FILE_PERM_NONE,PRIV_STD);
+    sys_chdir("..");
+    
     setup_timer_switch();
     // need to manually enable since run just restores whatever was before that
     log("Shell setup complete");
