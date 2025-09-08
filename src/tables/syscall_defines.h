@@ -37,4 +37,13 @@
 
 #define MAP_FD_NONE (uint32_t)-1
 
+#define MNODE_FLAG_PID_DEFINED_PIPE 0x1 
+
+typedef struct{
+    uint8_t type;
+    uint8_t flags;
+    uint32_t read_pid;
+    uint32_t write_pid;
+}mknod_params_t;
+
 #endif
