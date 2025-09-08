@@ -4,7 +4,7 @@
 
 #include "../processes/user_process.h"
 #include "interrupts.h"
-
+#include "syscall_defines.h"
 #include "../filesystem/filesystem.h"
 
 int sys_write(user_process_t* p,uint32_t fd, unsigned char* buf, uint32_t size);
@@ -29,7 +29,7 @@ int sys_chdir(unsigned char* dir_name);
 
 int sys_rmfile(unsigned char* filename);
 
-int sys_mknod(unsigned char* filename,uint32_t type);
+int sys_mknod(unsigned char* filename,mknod_params_t* params);
 
 int sys_ioctl(user_process_t* p, uint32_t fd,uint32_t cmd, void* arg);
 
