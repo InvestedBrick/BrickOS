@@ -29,6 +29,7 @@ typedef struct {
 typedef struct {
     uint32_t width;
     uint32_t height;
+    uint32_t kb_fd; // the file descriptor for the keyboard input
     uint32_t filename_len;
     unsigned char filename[];
 }window_creation_wm_answer_t;
@@ -41,6 +42,7 @@ typedef struct {
     uint32_t pid; // the pid of the recieving user proc
     uint32_t width; // there may be some adjustments
     uint32_t height;
+    uint32_t kb_fd; 
     uint32_t filename_len;
     unsigned char filename[];
 }window_creation_ans_t;
