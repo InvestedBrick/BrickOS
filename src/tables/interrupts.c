@@ -101,7 +101,7 @@ int handle_software_interrupt(interrupt_stack_frame_t* stack_frame){
     case SYS_RMFILE:
         return sys_rmfile((unsigned char*)stack_frame->ebx);
     case SYS_MKNOD:
-        return sys_mknod((unsigned char*)stack_frame->ebx,stack_frame->ecx);
+        return sys_mknod((unsigned char*)stack_frame->ebx,(mknod_params_t*)stack_frame->ecx);
     case SYS_IOCTL:
         return sys_ioctl(get_current_user_process(),stack_frame->ebx,stack_frame->ecx,(void*)stack_frame->edx);
     case SYS_MSSLEEP:
