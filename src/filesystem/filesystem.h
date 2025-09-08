@@ -66,14 +66,14 @@ typedef struct{
 
 extern uint8_t first_time_fs_init;
 
-// Padding so that the size is 64 and they are sector aligned
+// Padding so that the size is 64 bytes and they are sector aligned
 typedef struct {
     uint32_t id;
     uint32_t size;
-    uint8_t type;
-    uint8_t perms;
-    uint8_t priv_lvl;
-    uint8_t unused_flag_three;
+    uint8_t  type;
+    uint8_t  perms; 
+    uint8_t  priv_lvl;
+    uint8_t  unused_flag_three;
     uint32_t indirect_sector;
     uint32_t data_sectors[NUM_DATA_SECTORS_PER_FILE];
 
