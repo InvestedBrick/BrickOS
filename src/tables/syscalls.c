@@ -214,13 +214,13 @@ int sys_rmfile(unsigned char* filename){
 
 }
 
-int sys_mknod(unsigned char* filename,uint32_t type){
+int sys_mknod(unsigned char* filename,mknod_params_t* params){
+    if (params->type != FS_TYPE_PIPE) return SYSCALL_FAIL; // add other types later
+    
     if (get_inode_by_path(filename)) return SYSCALL_FAIL;
 
-    if (type != FS_TYPE_PIPE) return SYSCALL_FAIL; // add other types later
-
     inode_t* creation_dir = active_dir;
-
+    
     string_array_t* str_arr = split_filepath(filename);
 
     unsigned char* file_name;
@@ -236,13 +236,30 @@ int sys_mknod(unsigned char* filename,uint32_t type){
     }else{
         file_name = str_arr->strings[0].str;
     }
-
-    if (create_file(creation_dir,file_name,strlen(file_name),type,FS_FILE_PERM_NONE,PRIV_STD) < 0) {
-        free_string_arr(str_arr);
+    
+    if (create_file(creation_dir,file_name,strlen(file_name),params->type,FS_FILE_PERM_NONE,PRIV_STD) < 0) {
         return SYSCALL_FAIL;
     }
+    if (params->flags & MNODE_FLAG_PID_DEFINED_PIPE){
+        user_process_t* write_proc = get_user_process_by_pid(params->write_pid);
+        user_process_t* read_proc = get_user_process_by_pid(params->read_pid);
+        
+        if (!write_proc || !read_proc) {
+            delete_file_by_inode(creation_dir,get_inode_by_path(file_name));
+            free_string_arr(str_arr);
+            return SYSCALL_FAIL;
+        }
 
+        overwrite_current_proc(write_proc); 
+        params->write_pid = sys_open(write_proc,filename,FILE_FLAG_WRITE);
+
+        overwrite_current_proc(read_proc);
+        params->read_pid = sys_open(read_proc,filename,FILE_FLAG_READ);
+        restore_active_proc();
+
+    }
     free_string_arr(str_arr);
+
 
     return SYSCALL_SUCCESS;
 }
