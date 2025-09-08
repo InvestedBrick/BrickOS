@@ -172,13 +172,19 @@ int spawn(unsigned char* filename, unsigned char* argv[],process_fds_init_t* sta
  * mknod:
  * Creates a file system node (currently just for making pipes)
  * @param filename The name of the newly created file
- * @param type currently just FS_TYPE_PIPE
+ * @param params Parameters for the new node, including the type, flags (MNODE_FLAG_*), various data depending on flags
+ * 
+ * for MNODE_FLAG_PID_DEFINED_PIPE:
+ * 
+ *         read_pid: The process id of the process which should open the pipe as the reader ( will be replaced by the reader fd when returning)
+ *   
+ *         write_pid: The process id of the process which should open the pipe as the writer ( will be replaced by the writer fd when returning)
  * 
  * @return SYSCALL_FAIL if something failed, 
  * 
  *  else SYSCALL_SUCCESS
  */
-int mknod(unsigned char* filename, uint32_t type);
+int mknod(unsigned char* filename, mknod_params_t* params);
 /**
  * getpid:
  * Returns the process id of the calling process
