@@ -139,8 +139,12 @@ void init_dev_wm(device_t* dev){
     init_vector(&wm_answers);
     wm_pipes_t* pipes = (wm_pipes_t*)dev->gen_file->generic_data;
     // set up two pipes for wm <-> kernel communication
-    if (sys_mknod("tmp/wm_to_k.tmp",TYPE_PIPE) < 0) error("Failed to create tmp/wm_to_k.tmp");
-    if (sys_mknod("tmp/k_to_wm.tmp",TYPE_PIPE) < 0) error("Failed to create tmp/k_to_wm.tmp");
+    mknod_params_t params = {
+        .type = TYPE_PIPE,
+        .flags = 0,
+    };
+    if (sys_mknod("tmp/wm_to_k.tmp",&params) < 0) error("Failed to create tmp/wm_to_k.tmp");
+    if (sys_mknod("tmp/k_to_wm.tmp",&params) < 0) error("Failed to create tmp/k_to_wm.tmp");
 
     change_file_priviledge_level("tmp/wm_to_k.tmp",PRIV_SPECIAL);
     change_file_priviledge_level("tmp/k_to_wm.tmp",PRIV_SPECIAL);
@@ -151,8 +155,6 @@ void init_dev_wm(device_t* dev){
     if (pipes->wm_to_k_fd < 0) error("Failed to open tmp/wm_to_k.tmp");
     if (pipes->k_to_wm_fd < 0) error("Failed to open tmp/k_to_wm.tmp");
 
-    //unsigned char msg[] = "\nHello from kernel to window manager\n\n";
-    //sys_write(&global_kernel_process,pipes->k_to_wm_fd,msg,sizeof(msg));
 }
 
 void dev_wm_collect_pipe(){
@@ -220,6 +222,7 @@ int dev_wm_ioctl(generic_file_t* file, uint32_t cmd,void* arg){
                 window_creation_ans_t* data = (window_creation_ans_t*)wm_answers.data[i]; // I really need to rename these structs
                 answer->height = data->height;
                 answer->width = data->width;
+                answer->kb_fd = data->kb_fd;
                 answer->filename_len = data->filename_len;
                 memcpy(answer->filename,data->filename,data->filename_len);
 
