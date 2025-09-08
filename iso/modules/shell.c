@@ -211,7 +211,7 @@ command_t parse_line(unsigned char* line,uint32_t line_length){
 
 __attribute__((section(".text.start")))
 void main(int argc, char* argv[]){
-    print("\nBrickOS Shell started\n");
+    print("BrickOS Shell started\n");
     
     unsigned char* line = (unsigned char*)malloc(LINE_BUFFER_SIZE + 1);
     unsigned char* dir_buffer = (unsigned char*)malloc(100);
