@@ -152,6 +152,12 @@ void commit_window(){
     close(wm_fd);
 }
 
+void delete_window(){
+    int wm_fd = open("dev/wm",FILE_FLAG_NONE);
+    ioctl(wm_fd,DEV_WM_PROC_SHUTDOWN,0);
+    close(wm_fd);
+}
+
 __attribute__((section(".text.start")))
 void main(){
     int pid = getpid();
@@ -165,6 +171,7 @@ void main(){
     unsigned char* stdout = (unsigned char*)malloc(sizeof("tmp/stdout_") + pid_strlen);
     memcpy(stdout,"tmp/stdout_",sizeof("tmp/stdout_") - 1);
     memcpy(&stdout[sizeof("tmp/stdout_") - 1],pid_str,pid_strlen + 1);
+    free(pid_str);
 
     term_fb = request_window(WINDOW_WIDTH,WINDOW_HEIGHT);
     if (!term_fb) exit(2);
@@ -193,11 +200,17 @@ void main(){
 
     while(1){
         int kb_n_bytes = read(kb_fd,buf,sizeof(buf));
-
+        
         if (kb_n_bytes > 0) {
             write(stdin_fd,buf,kb_n_bytes);
         }
         int n = read(stdout_fd, buf, sizeof(buf));
+        if (n < 0) {
+            // shell exited
+            delete_window();
+            // all the pipes get closed when exiting
+            break;
+        }
         if (n > 0){
             for (int i = 0; i < n; i++) {
                 term_handle_input(buf[i]);
@@ -207,5 +220,5 @@ void main(){
 
     }
 
-    exit(1);
+    exit(0);
 }
