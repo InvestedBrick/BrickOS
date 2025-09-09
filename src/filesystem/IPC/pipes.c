@@ -84,11 +84,13 @@ int pipe_close(generic_file_t* file){
     if (pipe->closed){
         // now both ends have closed the pipe
         inode_t* inode = get_inode_by_id(pipe->inode_id);
-        if (!inode) return 0; // inode might have already been deleted manually / by the win man
         
-        inode_t* parent = get_parent_inode(inode);
-        
-        delete_file_by_inode(parent,inode);
+        if (inode){
+            // inode might have already been deleted by a process
+            inode_t* parent = get_parent_inode(inode);
+            
+            delete_file_by_inode(parent,inode);
+        }
         
         kfree(pipe->buffer);
 
