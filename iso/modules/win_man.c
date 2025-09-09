@@ -27,10 +27,22 @@ typedef struct window {
 
 window_t* head = 0; 
 window_t* focused_window = 0;
+
 window_t* find_window_by_z(uint32_t z){
     window_t* current = head;
     while(current){
         if (current->z == z) return current;
+        current = current->next;
+    }   
+    return 0;
+}
+
+window_t* get_prev_window(window_t* win){
+    window_t* current = head;
+    if (current == win) return 0; 
+
+    while(current){
+        if (current->next == win) return current;
         current = current->next;
     }   
     return 0;
@@ -218,6 +230,30 @@ void composite_windows(framebuffer_t* fb_metadata){
     window_dirty = 0;
 }
 
+void handle_process_shudown(uint32_t pid){
+    window_t* win = find_window_by_pid(pid);
+
+    if (!win) return;
+
+    unsigned char* pid_str = uint32_to_ascii(pid);
+
+    free(win->comitted_buffer);
+    chdir(pid_str);
+    close(win->kb_pipe_fd);
+    //rmfile("kb_pipe"); pipe closes automatically when the user proc closes the pipe
+    chdir("..");
+
+    rmfile(pid_str);
+
+    //TODO: munmap
+
+    window_t* prev = get_prev_window(win);
+    prev->next = win->next;
+    free(win);
+    free(pid_str);
+
+}
+
 __attribute__((section(".text.start")))
 void main(){
     int fb0_fd = open("dev/fb0",FILE_FLAG_NONE);
@@ -272,6 +308,12 @@ void main(){
                     handle_window_commit(&fb_metadata,msg);
                     break;
                 }
+                case DEV_WM_PROC_SHUTDOWN: {
+                    handle_process_shudown(msg->pid);
+                    break;
+                }
+                default: 
+                    break;
             }
         }
         composite_windows(&fb_metadata);
