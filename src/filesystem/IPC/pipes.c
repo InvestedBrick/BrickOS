@@ -29,11 +29,11 @@ void init_pipe_vec(){
 int pipe_read(generic_file_t* file, unsigned char* buffer,uint32_t size){
     pipe_t* pipe = (pipe_t*)file->generic_data;
 
-    if (pipe->closed) return 0;
+    if (pipe->closed) return -1;
     
     user_process_t* proc = get_current_user_process();
 
-    if (pipe->read_id != proc->process_id) return 0;
+    if (pipe->read_id != proc->process_id) return -1;
 
     uint32_t bytes_read = 0;
 
@@ -54,11 +54,11 @@ int pipe_read(generic_file_t* file, unsigned char* buffer,uint32_t size){
 int pipe_write(generic_file_t* file, unsigned char* buffer, uint32_t size){
     pipe_t* pipe = (pipe_t*)file->generic_data;
 
-    if (pipe->closed) return 0;
+    if (pipe->closed) return -1;
 
     user_process_t* proc = get_current_user_process();
 
-    if (pipe->write_id != proc->process_id) return 0;
+    if (pipe->write_id != proc->process_id) return -1;
 
     uint32_t bytes_written = 0;
 
@@ -84,6 +84,7 @@ int pipe_close(generic_file_t* file){
     if (pipe->closed){
         // now both ends have closed the pipe
         inode_t* inode = get_inode_by_id(pipe->inode_id);
+        if (!inode) return 0; // inode might have already been deleted manually / by the win man
         
         inode_t* parent = get_parent_inode(inode);
         
