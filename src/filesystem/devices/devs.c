@@ -243,6 +243,13 @@ int dev_wm_ioctl(generic_file_t* file, uint32_t cmd,void* arg){
         restore_active_proc();
         return 0;
     }
+    case DEV_WM_PROC_SHUTDOWN: {
+        uint32_t cmd_hdr[2] = {DEV_WM_PROC_SHUTDOWN,curr_proc->process_id};
+        overwrite_current_proc(&global_kernel_process);
+        sys_write(&global_kernel_process,wm_pipes.k_to_wm_fd,(unsigned char*)cmd_hdr,sizeof(cmd_hdr));
+        restore_active_proc();
+        return 0;
+    }
     default:
         break;
     }
