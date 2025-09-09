@@ -14,6 +14,7 @@
 #include <stdbool.h>
 
 //TODO: provide actually helpful error messages
+//TODO: add munmap
 int sys_write(user_process_t* p,uint32_t fd, unsigned char* buf, uint32_t size){
     if (fd >= MAX_FDS) return SYSCALL_FAIL;
 
