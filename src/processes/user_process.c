@@ -16,6 +16,7 @@
 #include "../filesystem/file_operations.h"
 #include "../kernel_header.h"
 #include "../tables/syscall_defines.h"
+#include "../filesystem/devices/devs.h"
 vector_t user_process_vector;
 static uint8_t pid_used[MAX_PIDS] = {0};
 static uint32_t next_pid = 1;
@@ -190,9 +191,10 @@ uint32_t create_user_process(unsigned char* binary, uint32_t size,unsigned char*
 
     overwrite_current_proc(process);
     if (!start_fds){
+        // it is important that these are individua files to avoid double frees when exiting
         stdin = fs_open("dev/null",FILE_FLAG_NONE);
-        stdout = stdin;
-        stderr = stdin;
+        stdout = fs_open("dev/null",FILE_FLAG_NONE);
+        stderr = fs_open("dev/null",FILE_FLAG_NONE);  
     }else{
         //stderr should be 0 for now
         stdin = fs_open(start_fds->stdin_filename,FILE_FLAG_READ);
@@ -303,7 +305,13 @@ int kill_user_process(uint32_t pid){
             break;
         }
     }
-    
+
+    for (uint32_t i = 0; i < MAX_FDS;i++){
+        if(!process->fd_table[i]) break;
+
+        sys_close(process,i);
+    }
+
     virt_mem_area_t* vma = process->vm_areas;
     virt_mem_area_t* prev_vma;
     while(vma){
