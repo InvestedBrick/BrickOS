@@ -3,7 +3,9 @@
 #include "screen/screen.h"
 #include "tables/gdt.h"
 #include "tables/interrupts.h"
-#include "drivers/keyboard/keyboard.h"
+#include "drivers/PS2/keyboard/keyboard.h"
+#include "drivers/PS2/mouse/mouse.h"
+#include "drivers/PS2/ps2_controller.h"
 #include "multiboot.h"
 #include "memory/memory.h"
 #include "memory/kmalloc.h"
@@ -36,7 +38,7 @@ uint32_t calc_phys_alloc_start(multiboot_info_t* boot_info){
 
 void setup_kernel_fds(){
     global_kernel_process.fd_table[FD_STDIN] = fs_open("dev/kb0",FILE_FLAG_NONE);
-    global_kernel_process.fd_table[FD_STDOUT] = &screen_file;
+    global_kernel_process.fd_table[FD_STDOUT] = fs_open("dev/null",FILE_FLAG_NONE);
 }
 
 void create_kernel_process(){
@@ -89,17 +91,23 @@ void kmain(multiboot_info_t* boot_info)
     init_gdt();
     log("Initialized the GDT");
     
-    //Set up Interrupt descriptor table
-    disable_interrupts(); // We dont want interrupts right now, since we cant correctly return to kernel land once we interrupt
-    init_idt();
-    log("Initialited the IDT");
-    
     init_pit(DESIRED_STANDARD_FREQ);
     log("Initialized the PIT");
-    //Initialize keyboard
+    disable_interrupts(); // We dont want interrupts right now, since we cant correctly return to kernel land once we interrupt
+
+    init_and_test_I8042_controller();
+    log("Initialized the I8042 PS/2 controller");
+
     init_keyboard();
     log("Initialized keyboard");
     
+    init_mouse();
+    log("Initialized the mouse");
+    
+    //Set up Interrupt descriptor table
+    init_idt();
+    log("Initialited the IDT");
+
     uint32_t physical_alloc_start = calc_phys_alloc_start(boot_info);
     init_memory(physical_alloc_start ,boot_info->mem_upper * 1024);
     log("Initialized paged memory");
@@ -107,7 +115,6 @@ void kmain(multiboot_info_t* boot_info)
     init_framebuffer(boot_info,SCREEN_PIXEL_BUFFER_START);
     log("Set up framebuffer");
 
-    // Set up kernel malloc
     init_kmalloc(MEMORY_PAGE_SIZE);
     log("Initialized kmalloc");
     
@@ -164,7 +171,6 @@ void kmain(multiboot_info_t* boot_info)
     dispatched_user_mode = 1;
     enable_interrupts();
     
-    while(1){};
     panic("Not set up beyond here");
 
 }
