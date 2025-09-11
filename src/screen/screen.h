@@ -40,9 +40,7 @@
 extern uint16_t g_cursor_pos;
 extern generic_file_t screen_file;
 
-void print_bitmap();
 
-uint32_t rgb_to_color(uint8_t r, uint8_t g, uint8_t b);
 /**
  * init_framebuffer:
  * Initializes the framebuffer
@@ -50,35 +48,5 @@ uint32_t rgb_to_color(uint8_t r, uint8_t g, uint8_t b);
  * @param fb_start The start of the buffer in virtual memory
  */
 void init_framebuffer(multiboot_info_t* mboot,uint32_t fb_start);
-
-/**
- * write_pixel:
- * Writes a pixel with a given color to the screen
- * 
- * @param x The x coordinate of the pixel
- * @param y The y coordinate of the pixel
- * @param color The color of the pixel (ARGB format)
- */
-void write_pixel(uint32_t x, uint32_t y, uint32_t color);
-
-
-/**
-* clear_screen:
-* Writes a color to every pixel of the screen
-* @param color The color to clear with
-*
-*/
-void clear_screen(uint32_t color);
-
-/**
- * newline: 
- * Prints a newline
- */
-void newline();
-/**
- * erase_one_char: 
- * Erases one character from the screen
- */
-void erase_one_char();
 
 #endif
