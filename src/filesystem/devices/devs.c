@@ -9,7 +9,7 @@
 #include "../../memory/kmalloc.h"
 #include "../../memory/memory.h"
 #include "../../processes/user_process.h"
-#include "../../drivers/keyboard/keyboard.h"
+#include "../../drivers/PS2/keyboard/keyboard.h"
 #include "device_defines.h"
 #include <stdint.h>
 
