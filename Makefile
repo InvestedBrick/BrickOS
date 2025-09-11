@@ -9,7 +9,9 @@ C_SOURCES = \
     src/*.c \
     src/io/*.c \
     src/tables/*.c \
-    src/drivers/keyboard/*.c \
+    src/drivers/PS2/*.c \
+    src/drivers/PS2/keyboard/*.c \
+    src/drivers/PS2/mouse/*.c \
     src/drivers/timer/*.c \
     src/memory/*.c \
     src/processes/*.c \
