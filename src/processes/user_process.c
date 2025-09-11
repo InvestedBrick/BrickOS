@@ -10,7 +10,7 @@
 #include "../tables/interrupts.h"
 #include "../tables/syscalls.h"
 #include "../filesystem/vfs/vfs.h"
-#include "../drivers/keyboard/keyboard.h"
+#include "../drivers/PS2/keyboard/keyboard.h"
 #include "../screen/screen.h"
 #include "../filesystem/filesystem.h"
 #include "../filesystem/file_operations.h"
