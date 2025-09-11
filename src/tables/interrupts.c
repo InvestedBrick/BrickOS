@@ -1,6 +1,8 @@
 #include "interrupts.h"
 #include "../io/log.h"
-#include "../drivers/keyboard/keyboard.h"
+#include "../drivers/PS2/keyboard/keyboard.h"
+#include "../drivers/PS2/mouse/mouse.h"
+#include "../drivers/PS2/ps2_controller.h"
 #include "../processes/scheduler.h"
 #include "../memory/memory.h"
 #include "syscalls.h"
@@ -24,6 +26,7 @@ void setup_timer_switch(){
 }
 
 void enable_interrupts(){
+    ps2_flush_output();
     asm volatile ("sti");
     interrupts_enabled = 1;
 }
@@ -188,7 +191,13 @@ void interrupt_handler(interrupt_stack_frame_t* stack_frame) {
 
     switch (stack_frame->interrupt_number) {
         case INT_KEYBOARD:
+            log("Keyboard interrupt");
             handle_keyboard_interrupt();
+            acknowledge_PIC(stack_frame->interrupt_number);
+            break;
+        case INT_MOUSE:
+            log("Mouse interrupt");
+            //handle_mouse_interrupt();
             acknowledge_PIC(stack_frame->interrupt_number);
             break;
         case INT_TIMER:
@@ -202,17 +211,15 @@ void interrupt_handler(interrupt_stack_frame_t* stack_frame) {
             }
             acknowledge_PIC(stack_frame->interrupt_number);
             break;
-        case INT_SOFTWARE: {
+        case INT_SOFTWARE: 
             stack_frame->eax = handle_software_interrupt(stack_frame);
             break;
-        }
-        case INT_PAGE_FAULT:{
+        case INT_PAGE_FAULT:
 
             uint32_t cr2;
             asm volatile ("mov %%cr2, %0" : "=r"(cr2));
             page_fault_handler(get_current_user_process(),cr2,stack_frame);
             break;
-        }
         default:
             break;
     }
@@ -244,9 +251,8 @@ void acknowledge_PIC(uint32_t interrupt){
         return;
     }
 
-    if(interrupt < PIC2_START_INTERRUPT){
-        outb(PIC1,PIC_EOI);
-    }else{
-        outb(PIC2,PIC_EOI);
-    }
+    if (interrupt >= PIC2_START_INTERRUPT)
+        outb(PIC2_COMMAND,PIC_EOI);
+
+    outb(PIC1_COMMAND,PIC_EOI);
 }
