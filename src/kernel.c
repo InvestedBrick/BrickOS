@@ -1,24 +1,24 @@
 #include "io/io.h"
 #include "io/log.h"
-#include "screen/screen.h"
-#include "tables/gdt.h"
-#include "tables/interrupts.h"
-#include "drivers/PS2/keyboard/keyboard.h"
-#include "drivers/PS2/mouse/mouse.h"
-#include "drivers/PS2/ps2_controller.h"
 #include "multiboot.h"
+#include "tables/gdt.h"
 #include "memory/memory.h"
+#include "screen/screen.h"
 #include "memory/kmalloc.h"
+#include "tables/syscalls.h"
+#include "drivers/timer/pit.h"
+#include "tables/interrupts.h"
+#include "drivers/ATA_PIO/ata.h"
+#include "processes/scheduler.h"
+#include "filesystem/IPC/pipes.h"
+#include "filesystem/filesystem.h"
 #include "processes/user_process.h"
 #include "modules/module_handler.h"
-#include "drivers/ATA_PIO/ata.h"
-#include "filesystem/filesystem.h"
-#include "filesystem/file_operations.h"
 #include "filesystem/devices/devs.h"
-#include "filesystem/IPC/pipes.h"
-#include "drivers/timer/pit.h"
-#include "processes/scheduler.h"
-#include "tables/syscalls.h"
+#include "drivers/PS2/mouse/mouse.h"
+#include "filesystem/file_operations.h"
+#include "drivers/PS2/ps2_controller.h"
+#include "drivers/PS2/keyboard/keyboard.h"
 user_process_t global_kernel_process;
 extern uint32_t stack_top;
 uint8_t dispatched_user_mode = 0;
@@ -97,16 +97,16 @@ void kmain(multiboot_info_t* boot_info)
 
     init_and_test_I8042_controller();
     log("Initialized the I8042 PS/2 controller");
+    
+    //Set up Interrupt descriptor table
+    init_idt();
+    log("Initialited the IDT");
 
     init_keyboard();
     log("Initialized keyboard");
     
     init_mouse();
     log("Initialized the mouse");
-    
-    //Set up Interrupt descriptor table
-    init_idt();
-    log("Initialited the IDT");
 
     uint32_t physical_alloc_start = calc_phys_alloc_start(boot_info);
     init_memory(physical_alloc_start ,boot_info->mem_upper * 1024);
