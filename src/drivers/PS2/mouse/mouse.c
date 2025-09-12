@@ -4,15 +4,28 @@
 #include "../../../io/log.h"
 #include <stdint.h>
 
+void mouse_wait(uint8_t w_type) {
+    uint32_t time_out = MOUSE_WAIT_TIMEOUT;
+    if (w_type == MOUSE_WAIT_READ) {
+        while(--time_out)
+            if (inb(PS2_STATUS_PORT) & 0x1) return;
+        return;
+    }else {
+        while(--time_out)
+            if (!(inb(PS2_STATUS_PORT) & 0x2)) return;
+        return; 
+    }
+}
+
 void mouse_write(uint8_t byte){
-    await_write_signal();
+    mouse_wait(MOUSE_WAIT_WRITE);
     outb(PS2_CMD_PORT,PS2_WRITE_NEXT_BYTE_TO_SECOND_PORT);
-    await_write_signal();
+    mouse_wait(MOUSE_WAIT_WRITE);
     outb(PS2_DATA_PORT,byte);
 }
 
 uint8_t mouse_read(){
-    await_read_signal();
+    mouse_wait(MOUSE_WAIT_READ);
     uint8_t byte = inb(PS2_DATA_PORT);
     return byte;
 }
@@ -25,11 +38,10 @@ void await_ack(){
 }
 
 void init_mouse(){
-
-    mouse_write(MOUSE_SET_DEFAULTS);
+    mouse_write(MOUSE_RESET);
     await_ack();
 
-    mouse_write(MOUSE_ENABLE_DATA_REPORT);
+    mouse_write(MOUSE_SET_DEFAULTS);
     await_ack();
 
     mouse_write(MOUSE_SET_SAMPLE_RATE);
@@ -37,7 +49,18 @@ void init_mouse(){
     mouse_write(MOUSE_SAMPLE_RATE);
     await_ack();
 
+    mouse_write(MOUSE_ENABLE_DATA_REPORT);
+    await_ack();
+
+    await_write_signal();
+    ps2_flush_output();
+    outb(PS2_CMD_PORT,READ_CONTROLLER_CONFIG);
+    await_read_signal();
+    uint8_t config = inb(PS2_DATA_PORT);
+    log("Setup config:");
+    log_uint((uint8_t)config);
 }
+
 static int packet[3];
 static int mouse_cycle = 0;
 
@@ -52,11 +75,9 @@ void handle_mouse_interrupt(){
     // byte 2: y-axis movement val
     packet[mouse_cycle++] = byte;
 
-    packet[mouse_cycle] = byte;
-    mouse_cycle = (mouse_cycle + 1) % 3;
+    mouse_cycle %= 3;
     
     if (mouse_cycle == 0){
-        mouse_cycle = 0;
         uint8_t y_of = packet[0] & 0x80;
         uint8_t x_of = packet[0] & 0x40;
 
@@ -71,9 +92,9 @@ void handle_mouse_interrupt(){
         
         int32_t rel_x = packet[1];
         int32_t rel_y = packet[2];
-        if (rel_x && packet[0] & (1 << 4)) rel_x -= 0x100;
-        if (rel_y && packet[0] & (1 << 5)) rel_y -= 0x100;
+        if (packet[0] & (1 << 4)) rel_x -= 0x100;
+        if (packet[0] & (1 << 5)) rel_y -= 0x100;
+
         
     }
 }
-
