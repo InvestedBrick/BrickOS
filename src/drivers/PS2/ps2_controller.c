@@ -21,11 +21,11 @@ void ps2_flush_output() {
 
 void init_and_test_I8042_controller(){
     
-    // enable both ports (1 should be enabled by default, but just to be sure)
     await_write_signal();
-    outb(PS2_CMD_PORT,ENABLE_FIRST_PORT);
+    outb(PS2_CMD_PORT, DISABLE_FIRST_PORT);
     await_write_signal();
-    outb(PS2_CMD_PORT,ENABLE_SECOND_PORT);
+    outb(PS2_CMD_PORT, DISABLE_SECOND_PORT);
+    ps2_flush_output();
 
     // update the controller config
     await_write_signal();
@@ -46,7 +46,7 @@ void init_and_test_I8042_controller(){
     outb(PS2_CMD_PORT,TEST_PS2_CONTROLLER);
     await_read_signal();
     result = inb(PS2_DATA_PORT);
-    if (result == PS2_CONTROLLER_TEST_FAILED) error("PS/2 controller failed test");
+    if (result != PS2_CONTROLLER_TEST_PASSED) error("PS/2 controller failed test");
 
     await_write_signal();
     outb(PS2_CMD_PORT,TEST_FIRST_PORT);
@@ -59,6 +59,11 @@ void init_and_test_I8042_controller(){
     await_read_signal();
     result = inb(PS2_DATA_PORT);
     if (result != PORT_TEST_PASSED) error("PS/2 port 2 failed test");
+
+    await_write_signal();
+    outb(PS2_CMD_PORT,ENABLE_FIRST_PORT);
+    await_write_signal();
+    outb(PS2_CMD_PORT,ENABLE_SECOND_PORT);
 
     ps2_flush_output();
 
