@@ -21,7 +21,10 @@
 
 #define MOUSE_ACK 0xfa
 
-#define MOUSE_SAMPLE_RATE 100
+#define MOUSE_SAMPLE_RATE 40
+#define MOUSE_WAIT_WRITE 0x1
+#define MOUSE_WAIT_READ 0x0
+#define MOUSE_WAIT_TIMEOUT 100000
 void init_mouse();
 
 void handle_mouse_interrupt();
