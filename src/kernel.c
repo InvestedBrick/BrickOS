@@ -95,12 +95,12 @@ void kmain(multiboot_info_t* boot_info)
     log("Initialized the PIT");
     disable_interrupts(); // We dont want interrupts right now, since we cant correctly return to kernel land once we interrupt
 
-    init_and_test_I8042_controller();
-    log("Initialized the I8042 PS/2 controller");
-    
     //Set up Interrupt descriptor table
     init_idt();
     log("Initialited the IDT");
+
+    init_and_test_I8042_controller();
+    log("Initialized the I8042 PS/2 controller");
 
     init_keyboard();
     log("Initialized keyboard");
@@ -169,6 +169,7 @@ void kmain(multiboot_info_t* boot_info)
     // need to manually enable since run just restores whatever was before that
     log("Shell setup complete");
     dispatched_user_mode = 1;
+    ps2_flush_output();
     enable_interrupts();
     
     panic("Not set up beyond here");
