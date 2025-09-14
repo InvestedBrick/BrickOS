@@ -197,7 +197,7 @@ void interrupt_handler(interrupt_stack_frame_t* stack_frame) {
             break;
         case INT_MOUSE:
             log("Mouse interrupt");
-            //handle_mouse_interrupt();
+            handle_mouse_interrupt();
             acknowledge_PIC(stack_frame->interrupt_number);
             break;
         case INT_TIMER:
@@ -235,7 +235,7 @@ void remap_PIC(uint32_t offset1, uint32_t offset2){
     outb(PIC2_DATA,offset2);
    
     outb(PIC1_DATA, 0x4); //slavery
-    outb(PIC2_DATA,0x2);
+    outb(PIC2_DATA, 0x2);
 
     outb(PIC1_DATA,ICW4_8086); //use 8086 mode
     outb(PIC2_DATA,ICW4_8086);
