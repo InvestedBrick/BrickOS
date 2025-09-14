@@ -4,18 +4,18 @@
 #include "../../../io/log.h"
 #include <stdint.h>
 
+
 void mouse_wait(uint8_t w_type) {
     uint32_t time_out = MOUSE_WAIT_TIMEOUT;
     if (w_type == MOUSE_WAIT_READ) {
-        while(--time_out)
-            if (inb(PS2_STATUS_PORT) & 0x1) return;
-        return;
-    }else {
-        while(--time_out)
-            if (!(inb(PS2_STATUS_PORT) & 0x2)) return;
-        return; 
+        
+        while (--time_out && !(inb(PS2_STATUS_PORT) & 0x1)) { }
+    } else {
+        
+        while (--time_out && (inb(PS2_STATUS_PORT) & 0x2)) { }
     }
 }
+
 
 void mouse_write(uint8_t byte){
     mouse_wait(MOUSE_WAIT_WRITE);
@@ -38,27 +38,27 @@ void await_ack(){
 }
 
 void init_mouse(){
-    mouse_write(MOUSE_RESET);
-    await_ack();
 
-    mouse_write(MOUSE_SET_DEFAULTS);
-    await_ack();
+    ps2_flush_output();
+    mouse_wait(MOUSE_WAIT_WRITE);
+    outb(PS2_CMD_PORT,READ_CONTROLLER_CONFIG);
+    mouse_wait(MOUSE_WAIT_READ);
+    uint8_t config = mouse_read() | 0x2;
 
-    mouse_write(MOUSE_SET_SAMPLE_RATE);
-    await_ack();
-    mouse_write(MOUSE_SAMPLE_RATE);
-    await_ack();
+    mouse_wait(MOUSE_WAIT_WRITE);
+    outb(PS2_CMD_PORT,WRITE_CONTROLLER_CONFIG);
+
+    mouse_wait(MOUSE_WAIT_WRITE);
+    outb(PS2_DATA_PORT,config);
+
+    //mouse_write(MOUSE_SET_SAMPLE_RATE);
+    //await_ack();
+    //mouse_write(MOUSE_SAMPLE_RATE);
+    //await_ack();
 
     mouse_write(MOUSE_ENABLE_DATA_REPORT);
     await_ack();
 
-    await_write_signal();
-    ps2_flush_output();
-    outb(PS2_CMD_PORT,READ_CONTROLLER_CONFIG);
-    await_read_signal();
-    uint8_t config = inb(PS2_DATA_PORT);
-    log("Setup config:");
-    log_uint((uint8_t)config);
 }
 
 static int packet[3];
