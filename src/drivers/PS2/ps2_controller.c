@@ -32,7 +32,7 @@ void init_and_test_I8042_controller(){
     outb(PS2_CMD_PORT,READ_CONTROLLER_CONFIG);
     await_read_signal();
     uint8_t config = inb(PS2_DATA_PORT);
-    config |= 0x3; // enable both ps/2 port interrupts
+    config &= 0xfd; // disable mouse device
     
     await_write_signal();
     outb(PS2_CMD_PORT,WRITE_CONTROLLER_CONFIG);
@@ -52,13 +52,15 @@ void init_and_test_I8042_controller(){
     outb(PS2_CMD_PORT,TEST_FIRST_PORT);
     await_read_signal();
     result = inb(PS2_DATA_PORT);
-    if (result != PORT_TEST_PASSED) error("PS/2 port 1 failed test");
+    if (result == PORT_TEST_FAILED) error("PS/2 port 1 failed test");
+    if (result == PORT_TEST_PASSED) log("PS/2 port 1 passed test");
 
     await_write_signal();
     outb(PS2_CMD_PORT,TEST_SECOND_PORT);
     await_read_signal();
     result = inb(PS2_DATA_PORT);
-    if (result != PORT_TEST_PASSED) error("PS/2 port 2 failed test");
+    if (result == PORT_TEST_FAILED) error("PS/2 port 2 failed test");
+    if (result == PORT_TEST_PASSED) log("PS/2 port 2 passed test");
 
     await_write_signal();
     outb(PS2_CMD_PORT,ENABLE_FIRST_PORT);
