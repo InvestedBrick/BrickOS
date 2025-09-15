@@ -120,6 +120,9 @@ void init_keyboard(){
 
     keyboard_map_ALT_GR[86] = '|';
     keyboard_map_ALT_GR[57] = ' ';
+
+    await_write_signal();
+    outb(PS2_CMD_PORT,ENABLE_FIRST_PORT);
 }
 
 int is_special_code(uint8_t scan_code){
