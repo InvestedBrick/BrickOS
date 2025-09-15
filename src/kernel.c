@@ -97,7 +97,7 @@ void kmain(multiboot_info_t* boot_info)
 
     //Set up Interrupt descriptor table
     init_idt();
-    log("Initialited the IDT");
+    log("Initialized the IDT");
 
     init_and_test_I8042_controller();
     log("Initialized the I8042 PS/2 controller");
@@ -168,8 +168,9 @@ void kmain(multiboot_info_t* boot_info)
     setup_timer_switch();
     // need to manually enable since run just restores whatever was before that
     log("Shell setup complete");
-    dispatched_user_mode = 1;
+    mouse_sanity_check();
     ps2_flush_output();
+    dispatched_user_mode = 1;
     enable_interrupts();
     
     panic("Not set up beyond here");
