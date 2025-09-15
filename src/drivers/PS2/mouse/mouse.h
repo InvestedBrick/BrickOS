@@ -29,4 +29,6 @@ void init_mouse();
 
 void handle_mouse_interrupt();
 
+void mouse_sanity_check();
+
 #endif
