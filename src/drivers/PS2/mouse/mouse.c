@@ -87,7 +87,7 @@ void mouse_sanity_check(){
     uint8_t pic_imr = inb(0x21);
     if (pic_imr & 0x20){warn("MOUSE INTERRUPTS MASKED BY PIC");check_passed = 0;}   
 
-    uint8_t pic2_imr = inb(0xA1);
+    uint8_t pic2_imr = inb(0xa1);
     if (pic2_imr & (1 << 4)) { // IRQ12 = bit 4 on PIC2
         warn("MOUSE INTERRUPTS MASKED BY PIC2");
         check_passed = 0;
