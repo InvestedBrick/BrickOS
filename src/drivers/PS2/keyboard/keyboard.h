@@ -19,6 +19,7 @@
 
 #define KB_BUFFER_SIZE 256
 #include "../../../filesystem/vfs/vfs.h"
+#include "../ps2_controller.h"
 extern vfs_handles_t kb_ops;
 /**
  * read_scan_code:
@@ -39,8 +40,9 @@ uint8_t decode_scan_code(uint8_t scan_code);
 /**
  * init_keyboard:
  * initalizes keyboard
+ * @param port PS/2 port
  */
-void init_keyboard();
+void init_keyboard(ps2_ports_t port);
 
 /**
  * handle_keyboard_interrupt:
