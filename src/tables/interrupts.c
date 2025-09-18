@@ -26,7 +26,6 @@ void setup_timer_switch(){
 }
 
 void enable_interrupts(){
-    ps2_flush_output();
     asm volatile ("sti");
     interrupts_enabled = 1;
 }
