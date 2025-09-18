@@ -4,7 +4,7 @@
 #include "../../../filesystem/vfs/vfs.h"
 #include "../ps2_controller.h"
 uint8_t read_scan_code(){
-    return inb(PS2_DATA_PORT);
+    return ps2_port_read(1);
 }
 static unsigned char kb_buffer[KB_BUFFER_SIZE];
 static int kb_head = 0, kb_tail = 0;

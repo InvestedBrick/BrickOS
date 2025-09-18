@@ -31,28 +31,28 @@ void ps2_flush_output() {
 }
 
 void ps2_write(uint16_t port, uint8_t value){
-    if (await_write_signal()) return outb(port,value);
+    if (wait_write_signal()) return outb(port,value);
     error("PS/2 controller not responding to write");
 }
 
 uint8_t ps2_read(uint16_t port){
-    if (await_read_signal()) return inb(port);
+    if (wait_read_signal()) return inb(port);
     error("PS/2 controller not responding to read");
     return 0;
 }
 
 uint8_t ps2_port_write(ps2_ports_t port, uint8_t value){
     if (port == PS2_PORT_TWO){
-        if (!await_write_signal()) return 0;
+        if (!wait_write_signal()) return 0;
         outb(PS2_CMD_PORT,PS2_WRITE_NEXT_BYTE_TO_SECOND_PORT);
     }
-    if (!await_write_signal()) return 0;
+    if (!wait_write_signal()) return 0;
     outb(PS2_DATA_PORT,value);
     return 1;
 }
 
 uint8_t ps2_port_read(uint8_t wait){
-    if (!wait || (wait && await_read_signal())) return inb(PS2_DATA_PORT);
+    if (!wait || (wait && wait_read_signal())) return inb(PS2_DATA_PORT);
     error("PS/2 controller not responding to read");
     return 0;
 }
@@ -67,7 +67,7 @@ void ps2_port_disable(ps2_ports_t port){
 }
 
 uint8_t ps2_check_ack(){
-    if (!await_read_signal()) return 0;
+    if (!wait_read_signal()) return 0;
     return inb(PS2_DATA_PORT) == ACK;
 }
 
@@ -76,7 +76,7 @@ uint8_t ps2_port_init(ps2_ports_t port){
 
     if (!ps2_port_write(port,PS2_PORT_RESET)) return 0;
     if (!ps2_check_ack()) return 0;
-    if (!await_read_signal()) return 0;
+    if (!wait_write_signal()) return 0;
     uint8_t reset = inb(PS2_DATA_PORT);
     inb(PS2_DATA_PORT);
     if (reset != 0xaa) return 0;
@@ -86,9 +86,9 @@ uint8_t ps2_port_init(ps2_ports_t port){
 
     if (!ps2_port_write(port,PORT_GET_DEV_ID)) return 0;
     if (!ps2_check_ack()) return 0;
-    if (!await_read_signal()) return 0;
+    if (!wait_write_signal()) return 0;
     g_port_ids[port][0] = inb(PS2_DATA_PORT);
-    if (await_read_signal()) g_port_ids[port][1] = inb(PS2_DATA_PORT);
+    if (wait_write_signal()) g_port_ids[port][1] = inb(PS2_DATA_PORT);
 
     if (!ps2_port_write(port,PORT_ENABLE_DATA_REPORT)) return 0;
     if (!ps2_check_ack()) return 0;
@@ -120,7 +120,7 @@ void init_and_test_I8042_controller(){
     ps2_flush_output();
 
     // update the controller config
-    await_write_signal();
+    wait_write_signal();
     outb(PS2_CMD_PORT,READ_CONTROLLER_CONFIG);
     uint8_t config = ps2_read(PS2_DATA_PORT);
     config &= ~(PS2_CONFIG_IRQ1 | PS2_CONFIG_IRQ2 | PS2_CONFIG_TRANSLATION);
