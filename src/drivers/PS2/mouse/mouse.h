@@ -11,24 +11,12 @@
 #define MOUSE_RESET_WRAP 0xec
 #define MOUSE_SET_WRAP 0xee
 #define MOUSE_SET_REMOTE_MODE 0xf0
-#define MOUSE_GET_DEV_ID 0xf2
-#define MOUSE_SET_SAMPLE_RATE 0xf3
-#define MOUSE_ENABLE_DATA_REPORT 0xf4
-#define MOUSE_DISABLE_DATA_REPORT 0xf5
-#define MOUSE_SET_DEFAULTS 0xf6
-#define MOUSE_RESEND 0xfe
-#define MOUSE_RESET 0xff
 
-#define MOUSE_ACK 0xfa
+#define MOUSE_SAMPLE_RATE 100
+#include "../ps2_controller.h"
 
-#define MOUSE_SAMPLE_RATE 40
-#define MOUSE_WAIT_WRITE 0x1
-#define MOUSE_WAIT_READ 0x0
-#define MOUSE_WAIT_TIMEOUT 100000
-void init_mouse();
+void init_mouse(ps2_ports_t port);
 
 void handle_mouse_interrupt();
-
-void mouse_sanity_check();
 
 #endif
