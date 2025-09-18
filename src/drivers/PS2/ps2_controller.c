@@ -12,13 +12,13 @@ static uint8_t g_port_two_operational;
 
 static uint8_t g_port_ids[2][2];
 
-uint8_t await_read_signal(){
+uint8_t wait_read_signal(){
     int timeout = TIMEOUT;
     while (--timeout) if (inb(PS2_STATUS_PORT) & 0x1) return 1;
     return 0;
 }
 
-uint8_t await_write_signal(){
+uint8_t wait_write_signal(){
     int timeout = TIMEOUT;
     while(--timeout) if (!(inb(PS2_STATUS_PORT) & 0x2)) return 1;
     return 0;
