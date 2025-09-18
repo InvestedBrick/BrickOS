@@ -102,12 +102,6 @@ void kmain(multiboot_info_t* boot_info)
     init_and_test_I8042_controller();
     log("Initialized the I8042 PS/2 controller");
 
-    init_keyboard();
-    log("Initialized keyboard");
-    
-    init_mouse();
-    log("Initialized the mouse");
-
     uint32_t physical_alloc_start = calc_phys_alloc_start(boot_info);
     init_memory(physical_alloc_start ,boot_info->mem_upper * 1024);
     log("Initialized paged memory");
@@ -168,8 +162,6 @@ void kmain(multiboot_info_t* boot_info)
     setup_timer_switch();
     // need to manually enable since run just restores whatever was before that
     log("Shell setup complete");
-    mouse_sanity_check();
-    ps2_flush_output();
     dispatched_user_mode = 1;
     enable_interrupts();
     
