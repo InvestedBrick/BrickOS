@@ -1,5 +1,6 @@
 #include "keyboard.h"
 #include "../../../io/io.h"
+#include "../../../io/log.h"
 #include "../../../filesystem/vfs/vfs.h"
 #include "../ps2_controller.h"
 uint8_t read_scan_code(){
@@ -96,7 +97,7 @@ char keyboard_map_ALT_GR[128] = {
   0,27,0,0,0,0,0,0,'{','[',']','}','\\',0,0,0,0,0,0,0,0,0,0,0,0,0,0,'~'
 };
 
-void init_keyboard(){
+void init_keyboard(ps2_ports_t port){
   //values found by logging the scan code and manually reviewing
     keyboard_map_lower[86] = '<';
     keyboard_map_lower[41] = '^';
@@ -121,8 +122,9 @@ void init_keyboard(){
     keyboard_map_ALT_GR[86] = '|';
     keyboard_map_ALT_GR[57] = ' ';
 
-    await_write_signal();
-    outb(PS2_CMD_PORT,ENABLE_FIRST_PORT);
+    ps2_port_enable(port);
+    log("Initialized the PS/2 keyboard");
+
 }
 
 int is_special_code(uint8_t scan_code){
