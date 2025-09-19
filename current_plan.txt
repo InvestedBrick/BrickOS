@@ -5,7 +5,7 @@ plan:
     [X] correctly cross-compiling the kernel
     [X] process commandline args
     [X] window manager (needs to be optimized)
-    [ ] update to IO APIC
+    [ ] BIG REWRITE
     [ ] add correct shutdown procedure
     [ ] improve scheduler + spinlocks etc
     [ ] mouse driver
@@ -13,3 +13,10 @@ plan:
     [ ] dynamic linked code
     [ ] text editor
     [?] better fileystem
+
+BIG REWRITE:
+    [ ] switch from grub to limine
+    [ ] update mem manager
+    [ ] implement ACPI tables parsing
+    [ ] implement (IO)APIC
+    [ ] switch to 64 bit kernel
