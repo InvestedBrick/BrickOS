@@ -11,7 +11,7 @@ static uint32_t mem_number_vpages;
 uint8_t physical_memory_bitmap[(NUM_PAGE_FRAMES / 8)]; // Update dynamically && bitarray
 
 __attribute__((aligned(0x1000)))
-static uint32_t page_dirs[NUM_PAGE_DIRS] [1024] __attribute__((aligned(4096)));
+static uint32_t page_dirs[NUM_PAGE_DIRS] [1024];
 static uint8_t page_dir_used[NUM_PAGE_DIRS];
 
 vector_t shm_obj_vec;
@@ -175,7 +175,7 @@ void mem_map_page(uint32_t virt_addr, uint32_t phys_addr, uint32_t flags){
     }
 
     uint32_t pd_index = virt_addr >> 22;
-    uint32_t pt_index = virt_addr >> 12 & 0x3ff;
+    uint32_t pt_index = (virt_addr >> 12) & 0x3ff;
 
     uint32_t* page_dir = REC_PAGE_DIR;
     uint32_t* page_table = REC_PAGE_TABLE(pd_index);
@@ -249,7 +249,7 @@ uint32_t pmm_alloc_page_frame() {
             uint8_t used = (byte >> i) & 0x1;
 
             if(!used){
-                byte ^= (-1 ^ byte ) & (1 << i); //set 
+                byte |= (1 << i); //set 
                 physical_memory_bitmap[b] = byte;
                 total_alloc++;
 
@@ -259,7 +259,7 @@ uint32_t pmm_alloc_page_frame() {
             }
         }
     }
-    // We can out of physical memory
+
     panic("System ran out of physical memory");
 }
 
