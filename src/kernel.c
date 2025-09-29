@@ -116,7 +116,7 @@ void kmain(multiboot_info_t* boot_info)
     log("Saved module binaries");
     
     // Fully commit to virtual memory now
-    un_identity_map_first_page_table();
+    //un_identity_map_first_page_table();
     
     init_shm_obj_vector();
     log("Initialized shared memory objects vector");
