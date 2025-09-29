@@ -33,11 +33,15 @@ C_OBJS   = $(C_SOURCES:.c=.o)
 TARGET   = kernel.elf
 ISO      = BrickOS.iso
 
-CC = tools/cross/bin/i386-elf-gcc
+CC = clang
+LLD = ld.lld
 AS = nasm
 
-CFLAGS  = -ffreestanding -m32 -nostdlib -fno-builtin -fno-stack-protector -fno-exceptions -g
-LDFLAGS = -ffreestanding -m32 -nostdlib -g
+CFLAGS = -target i386-elf -ffreestanding -m32 -nostdlib \
+         -fno-builtin -fno-stack-protector -fno-exceptions -g \
+         -Wno-pointer-sign -fno-pic -fno-pie
+          # idgaf about casting const char* to char*
+LDFLAGS =  --no-pie
 
 all: $(TARGET)
 
@@ -48,7 +52,7 @@ all: $(TARGET)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(TARGET): $(ASM_OBJS) $(C_OBJS)
-	$(CC) $(LDFLAGS) -T $(LD_SCRIPT) $(ASM_OBJS) $(C_OBJS) -o $(TARGET)
+	$(LLD) $(LDFLAGS) -T $(LD_SCRIPT) $(ASM_OBJS) $(C_OBJS) -o $(TARGET)
 
 iso: $(TARGET)
 	cp kernel.elf iso/boot
