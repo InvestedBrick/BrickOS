@@ -261,6 +261,7 @@ uint32_t pmm_alloc_page_frame() {
     }
 
     panic("System ran out of physical memory");
+    return 0;
 }
 
 void un_identity_map_first_page_table(){
