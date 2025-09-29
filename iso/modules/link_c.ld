@@ -13,6 +13,10 @@ SECTIONS
     .rodata ALIGN(4) : {
         *(.rodata*)
     } :rodata
+
+    .bss ALIGN(4) : {
+        *(.bss)
+    } : bss
 }
 
 PHDRS
@@ -20,6 +24,7 @@ PHDRS
     text PT_LOAD FLAGS(0x5);    /* R_X */
     data PT_LOAD FLAGS(0x6);    /* RW_ */
     rodata PT_LOAD FLAGS(0x4);  /* R__ */
+    bss PT_LOAD FLAGS(0x6);     /* RW_ */
 }
 
 ENTRY(main)
