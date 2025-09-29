@@ -2,7 +2,7 @@ OUTPUT_FORMAT(elf32-i386)
 ENTRY(start)
 
 SECTIONS {
-    . = 0x00100000;
+    . = 0x100000;
 
     kernel_physical_start = .;
     kernel_virtual_start = . + 0xc0000000;
@@ -10,7 +10,6 @@ SECTIONS {
     .multiboot ALIGN(4) : {
         *(.multiboot)
     }
-
 
     .note.gnu.build-id ALIGN(4K): {
         *(.note.gnu.build-id)
@@ -20,10 +19,7 @@ SECTIONS {
         *(.boot)
     }
 
-
-    . += 0xC0000000;
-
-
+    . += 0xc0000000;
     .text ALIGN(4K): AT(ADDR(.text) - 0xC0000000){
         *(.text)
     }
@@ -36,7 +32,7 @@ SECTIONS {
     }
     .bss ALIGN(4K): AT(ADDR(.bss) - 0xC0000000){
         *(COMMON)
-        *(.text)
+        *(.bss)
     }
 
     kernel_physical_end = .;
