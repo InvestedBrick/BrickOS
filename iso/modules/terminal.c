@@ -126,21 +126,25 @@ unsigned char* request_window(uint32_t width,uint32_t height){
     win_req.width = width;
     ioctl(wm_fd,DEV_WM_REQUEST_WINDOW,&win_req);
 
-    window_creation_wm_answer_t answer;
-    while (ioctl(wm_fd,DEV_WM_REQUEST_WINDOW_CREATION_ANSWER,&answer) < 0){}
+
+
+    window_creation_wm_answer_t* answer = (window_creation_wm_answer_t*)malloc(sizeof(window_creation_wm_answer_t) + 256); // 256 for filename
+    memset(answer,0x0,sizeof(window_creation_wm_answer_t) + 256);
+    
+    while (ioctl(wm_fd,DEV_WM_REQUEST_WINDOW_CREATION_ANSWER,answer) < 0){}
     unsigned char* pid_str = uint32_to_ascii(getpid());
     chdir("wm");
     chdir(pid_str);
 
-    int backing_fd = open(answer.filename,FILE_FLAG_NONE);
-    kb_fd = answer.kb_fd;
-    unsigned char* fb = (unsigned char*)mmap(answer.width * answer.height * sizeof(uint32_t),PROT_READ | PROT_WRITE, MAP_SHARED,backing_fd,0);
+    int backing_fd = open(answer->filename,FILE_FLAG_NONE);
+    kb_fd = answer->kb_fd;
+    unsigned char* fb = (unsigned char*)mmap(answer->width * answer->height * sizeof(uint32_t),PROT_READ | PROT_WRITE, MAP_SHARED,backing_fd,0);
     
     close(backing_fd);
-    rmfile(answer.filename); // dispose of the connector
+    rmfile(answer->filename); // dispose of the connector
     chdir("../../..");
     free(pid_str);
-
+    free(answer);
     close(wm_fd);
 
     return fb;
