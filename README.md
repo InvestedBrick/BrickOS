@@ -16,8 +16,7 @@ This project depends on you having installed the following binaries yourself:
 - `make`
 - `nasm` 
 - `clang`
-
-The rest of the needed binaries will be created once you build the toolchain using `build_toolchain.sh` in `tools/` (this is currently in a transition phase and not stable)
+- `llvm-objcopy`
 
 ## Compilation
 Once you have successfully created the cross-compiler, you can simply compile this project using `make iso`
