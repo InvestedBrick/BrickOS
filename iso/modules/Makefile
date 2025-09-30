@@ -14,7 +14,7 @@ NASMOBJFLAGS := -f elf32
 
 CC := clang
 LLD := ld.lld
-OBJCOPY := ../../tools/cross/bin/i386-elf-objcopy
+OBJCOPY := llvm-objcopy
 
 CFLAGS = -target i386-elf -ffreestanding -m32 -nostdlib \
          -fno-builtin -fno-stack-protector -fno-exceptions -g \
