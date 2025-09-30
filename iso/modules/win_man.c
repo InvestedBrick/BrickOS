@@ -139,8 +139,6 @@ void handle_window_request(framebuffer_t* fb_metadata,win_man_msg_t* msg){
     uint32_t filename_len = sizeof("win.tmp");
     unsigned char* backing_filename = (unsigned char*)malloc(filename_len);
     memcpy(backing_filename,"win.tmp",sizeof("win.tmp"));
-    //memcpy(&backing_filename[sizeof("win_") - 1],pid_str,strlen(pid_str));
-    //backing_filename[filename_len - 1] = '\0';
     free(pid_str);
 
     new_win->backing_fd = open(backing_filename,FILE_FLAG_CREATE | FILE_FLAG_READ | FILE_FLAG_WRITE);
@@ -152,11 +150,11 @@ void handle_window_request(framebuffer_t* fb_metadata,win_man_msg_t* msg){
     close(new_win->backing_fd);
     
     window_creation_ans_t creation_ans = {
+        .answer_type = DEV_WM_ANS_TYPE_WIN_CREATION,
+        .pid = new_win->owner_pid,
         .width = new_win->width,
         .height = new_win->height, 
         .filename_len = filename_len,
-        .pid = new_win->owner_pid,
-        .answer_type = DEV_WM_ANS_TYPE_WIN_CREATION,
         .kb_fd = params.read_pid,
         };
     // always pass the answer type first
