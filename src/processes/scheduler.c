@@ -32,21 +32,21 @@ void remove_sleeping_process(sleeping_proc_t* sleepy_proc){
 }
 
 void manage_sleeping_processes(){
-    sleeping_proc_t* waked_up_procs[256];
-    memset(waked_up_procs,0,256);
+    sleeping_proc_t* awoken_procs[256];
+    memset(awoken_procs,0,256);
     uint32_t waked_up_procs_idx = 0;
 
     for (uint32_t i = 0; i < sleeping_procs.size;i++){
         sleeping_proc_t* sleepy_proc = (sleeping_proc_t*)sleeping_procs.data[i];
         if (sleepy_proc->wakeup_tick <= ticks){
             sleepy_proc->proc->exec_state = EXEC_STATE_RUNNING;
-            waked_up_procs[waked_up_procs_idx] = sleepy_proc;
+            awoken_procs[waked_up_procs_idx] = sleepy_proc;
             waked_up_procs_idx++; 
         }
     }
 
     for (uint32_t i = 0; i < waked_up_procs_idx; i++){
-        remove_sleeping_process(waked_up_procs[i]);
+        remove_sleeping_process(awoken_procs[i]);
     }
 }
 
