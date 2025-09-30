@@ -8,5 +8,4 @@ linecounter.py
 hdd.img
 *.bin
 tools/
-#tools/*
-#!build_toolchain.sh
+tools/*
