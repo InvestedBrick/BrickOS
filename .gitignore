@@ -7,5 +7,6 @@ BrickOS.iso
 linecounter.py
 hdd.img
 *.bin
-tools/*
-!build_toolchain.sh
+tools/
+#tools/*
+#!build_toolchain.sh
