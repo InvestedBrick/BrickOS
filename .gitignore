@@ -1,11 +1,8 @@
 kernel.elf
 *.o
-*.tar.xz
 stage2_eltorito
 BrickOS.iso
 .vscode/
 linecounter.py
 hdd.img
 *.bin
-tools/
-tools/*
