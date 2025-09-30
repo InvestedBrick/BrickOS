@@ -26,15 +26,18 @@ SECTIONS {
 
     .rodata ALIGN(4K): AT(ADDR(.rodata) - 0xC0000000){
         *(.rodata)
+        *(.rodata.*)
     }
     .data ALIGN(4K): AT(ADDR(.data) - 0xC0000000){
         *(.data)
+        *(.data.*)
     }
     .bss ALIGN(4K): AT(ADDR(.bss) - 0xC0000000){
         *(COMMON)
         *(.bss)
+        *(.bss.*)
     }
 
-    kernel_physical_end = .;
-    kernel_virtual_end = . + 0xc0000000;
+    kernel_physical_end = . - 0xc0000000;
+    kernel_virtual_end = .;
 }
