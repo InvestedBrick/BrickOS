@@ -1,6 +1,6 @@
 SECTIONS
 {
-    . = 0;
+    . = 0x00000000;
     .text ALIGN(4) : {
         KEEP(*(.text.start))
         *(.text)
@@ -11,11 +11,13 @@ SECTIONS
     } :data
 
     .rodata ALIGN(4) : {
-        *(.rodata*)
+        *(.rodata)
+        *(.rodata.*)
     } :rodata
 
     .bss ALIGN(4) : {
         *(.bss)
+        *(.bss.*)
     } : bss
 }
 
