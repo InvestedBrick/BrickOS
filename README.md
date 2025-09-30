@@ -19,7 +19,7 @@ This project depends on you having installed the following binaries yourself:
 - `llvm-objcopy`
 
 ## Compilation
-Once you have successfully created the cross-compiler, you can simply compile this project using `make iso`
+You can simply compile this project using `make iso`
 
 You will also need to create a virtual disk for the filesystem. This disk can be created using the `make_disk.sh` bash script
 
