@@ -6,7 +6,7 @@ brick main {
     clear_screen();
     write_string("Hello BrickOS!");
     newline();
-    write_string("Updates coming soon :3");
+    write_string("Updates coming probably never :3");
 
     serial_setup_port(SERIAL_COM1_BASE,3);
 
