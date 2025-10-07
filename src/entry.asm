@@ -9,7 +9,7 @@ mboot_flags equ mboot_page_align | mboot_mem_info | mboot_use_gfx
 mboot_checksum equ -(mboot_magic + mboot_flags) 
 
 section .multiboot
-align 4
+align 8
     dd mboot_magic
     dd mboot_flags
     dd mboot_checksum
@@ -25,57 +25,74 @@ align 4
     dd 768        ; height
     dd 32         ; depth (bits per pixel)
 
-section .bss
 
 global stack_top
-
-align 16
-stack_bottom:
-    resb 16384 * 8
-stack_top:
 
 extern kmain ; external C function 
 section .boot
 global start
 start:
-    mov ecx, (initial_page_dir - 0xc0000000)
-    mov cr3, ecx 
+    ;Enable PAE
+    mov eax, cr4
+    or eax, (1 << 5)
+    mov cr4, eax
 
-    mov ecx, cr4 ; read current cr4
-    or ecx, 0x10 ; Set Page size extentions => 4 mb pages
-    mov cr4, ecx
+    ;set long mode enable
+    mov ecx, 0xc0000080
+    rdmsr
+    or eax, (1 << 8)
+    wrmsr
 
-    mov ecx, cr0 
-    or ecx, 0x80000000 ;set page enable
-    mov cr0, ecx
+    mov eax, pml4_table
+    mov cr3, eax
 
-    jmp higher_half
+    mov eax, cr0
+    or eax, (1 << 31) | 0x1 ; enable paging and protected mode
+    mov cr0, eax
+    ;TODO: Setup minimal gdt here to have a more valid long jump
+    jmp 0x08:long_mode_entry
 
 extern kernel_physical_start
 extern kernel_physical_end 
 extern kernel_virtual_start 
 extern kernel_virtual_end
+
 section .text
-higher_half:
-    mov esp, stack_top
-    push ebx ; multiboot info
-    xor ebp, ebp
+bits 64
+long_mode_entry:
+
+    mov ax, 0x10
+    mov ds, ax
+    mov es, ax
+    mov fs, ax
+    mov gs, ax
+    mov ss, ax
+
+    mov rsp, stack_top
+    mov rdi, rbx ; multiboot info as first arg
+    xor rbp, rbp
     call kmain
 
 halt:
     hlt
     jmp halt
 
+section .bss
+align 16
+stack_bottom:
+    resb 16384 * 8
+stack_top:
+
 
 section .data
 align 4096
-global initial_page_dir
-initial_page_dir:
-    dd 10000011b ; present / rw / page size 4mb => not page table
-    times 768-1 dd 0
-    ; remap to higher-half kernel
-    dd (0 << 22) | 10000011b 
-    dd (1 << 22) | 10000011b 
-    dd (2 << 22) | 10000011b 
-    dd (3 << 22) | 10000011b 
-    times 256-4 dd 0
+pml4_table:
+    dq pdpt + 0x3
+align 4096
+pdpt:
+    dq pd + 0x3
+align 4096
+pd:
+    dq 0x0000000000000083      ; 1GB page, identity map low memory
+    times 511 dq 0
+
