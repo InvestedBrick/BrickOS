@@ -15,8 +15,11 @@ plan:
     [?] better fileystem
 
 BIG REWRITE:
+    [ ] switch to 64 bit kernel
     [ ] switch from grub to limine
-    [ ] update mem manager
     [ ] implement ACPI tables parsing
     [ ] implement (IO)APIC
-    [ ] switch to 64 bit kernel
+
+switch to 64 bit kernel:
+    [ ] Update memory manager
+    [ ] Update syscall context switch / things that depend on x86_32 calling conventions
