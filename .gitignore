@@ -1,5 +1,7 @@
 kernel.elf
-src/*.o
+*.o
 stage2_eltorito
 BrickOS.iso
 .vscode/
+linecounter.py
+hdd.img
