@@ -1,4 +1,4 @@
-qemu-system-i386 -s \
+qemu-system-x86_64 -s \
     -drive file=hdd.img,format=raw,if=ide \
     -serial file:serial.log \
     -boot d \
