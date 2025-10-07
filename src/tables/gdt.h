@@ -21,7 +21,9 @@ typedef struct {
 
 #define USER_CODE_SEGMENT 0xfa
 #define USER_DATA_SEGMENT 0xf2
-#define GRANULARITY 0xcf
+
+// byte granularity, long mode
+#define FLAGS 0xa0
 
 #define N_GDT_ENTRIES 6
 /**
