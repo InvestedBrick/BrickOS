@@ -1,30 +1,6 @@
-ASM_SOURCES = \
-    src/*.asm \
-    src/io/*.asm \
-    src/tables/*.asm \
-    src/memory/*.asm \
-    src/processes/*.asm
 
-C_SOURCES = \
-    src/*.c \
-    src/io/*.c \
-    src/tables/*.c \
-    src/drivers/PS2/*.c \
-    src/drivers/PS2/keyboard/*.c \
-    src/drivers/PS2/mouse/*.c \
-    src/drivers/timer/*.c \
-    src/memory/*.c \
-    src/processes/*.c \
-    src/modules/*.c \
-    src/drivers/ATA_PIO/*.c \
-    src/filesystem/*.c \
-    src/filesystem/vfs/*.c \
-    src/filesystem/devices/*.c \
-    src/filesystem/IPC/*.c \
-    src/screen/*.c 
-
-ASM_SOURCES := $(wildcard $(ASM_SOURCES))
-C_SOURCES   := $(wildcard $(C_SOURCES))
+ASM_SOURCES = $(shell find src/ -type f -name '*.asm')
+C_SOURCES   = $(shell find src/ -type f -name '*.c')
 
 LD_SCRIPT = link.ld
 
@@ -37,16 +13,16 @@ CC = clang
 LLD = ld.lld
 AS = nasm
 
-CFLAGS = -target i386-elf -ffreestanding -m32 -nostdlib \
+CFLAGS = -target x86_64-elf -ffreestanding -m64 -nostdlib \
          -fno-builtin -fno-stack-protector -fno-exceptions -g \
          -Wno-pointer-sign -fno-pic -fno-pie
           # idgaf about casting const char* to char*
-LDFLAGS =  --no-pie
+LDFLAGS =  --no-pie elf_x86_64
 
 all: $(TARGET)
 
 %.o: %.asm
-	$(AS) -g -f elf32 $< -o $@
+	$(AS) -g -f elf64 $< -o $@
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
