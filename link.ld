@@ -1,13 +1,13 @@
-OUTPUT_FORMAT(elf32-i386)
+OUTPUT_FORMAT(elf-x86-64)
 ENTRY(start)
 
 SECTIONS {
-    . = 0x100000;
+    . = 1M;
 
     kernel_physical_start = .;
-    kernel_virtual_start = . + 0xc0000000;
+    kernel_virtual_start = . + 0xffffffff80000000;
 
-    .multiboot ALIGN(4) : {
+    .multiboot ALIGN(8) : {
         *(.multiboot)
     }
 
@@ -19,25 +19,22 @@ SECTIONS {
         *(.boot)
     }
 
-    . += 0xc0000000;
-    .text ALIGN(4K): AT(ADDR(.text) - 0xC0000000){
+    . += 0xffffffff80000000;
+    .text ALIGN(4K): AT(ADDR(.text) - 0xffffffff80000000){
         *(.text)
     }
 
-    .rodata ALIGN(4K): AT(ADDR(.rodata) - 0xC0000000){
-        *(.rodata)
-        *(.rodata.*)
+    .rodata ALIGN(4K): AT(ADDR(.rodata) - 0xffffffff80000000){
+        *(.rodata*)
     }
-    .data ALIGN(4K): AT(ADDR(.data) - 0xC0000000){
-        *(.data)
-        *(.data.*)
+    .data ALIGN(4K): AT(ADDR(.data) - 0xffffffff80000000){
+        *(.data*)
     }
     .bss ALIGN(4K): AT(ADDR(.bss) - 0xC0000000){
         *(COMMON)
-        *(.bss)
-        *(.bss.*)
+        *(.bss*)
     }
 
-    kernel_physical_end = . - 0xc0000000;
+    kernel_physical_end = . - 0xffffffff80000000;
     kernel_virtual_end = .;
 }
