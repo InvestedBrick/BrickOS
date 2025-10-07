@@ -1,5 +1,8 @@
 
 global load_gdt
+section .data
+    flush_cs_ptr: dq flush_cs
+section .text
 
 ; load_gdt: loads a global descriptor table
 ; stack:    [esp + 4] address to a gdt struct
@@ -14,7 +17,7 @@ load_gdt:
     mov fs, ax
     mov gs, ax
     mov ss, ax
-    jmp 0x08:flush_cs ; load the code segment
+    jmp qword [rel flush_cs_ptr] ; load the code segment
 flush_cs:
     ret
 
