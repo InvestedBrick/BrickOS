@@ -1,86 +1,57 @@
 global load_idt
 ; load_idt - Loads the interrupt descriptor table (IDT).
-; stack: [esp + 4] the address of the first entry in the IDT
-;        [esp    ] the return address
 load_idt:
-    mov  eax, [esp + 4];
-    lidt [eax]
-    ;sti  ; enable interrupts
+    mov  rax, rdi
+    lidt [rax]
     ret
 
-
-; inserts esp and ss into the stack so that the alignment works with the interrupt struct
 insert_mode_regs:
-    push eax
+    push rax
     ; stack state:
-    ; [esp + 20] eflags
-    ; [esp + 16] cs
-    ; [esp + 12] eip
-    ; [esp + 8] error code
-    ; [esp + 4] return address
-    ; [esp    ] eax
+    ; [rsp + 40] rflags
+    ; [rsp + 32] cs
+    ; [rsp + 24] rip
+    ; [rsp + 16] error code
+    ; [rsp + 8 ] return address
+    ; [rsp     ] rax
 
-    mov eax, dword [esp + 16] ; cs
-    and eax, 0x3
-    cmp eax, 0 ; check for priv level 0
+    mov rax, qword [rsp + 32] ; cs
+    and rax, 0x3
+    cmp rax, 0 ; check for priv level 0
     jne .return ; if priv level not equal to kernel priv -> ss and esp are already pushed
 
-    sub esp, 8
+    sub rsp, 16 ; create the data for two dummy values, will be discarded anyways, just used to align data
 
-    ; eax
-    mov eax, dword [esp + 8]
-    mov dword [esp], eax
+    ; realign important values
+    ; rax
+    mov rax, qword [rsp + 16]
+    mov qword [rsp], rax
 
     ; return address
-    mov eax, dword [esp + 12]
-    mov dword [esp + 4], eax
-
-    ; error code
-    mov eax, dword [esp + 16]
-    mov dword [esp + 8], eax
-
-    ; eip
-    mov eax, dword [esp + 20]
-    mov dword [esp + 12], eax
-
-    ; cs
-    mov eax, dword [esp + 24]
-    mov dword [esp + 16], eax
-
-    ;eflags
-    mov eax, dword [esp + 28]
-    mov dword [esp + 20], eax
-
-    ; could I have used a loop for this => yes!
-    ; did I want to deal with another variable => no!
-    mov eax, esp
-    add eax, 32
-    mov dword [esp + 24], eax ; make esp point to the last data before the interrupt data, so that we can return to there
-    xor eax,eax
-    mov ax, ss
-    mov dword [esp + 28], eax
+    mov rax, qword [rsp + 24]
+    mov qword [rsp + 8], rax
 .return:
-    pop eax
+    pop rax
     ret
 
 clear_IOPL:
-    push eax
+    push rax
     ; Clear IOPL in EFLAGS (set to 0)
-    pushfd
-    pop eax
-    and eax, 0xcfff   ; Clear bits 12 and 13 (IOPL)
-    push eax
-    popfd
-    pop eax
+    pushfq
+    pop rax
+    and rax, 0xFFFFFFFFFFFFCFFF   ; Clear bits 12 and 13 (IOPL)
+    push rax
+    popfq
+    pop rax
     ret
 
 
 %macro no_error_code_interrupt_handler 1
 interrupt_handler_%+%1:
     call clear_IOPL
-    push dword 0    ; push 0 as error code
+    push qword 0    ; push 0 as error code
     call insert_mode_regs
-    push dword %1    ; push the interrupt number
+    push qword %1    ; push the interrupt number
     jmp common_interrupt_handler
 %endmacro
 
@@ -89,74 +60,48 @@ interrupt_handler_%+%1:
 break_%+%1:
     call clear_IOPL
     call insert_mode_regs
-    push dword %1        ; push interrupt number
+    push qword %1        ; push interrupt number
     jmp common_interrupt_handler
 %endmacro
 extern interrupt_handler
 
 common_interrupt_handler:
-    push eax
-    push ebx
-    push ecx
-    push edx
-    push esi
-    push edi
-    push ebp
+    push rax
+    push rbx
+    push rcx
+    push rdx
+    push rsi
+    push rdi
+    push rbp
 
-    push ds
-    push es
     push fs
     push gs
 
     ; set up kernel data segments
     mov ax, 0x10
-    mov ds, ax
-    mov es, ax
     mov fs, ax
     mov gs, ax
 
-
-    ; Stack
-    ;   [esp + idek]        ss 
-    ;   [esp + idek]        esp
-    ;   [esp + 0x2c + 0x10] eflags
-    ;   [esp + 0x28 + 0x10] cs
-    ;   [esp + 0x24 + 0x10] eip
-    ;   [esp + 0x20 + 0x10] error code            
-    ;   [esp + 0x1c + 0x10] interrupt number            
-    ;   [esp + 0x18 + 0x10] eax
-    ;   [esp + 0x14 + 0x10] ebx
-    ;   [esp + 0x10 + 0x10] ecx
-    ;   [esp + 0x0c + 0x10] edx
-    ;   [esp + 0x08 + 0x10] esi
-    ;   [esp + 0x04 + 0x10] edi
-    ;   [esp + 0x10 + 0x10] ebp
-    ;   [esp + 0x0c] ds
-    ;   [esp + 0x08] es
-    ;   [esp + 0x04] fs
-    ;   [esp       ] gs
-
-    push esp
+    mov rdi, rsp
+   
+    sub rsp, 8 ; align stack to 16 for C calling convention
     call interrupt_handler
-    add esp, 4
-    
+    add rsp, 8
+
     pop gs
     pop fs
-    pop es
-    pop ds
 
-    pop ebp
-    pop edi
-    pop esi 
-    pop edx
-    pop ecx
-    pop ebx
-    pop eax
+    pop rbp
+    pop rdi
+    pop rsi 
+    pop rdx
+    pop rcx
+    pop rbx
+    pop rax
 
-    add esp, 8 ; interrupt number
+    add rsp, 16 ; interrupt number and error code
 
-    sti
-    iret
+    iretq
 
 ; with error codes are 8, 10, 11, 12, 13, 14, 17 and 30 (but we start at 0)
 no_error_code_interrupt_handler 0
@@ -213,6 +158,6 @@ global idt_code_table
 idt_code_table:
 %assign i 0
 %rep    49
-    dd interrupt_handler_%+i
+    dq interrupt_handler_%+i
 %assign i i+1
 %endrep
