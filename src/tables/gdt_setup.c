@@ -31,7 +31,7 @@ void set_gdt_entry64(int num, uint64_t base,uint32_t limit, uint8_t access, uint
 
 void init_gdt() {
     gdtp.size = (sizeof(gdt_entry_t) * N_GDT_ENTRIES ) - 1;
-    gdtp.address = (uint32_t) &gdt_entries;
+    gdtp.address = (uint64_t)&gdt_entries;
     //        P DPL S E DC RW A
     // 0x9a = 1 00  1 1 0  1  0
     // 0x92 = 1 00  1 0 0  1  0
