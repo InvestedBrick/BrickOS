@@ -48,25 +48,27 @@ typedef struct
 {
     uint16_t offset_low;
     uint16_t segment_selector;
-    uint8_t reserved;
+    uint8_t ist; // interrupt stack table in bits 0..2, rest is 0
     uint8_t attributes;
-    uint16_t offset_high;
+    uint16_t offset_mid;
+    uint32_t offset_high;
+    uint32_t reserved;
 }__attribute__((packed)) idt_entry_t;
 
 typedef struct
 {
     uint16_t limit;
-    uint32_t base;
+    uint64_t base;
 }__attribute__((packed)) idt_t;
 
 
 typedef struct {
-    uint32_t gs,fs,es,ds;
-    uint32_t ebp,edi,esi,edx,ecx,ebx,eax;
-    uint32_t interrupt_number,error_code,eip,cs,eflags,esp,ss;
+    uint64_t gs,fs;
+    uint64_t rbp,rdi,rsi,rdx,rcx,rbx,rax;
+    uint64_t interrupt_number,error_code,rip,cs,eflags,rsp,ss;
 }__attribute__((packed)) interrupt_stack_frame_t;
 
-extern uint32_t ticks;
+extern uint64_t ticks;
 
 /**
  * set_idt_entry:
@@ -74,9 +76,8 @@ extern uint32_t ticks;
  * @param num Index of the entry
  * @param offset The interrupt jump address
  * @param attributes The relevant attribute bits
- * @param segment_selector The segment selector
  */
-void set_idt_entry(uint8_t num,void* offset,uint8_t attributes);
+void set_idt_entry(uint8_t num,uint64_t offset,uint8_t attributes);
 
 /**
  * 
@@ -102,7 +103,7 @@ void remap_PIC(uint32_t offset1, uint32_t offset2);
  *  
  * @param interrupt The number of the interrupt
  */
-void acknowledge_PIC(uint32_t interrupt);
+void acknowledge_PIC(uint64_t interrupt);
 
 
 void enable_interrupts();
