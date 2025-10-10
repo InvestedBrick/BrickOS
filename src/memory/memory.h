@@ -3,13 +3,13 @@
 #define INCLUDE_MEMORY_H
 #include <stdint.h>
 #include "../filesystem/vfs/vfs.h"
-#define KERNEL_START 0xc0000000 
-#define KERNEL_MALLOC_START 0xd0000000 // give the kernel some space
-#define KERNEL_MALLOC_END 0xe0000000 
-#define TEMP_KERNEL_COPY_ADDR 0xf0000000
-// video buffer is at 0xe000000
-#define REC_PAGE_DIR ((uint32_t*)0xfffff000)
-#define REC_PAGE_TABLE(i) ((uint32_t*) (0xffc00000) + ((i) * 0x400))
+#define KERNEL_START 0xffffffffc0000000 
+#define KERNEL_MALLOC_START 0xffffffffd0000000 // give the kernel some space
+#define KERNEL_MALLOC_END 0xffffffffe0000000 
+#define TEMP_KERNEL_COPY_ADDR 0xfffffffff0000000
+
+#define REC_PAGE_DIR ((uint32_t*)0xfffffffffffff000)
+#define REC_PAGE_TABLE(i) ((uint32_t*) (0xffffffffffc00000) + ((i) * 0x400))
 
 #define MEMORY_PAGE_SIZE 0x1000
 
@@ -74,7 +74,7 @@ extern uint32_t initial_page_dir[1024];
  * 
  * @return The virt_mem_area_t to which the addr belongs
  */
-virt_mem_area_t* find_virt_mem_area(virt_mem_area_t* start,uint32_t addr);
+virt_mem_area_t* find_virt_mem_area(virt_mem_area_t* start,uint64_t addr);
 
 /**
  * init_memory:

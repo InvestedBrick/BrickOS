@@ -100,7 +100,7 @@ void setup_arguments(user_process_t* proc,unsigned char* argv[]){
     for(uint32_t i = 0; argv[i];i++) {argc++;}
 
     uint32_t* arg_ptrs = (uint32_t*)kmalloc(argc * sizeof(uint32_t));    
-    uint32_t sp = KERNEL_START;
+    uint64_t sp = KERNEL_START;
     if (arg_ptrs){
         uint32_t write_ptr = MEMORY_PAGE_SIZE;
         
@@ -143,8 +143,8 @@ void setup_arguments(user_process_t* proc,unsigned char* argv[]){
     }else{
         sp -= 0x5; // to 0xbffffffb
     }
-    state->regs.esp = sp;
-    state->regs.ebp = sp;
+    state->regs.rsp = sp;
+    state->regs.rsp = sp;
 
 
     mem_unmap_page(TEMP_KERNEL_COPY_ADDR);
@@ -263,16 +263,14 @@ void load_registers(){
     disable_interrupts();
     // we do a little pretending here so that when the scheduler returns with these values, everything starts
     process_state_t* state = get_process_state_by_page_dir(mem_get_current_page_dir());
-    const uint32_t user_mode_data_segment_selector = (0x20 | 0x3);
+    const uint64_t user_mode_data_segment_selector = (0x20 | 0x3);
     
-    state->regs.ds = user_mode_data_segment_selector;
-    state->regs.es = user_mode_data_segment_selector;
     state->regs.fs = user_mode_data_segment_selector;
     state->regs.gs = user_mode_data_segment_selector;
 
     state->regs.cs = (0x18 | 0x3);
     state->regs.eflags = (1 << 9) | (3 << 12); // enable interrupts for user
-    state->regs.eip = USER_CODE_DATA_VMEMORY_START;
+    state->regs.rip = USER_CODE_DATA_VMEMORY_START;
     //esp and ebp are already set up
     state->regs.ss = user_mode_data_segment_selector;
     state->exec_state = EXEC_STATE_RUNNING;
