@@ -17,9 +17,9 @@ extern void* idt_code_table[];
 
 static idt_t idt;
 
-uint32_t ticks = 0;
-uint8_t interrupts_enabled = 1;
-uint8_t force_switch = 0;
+static uint64_t ticks = 0;
+static volatile uint8_t interrupts_enabled = 1;
+static volatile uint8_t force_switch = 0;
 
 void setup_timer_switch(){
     force_switch = 1;
@@ -46,22 +46,24 @@ void set_interrupt_status(uint8_t int_enable){
         disable_interrupts();
     }
 }
-void set_idt_entry(uint8_t num,void* offset,uint8_t attributes){
-    idt_entries[num].offset_low = ((uint32_t)offset & 0xffff);
+void set_idt_entry(uint8_t num,uint64_t offset,uint8_t attributes){
+    idt_entries[num].offset_low = (offset & 0xffff);
     idt_entries[num].segment_selector = 0x08; // Kernel code segment from the gdt
     idt_entries[num].reserved = 0x0;
+    idt_entries[num].ist = 0x0;
     idt_entries[num].attributes = attributes;
-    idt_entries[num].offset_high = ((uint32_t)offset >> 16) & 0xffff;
+    idt_entries[num].offset_mid = (offset >> 16) & 0xffff;
+    idt_entries[num].offset_high = (offset >> 32) & 0xffffffff;
 }
 
 void init_idt(){
-    idt.base = (uint32_t)&idt_entries[0];
+    idt.base = (uint64_t)&idt_entries[0];
     idt.limit = sizeof(idt_entry_t) * IDT_MAX_ENTRIES - 1;
     for(uint8_t v = 0; v < 49;v++){
         if(v == INT_SOFTWARE){
-            set_idt_entry(v,idt_code_table[v],STANDARD_USER_ATTRIBUTES); // user software interrupt call (syscall)
+            set_idt_entry(v,(uint64_t)idt_code_table[v],STANDARD_USER_ATTRIBUTES); // user software interrupt call (syscall)
         }else{
-            set_idt_entry(v,idt_code_table[v],STANDARD_KERNEL_ATTRIBUTES);
+            set_idt_entry(v,(uint64_t)idt_code_table[v],STANDARD_KERNEL_ATTRIBUTES);
         }
         enabled_idt[v] = 1;
     }
@@ -72,44 +74,44 @@ void init_idt(){
 }
 
 int handle_software_interrupt(interrupt_stack_frame_t* stack_frame){
-    switch (stack_frame->eax)
+    switch (stack_frame->rax)
     {
     case SYS_DEBUG:
         {
             //temporary
-            log((unsigned char*)stack_frame->ebx);
+            log((unsigned char*)stack_frame->rbx);
             return 0;
         }
     case SYS_EXIT: 
         return sys_exit(get_current_user_process(),stack_frame);
     case SYS_OPEN:
-        return sys_open(get_current_user_process(),(unsigned char*)stack_frame->ebx,(uint8_t)stack_frame->ecx);
+        return sys_open(get_current_user_process(),(unsigned char*)stack_frame->rbx,(uint8_t)stack_frame->rcx);
     case SYS_CLOSE:
-        return sys_close(get_current_user_process(),stack_frame->ebx);
+        return sys_close(get_current_user_process(),stack_frame->rbx);
     case SYS_READ:
-        return sys_read(get_current_user_process(),stack_frame->ebx,(unsigned char*)stack_frame->ecx,stack_frame->edx);
+        return sys_read(get_current_user_process(),stack_frame->rbx,(unsigned char*)stack_frame->rcx,stack_frame->rdx);
     case SYS_WRITE:
-        return sys_write(get_current_user_process(),stack_frame->ebx,(unsigned char*)stack_frame->ecx,stack_frame->edx);
+        return sys_write(get_current_user_process(),stack_frame->rbx,(unsigned char*)stack_frame->rcx,stack_frame->rdx);
     case SYS_SEEK:
-        return sys_seek(get_current_user_process(),stack_frame->ebx,stack_frame->ecx);
+        return sys_seek(get_current_user_process(),stack_frame->rbx,stack_frame->rcx);
     case SYS_ALLOC_PAGE:
-        return sys_mmap(get_current_user_process(),0,stack_frame->ebx,stack_frame->ecx,stack_frame->edx,stack_frame->edi,stack_frame->esi);
+        return sys_mmap(get_current_user_process(),0,stack_frame->rbx,stack_frame->rcx,stack_frame->rdx,stack_frame->rdi,stack_frame->rsi);
     case SYS_GETCWD:
-        return sys_getcwd((unsigned char*)stack_frame->ebx, stack_frame->ecx);
+        return sys_getcwd((unsigned char*)stack_frame->rbx, stack_frame->rcx);
     case SYS_GETDENTS:
-        return sys_getdents(get_current_user_process(),stack_frame->ebx,(dirent_t*)stack_frame->ecx,stack_frame->edx);
+        return sys_getdents(get_current_user_process(),stack_frame->rbx,(dirent_t*)stack_frame->rcx,stack_frame->rdx);
     case SYS_CHDIR:
-        return sys_chdir((unsigned char*)stack_frame->ebx);
+        return sys_chdir((unsigned char*)stack_frame->rbx);
     case SYS_RMFILE:
-        return sys_rmfile((unsigned char*)stack_frame->ebx);
+        return sys_rmfile((unsigned char*)stack_frame->rbx);
     case SYS_MKNOD:
-        return sys_mknod((unsigned char*)stack_frame->ebx,(mknod_params_t*)stack_frame->ecx);
+        return sys_mknod((unsigned char*)stack_frame->rbx,(mknod_params_t*)stack_frame->rcx);
     case SYS_IOCTL:
-        return sys_ioctl(get_current_user_process(),stack_frame->ebx,stack_frame->ecx,(void*)stack_frame->edx);
+        return sys_ioctl(get_current_user_process(),stack_frame->rbx,stack_frame->rcx,(void*)stack_frame->rdx);
     case SYS_MSSLEEP:
-        return sys_mssleep(stack_frame,stack_frame->ebx);
+        return sys_mssleep(stack_frame,stack_frame->rbx);
     case SYS_SPAWN:
-        return sys_spawn((unsigned char*)stack_frame->ebx,(unsigned char**)stack_frame->ecx,(process_fds_init_t*)stack_frame->edx);
+        return sys_spawn((unsigned char*)stack_frame->rbx,(unsigned char**)stack_frame->rcx,(process_fds_init_t*)stack_frame->rdx);
     case SYS_GETPID:
         return sys_getpid(get_current_user_process());    
     default:
@@ -136,14 +138,14 @@ uint32_t init_new_page(virt_mem_area_t* vma,user_process_t* p,uint32_t aligned_f
     return frame;
 }
 
-void page_fault_handler(user_process_t* p,uint32_t fault_addr,interrupt_stack_frame_t* stack_frame){
+void page_fault_handler(user_process_t* p,uint64_t fault_addr,interrupt_stack_frame_t* stack_frame){
 
     virt_mem_area_t* vma = find_virt_mem_area(p->vm_areas,fault_addr);
     if (!vma){
         error("A page fault has occured");
         error("process:");
         error(p->process_name);
-        log_uint(fault_addr);
+        log_uint32((uint32_t)fault_addr);
         error("Cause:");
         if (stack_frame->error_code & 0x1) error("Access of non-present page");
         if (stack_frame->error_code & 0x2) error("Write access"); else error("Read access");
@@ -152,7 +154,7 @@ void page_fault_handler(user_process_t* p,uint32_t fault_addr,interrupt_stack_fr
         if (stack_frame->error_code & 0x10) error("Non-Executable instruction fetch");
         if (stack_frame->error_code & 0x20) error("Protection key violation");
 
-        stack_frame->ebx = 1; // exit code
+        stack_frame->rbx = 1; // exit code
         sys_exit(p,stack_frame);
     }
 
@@ -211,11 +213,11 @@ void interrupt_handler(interrupt_stack_frame_t* stack_frame) {
             acknowledge_PIC(stack_frame->interrupt_number);
             break;
         case INT_SOFTWARE: 
-            stack_frame->eax = handle_software_interrupt(stack_frame);
+            stack_frame->rax = handle_software_interrupt(stack_frame);
             break;
         case INT_PAGE_FAULT:
 
-            uint32_t cr2;
+            uint64_t cr2;
             asm volatile ("mov %%cr2, %0" : "=r"(cr2));
             page_fault_handler(get_current_user_process(),cr2,stack_frame);
             break;
@@ -245,7 +247,7 @@ void remap_PIC(uint32_t offset1, uint32_t offset2){
 
 }
 
-void acknowledge_PIC(uint32_t interrupt){
+void acknowledge_PIC(uint64_t interrupt){
     if (interrupt < PIC1_START_INTERRUPT || interrupt > PIC2_START_INTERRUPT + 7){
         return;
     }
