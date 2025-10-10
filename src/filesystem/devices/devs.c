@@ -82,7 +82,7 @@ void create_device(unsigned char* name,vfs_handles_t* handles, void* gen_data,vo
         init(dev);
     }
     
-    vector_append(&dev_vec,(uint32_t)dev);
+    vector_append(&dev_vec,(vector_data_t)dev);
     change_active_dir(old_dir);
 }
 
@@ -183,7 +183,7 @@ void dev_wm_collect_pipe(){
             memcpy(answer->filename,&buffer[bytes_parsed],answer->filename_len);
             bytes_parsed += answer->filename_len;
 
-            vector_append(&wm_answers,(uint32_t)answer);
+            vector_append(&wm_answers,(vector_data_t)answer);
             break;
         }        
         default:

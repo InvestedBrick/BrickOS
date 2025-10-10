@@ -219,7 +219,7 @@ uint32_t create_user_process(unsigned char* binary, uint32_t size,unsigned char*
     uint32_t code_data_pages = CEIL_DIV(size,MEMORY_PAGE_SIZE);
     process->page_alloc_start = code_data_pages * MEMORY_PAGE_SIZE;
 
-    vector_append(&user_process_vector,(uint32_t)process); // too lazy to implement a vector for structs
+    vector_append(&user_process_vector,(vector_data_t)process); // too lazy to implement a vector for structs
     
     uint32_t* pd = create_user_page_dir();
     

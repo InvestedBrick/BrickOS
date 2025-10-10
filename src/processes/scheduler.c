@@ -23,7 +23,7 @@ void add_sleeping_process(process_state_t* proc,uint32_t sleep_ticks){
     sleepy_proc->proc = proc;
     sleepy_proc->wakeup_tick = ticks + sleep_ticks;
 
-    vector_append(&sleeping_procs,(uint32_t)sleepy_proc);
+    vector_append(&sleeping_procs,(vector_data_t)sleepy_proc);
 }
 
 void remove_sleeping_process(sleeping_proc_t* sleepy_proc){

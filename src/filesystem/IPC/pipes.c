@@ -126,7 +126,7 @@ generic_file_t* open_pipe(inode_t* inode,uint32_t flags){
         pipe->read_id = PIPE_DEFAULT_ACCESS_ID;
         pipe->write_id = PIPE_DEFAULT_ACCESS_ID;
         pipe->closed = false;
-        vector_append(&pipe_vec,(uint32_t)pipe);
+        vector_append(&pipe_vec,(vector_data_t)pipe);
         
     }
 

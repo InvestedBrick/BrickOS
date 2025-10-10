@@ -40,7 +40,7 @@ shared_object_t* find_shared_object_by_id(uint32_t unique_id){
 }
 
 void append_shared_object(shared_object_t* shrd_obj){
-    vector_append(&shm_obj_vec,(uint32_t)shrd_obj);
+    vector_append(&shm_obj_vec,(vector_data_t)shrd_obj);
 }
 
 void pmm_init(uint32_t mem_low, uint32_t mem_high){

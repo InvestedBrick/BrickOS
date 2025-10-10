@@ -433,7 +433,7 @@ void build_inodes(inode_t* parent){
         memcpy(pair->name,&buffer[buffer_idx + 1],name_len);
         pair->name[name_len] = 0;
 
-        vector_append(&inode_name_pairs,(uint32_t)pair);
+        vector_append(&inode_name_pairs,(vector_data_t)pair);
 
         buffer_idx += name_len + sizeof(uint8_t);
 
@@ -451,7 +451,7 @@ void build_inodes(inode_t* parent){
         // copy the data from disk to memory
         memcpy((void*)inode,&last_read_sector[sector_offset],sizeof(inode_t));
 
-        vector_append(&inodes,(uint32_t)inode);
+        vector_append(&inodes,(vector_data_t)inode);
         build_inodes(inode); 
     }
 
@@ -533,9 +533,9 @@ void init_filesystem(){
     name_pair->parent_id = FS_ROOT_DIR_ID;
     name_pair->name = kmalloc(sizeof(unsigned char) * 5);
     memcpy(name_pair->name,"root",sizeof(unsigned char) * 5);
-    vector_append(&inode_name_pairs,(uint32_t)name_pair);
+    vector_append(&inode_name_pairs,(vector_data_t)name_pair);
     
-    vector_append(&inodes,(uint32_t)root_node);
+    vector_append(&inodes,(vector_data_t)root_node);
     
     build_inodes(root_node);
 }
@@ -849,7 +849,7 @@ int create_file(inode_t* parent_dir, unsigned char* name, uint8_t name_length, u
     file->indirect_sector = 0;
     file->size = 0;
     file->priv_lvl = priv_lvl;
-    vector_append(&inodes,(uint32_t)file);
+    vector_append(&inodes,(vector_data_t)file);
 
     if (!write_directory_entry(parent_dir,file->id,name,name_length)) {
         return FS_FILE_CREATION_FAILED;
@@ -863,7 +863,7 @@ int create_file(inode_t* parent_dir, unsigned char* name, uint8_t name_length, u
     name_pair->name = kmalloc(name_length + 1);
     memcpy(name_pair->name,name,name_length);
     name_pair->name[name_length] = 0;
-    vector_append(&inode_name_pairs,(uint32_t)name_pair);
+    vector_append(&inode_name_pairs,(vector_data_t)name_pair);
 
     return FS_FILE_CREATION_SUCCESS;
 }

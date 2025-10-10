@@ -54,7 +54,7 @@ void create_kernel_process(){
     memcpy(global_kernel_process.process_name,"root",sizeof("root"));
     global_kernel_process.running = 1;
     
-    vector_append(&user_process_vector,(uint32_t)&global_kernel_process);
+    vector_append(&user_process_vector,(vector_data_t)&global_kernel_process);
 
 }
 

@@ -3,15 +3,15 @@
 #include "memory/kmalloc.h"
 #include <stdint.h>
 void vector_resize(vector_t* vec,uint32_t new_capacity){
-    uint32_t* new_data = kmalloc(sizeof(uint32_t) * new_capacity);
-    memcpy(new_data,vec->data,vec->size * sizeof(uint32_t));
+    uint32_t* new_data = kmalloc(sizeof(vector_data_t) * new_capacity);
+    memcpy(new_data,vec->data,vec->size * sizeof(vector_data_t));
     kfree(vec->data);
 
     vec->data = new_data;
     vec->capacity = new_capacity;
 }
 
-void vector_append(vector_t* vec, uint32_t data){
+void vector_append(vector_t* vec, vector_data_t data){
     if (vec->size >= vec->capacity){
         vector_resize(vec,vec->capacity * 2);
     }
@@ -19,7 +19,7 @@ void vector_append(vector_t* vec, uint32_t data){
     vec->data[vec->size] = data;
     vec->size++;
 }
-uint32_t vector_pop(vector_t* vec){
+vector_data_t vector_pop(vector_t* vec){
     if (!vector_is_empty(vec)){
         if (vec->size - 1 <= vec->capacity * 0.25f){
             vector_resize(vec,vec->capacity * 0.5);
@@ -34,8 +34,8 @@ uint8_t vector_is_empty(vector_t* vec) {
     return vec->size == 0;
 }
 
-uint32_t vector_erase(vector_t* vec,uint32_t idx){
-    uint32_t erased_item = vec->data[idx];
+vector_data_t vector_erase(vector_t* vec,uint32_t idx){
+    vector_data_t erased_item = vec->data[idx];
 
     for(uint32_t i = idx; i < vec->size - 1;i++){
         vec->data[i] = vec->data[i + 1];
@@ -45,7 +45,7 @@ uint32_t vector_erase(vector_t* vec,uint32_t idx){
     return erased_item;
 }
 
-uint32_t vector_find(vector_t* vec, uint32_t data){
+uint32_t vector_find(vector_t* vec, vector_data_t data){
     for(uint32_t i = 0; i < vec->size;i++){
         if (vec->data[i] == data) return i;
     }
@@ -53,18 +53,18 @@ uint32_t vector_find(vector_t* vec, uint32_t data){
     return (uint32_t)-1;
 }
 
-uint32_t vector_erase_item(vector_t* vec, uint32_t data){
+vector_data_t vector_erase_item(vector_t* vec, vector_data_t data){
     uint32_t idx = vector_find(vec,data);
     if (idx == (uint32_t)-1) return idx;
 
-    uint32_t item = vector_erase(vec,idx);
+    vector_data_t item = vector_erase(vec,idx);
     return item;
 }
 
 void init_vector(vector_t* vec){
     vec->size = 0;
     vec->capacity = 1;
-    vec->data = kmalloc(sizeof(uint32_t));
+    vec->data = kmalloc(sizeof(vector_data_t));
 }
 
 
