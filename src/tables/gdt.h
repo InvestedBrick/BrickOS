@@ -4,7 +4,7 @@
 #include <stdint.h>
 typedef struct {
     uint16_t size;
-    uint32_t address;
+    uint64_t address;
 } __attribute__((packed)) gdt_t;
 
 typedef struct {
