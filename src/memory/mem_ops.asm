@@ -1,6 +1,6 @@
 global invalidate
 
-%define KERNEL_START 0xffffffffc0000000
+%define KERNEL_START 0xffff800000000000
 invalidate:
     mov rax, rdi
     invlpg [rax]

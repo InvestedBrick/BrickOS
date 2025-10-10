@@ -3,9 +3,9 @@
 #define INCLUDE_MEMORY_H
 #include <stdint.h>
 #include "../filesystem/vfs/vfs.h"
-#define KERNEL_START 0xffffffffc0000000 
-#define KERNEL_MALLOC_START 0xffffffffd0000000 // give the kernel some space
-#define KERNEL_MALLOC_END 0xffffffffe0000000 
+#define KERNEL_START 0xffff800000000000 
+#define KERNEL_MALLOC_START 0xffff8000d0000000 // give the kernel some space
+#define KERNEL_MALLOC_END 0xffff8000f0000000 
 #define TEMP_KERNEL_COPY_ADDR 0xfffffffff0000000
 
 #define REC_PAGE_DIR ((uint32_t*)0xfffffffffffff000)
@@ -19,7 +19,7 @@
 #define PAGE_FLAG_USER  (1 << 2)
 
 #define NUM_PAGE_DIRS 256
-#define NUM_PAGE_FRAMES (0x20000000 / 0x1000 / 0x8)
+#define NUM_PAGE_FRAMES (0x20000000 / 0x1000 / 0x8) // TODO: make dependant on phys mem
 
 #include "../vector.h"
 
