@@ -20,9 +20,9 @@ void init_shm_obj_vector(){
     init_vector(&shm_obj_vec);
 }
 
-virt_mem_area_t* find_virt_mem_area(virt_mem_area_t* start,uint32_t addr){
+virt_mem_area_t* find_virt_mem_area(virt_mem_area_t* start,uint64_t addr){
     virt_mem_area_t* vma = start;
-    while(vma && !(addr >= (uint32_t)vma->addr && addr <= (uint32_t)vma->addr + vma->size)){
+    while(vma && !(addr >= (uint64_t)vma->addr && addr <= (uint64_t)vma->addr + vma->size)){
         vma = vma->next;
     }
 

@@ -18,7 +18,7 @@ void error(const unsigned char* msg){
     serial_write_with_prefix("[ERROR] ",msg,SERIAL_COM1_BASE);
 }
 
-void log_uint(uint32_t num){
+void log_uint32(uint32_t num){
     //convert num to ASCII
     char ascii[11] = {0};
     if(num == 0){

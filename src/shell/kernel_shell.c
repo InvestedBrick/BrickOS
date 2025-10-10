@@ -340,24 +340,24 @@ void start_shell(){
             uint8_t failed = 0;
             if (fd < 0){
                 warn("opening failed");
-                log_uint((uint32_t)fd);
+                log_uint32((uint32_t)fd);
                 failed = 1;
             }
             uint8_t buf[] = {"Hello World, I hope this works"};
             uint32_t buf_size = sizeof("Hello World, I hope this works");
             int ret = write(fd,buf,buf_size);
             log("Wrote bytes:");
-            log_uint(ret);
+            log_uint32(ret);
             if (ret < 0){
                 warn("writing failed");
-                log_uint((uint32_t)ret);
+                log_uint32((uint32_t)ret);
                 failed = 1;
             }
             memset(buf,0,buf_size);
             ret = read(fd,buf,buf_size);
             if (ret < 0){
                 warn("Reading failed");
-                log_uint((uint32_t)ret);
+                log_uint32((uint32_t)ret);
                 failed = 1;
             }
             log(buf);
@@ -368,7 +368,7 @@ void start_shell(){
             ret = close(fd);
             if (ret < 0){
                 warn("closing failed");
-                log_uint((uint32_t)ret);
+                log_uint32((uint32_t)ret);
                 failed = 1;
             }
             if (!failed) log("ftest succeded");

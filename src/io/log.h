@@ -25,12 +25,12 @@ void warn(const unsigned char* msg);
 void error(const unsigned char* msg);
 
 /**
- * log_uint:
+ * log_uint32:
  * Writes an uint32_teger to the COM1 serial port
  * 
  * @param num The integer
  */
-void log_uint(uint32_t num);
+void log_uint32(uint32_t num);
 
 /**
  * panic: 
