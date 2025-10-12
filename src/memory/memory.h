@@ -8,8 +8,12 @@
 #define KERNEL_MALLOC_END 0xffff8000f0000000 
 #define TEMP_KERNEL_COPY_ADDR 0xfffffffff0000000
 
-#define REC_PAGE_DIR ((uint32_t*)0xfffffffffffff000)
-#define REC_PAGE_TABLE(i) ((uint32_t*) (0xffffffffffc00000) + ((i) * 0x400))
+#define RECURSIVE_BASE ((uint64_t)RECURSIVE_SLOT << 39)
+#define PML4_VIRT RECURSIVE_BASE
+#define PDPT_VIRT(pml4_index) (RECURSIVE_BASE | ((uint64_t)(pml4_index) << 30))
+#define PD_VIRT(pml4_index,pdpt_index) (PDPT_VIRT(pml4_index) | ((uint64_t)(pdpt_index) << 21))
+#define PT_VIRT(pml4_index,pdpt_index,pd_index) (PD_VIRT(pml4_index,pdpt_index) | ((uint64_t)(pd_index) << 12))
+
 
 #define MEMORY_PAGE_SIZE 0x1000
 
@@ -18,8 +22,12 @@
 #define PAGE_FLAG_OWNER (1 << 9)
 #define PAGE_FLAG_USER  (1 << 2)
 
-#define NUM_PAGE_DIRS 256
-#define NUM_PAGE_FRAMES (0x20000000 / 0x1000 / 0x8) // TODO: make dependant on phys mem
+#define ENTRIES_PER_TABLE 512
+#define RECURSIVE_SLOT (ENTRIES_PER_TABLE - 1)
+
+#define N_PML4_TABLES 256 
+
+#define INVALID_PHYS_ADDR (uint64_t)-1
 
 #include "../vector.h"
 
@@ -64,7 +72,7 @@ shared_object_t* find_shared_object_by_id(uint32_t unique_id);
 
 extern vector_t shm_obj_vec;
 
-extern uint32_t initial_page_dir[1024];
+extern uint64_t initial_pml4_table[ENTRIES_PER_TABLE];
 /**
  * find_virt_mem_area:
  * finds a virtual memory area in a virt_mem_area_t linked list, assuming addr is page-aligned
@@ -82,7 +90,7 @@ virt_mem_area_t* find_virt_mem_area(virt_mem_area_t* start,uint64_t addr);
  * @param physical_alloc_start The calculated start of the phsyical allocations
  * @param mem_high The upper memory provided by the boot info
  */
-void init_memory(uint32_t physical_alloc_start, uint32_t mem_high);
+void init_memory(uint64_t physical_alloc_start, uint64_t mem_high);
 
 /**
  * invalidate:
@@ -96,7 +104,7 @@ void invalidate(uint32_t vaddr);
  *  Allocates a page frame for the kernel
  * @return the physical address of the page frame
  */
-uint32_t pmm_alloc_page_frame();
+uint64_t pmm_alloc_page_frame();
 /**
  * mem_map_page:
  * Maps a virtual memory page to a physical address
@@ -105,77 +113,78 @@ uint32_t pmm_alloc_page_frame();
  * @param phys_addr The physical address of the memory page
  * @param flags The flags for the page
  */
-void mem_map_page(uint32_t virt_addr, uint32_t phys_addr, uint32_t flags);
+void mem_map_page(uint64_t virt_addr, uint64_t phys_addr, uint32_t flags);
 
 /**
- * mem_get_current_page_dir:
- * Returns the current page directory
- * @return A pointer to the page dir
+ * mem_get_current_pml4_phys:
+ * Returns the current pml4 table
+ * @return A pointer to the pml4 table
  */
-uint32_t* mem_get_current_page_dir();
+uint64_t* mem_get_current_pml4_phys();
 
 /**
- * mem_change_page_dir:
- * changes the page directory
- * @param pd The new page directory
+ * mem_change_pml4_table:
+ * changes the pml4 table
+ * @param pml4_table The new pml4 table
  */
-void mem_change_page_dir(uint32_t* pd);
+void mem_change_pml4_table(uint64_t* pml4_table);
 /**
- * mem_set_current_page_dir:
- * Sets the current page directory
- * @param pd The page directory
+ * mem_set_current_pml4_phys:
+ * Sets the current pml4 table
+ * @param pml4_table The pml4 table
  */
-void mem_set_current_page_dir(uint32_t* pd);
+void mem_set_current_pml4_phys(uint64_t* pml4_table);
 
 /**
- * sync_page_dirs:
- * synchronices the page directories
+ * sync_pml4_tables:
+ * synchronices the pml4 tables
  */
-void sync_page_dirs();
+void sync_pml4_tables();
 
 /**
- * create_user_page_dir:
- * Creates a page directory for a user process
+ * create_user_pml4_table:
+ * Creates a pml4 table for a user process
  * 
- * @return The page directory
+ * @return The pml4 table
  */
-uint32_t* create_user_page_dir();
+uint64_t* create_user_pml4_table();
 /**
- * free_user_page_dir:
- * Marks a user page directory as unused, frees all page tables and page frames within
+ * free_user_pml4_table:
+ * Marks a user pml4 table as unused, frees all page table pointers, page tables and page frames within
  * 
- * @param usr_pd The user page directory
+ * @param user_pml4 The user pml4 table
  */
-void free_user_page_dir(uint32_t* usr_pd);
+void free_user_pml4_table(uint64_t* user_pml4);
 
 /**
- * void restore_kernel_memory_page_dir:
- * restores the current page directory to be the kernel page directory
+ * void restore_kernel_pml4_table:
+ * restores the current pml4 table to be the kernel pml4 table
  */
-void restore_kernel_memory_page_dir();
+void restore_kernel_pml4_table();
+
 /**
  * pmm_free_page_frame:
  * Frees a page frame
  * @param phys_addr The physical address of the page frame
  */
-void pmm_free_page_frame(uint32_t phys_addr);
+void pmm_free_page_frame(uint64_t phys_addr);
 
 /**
  * mem_unmap_page:
  * Unmaps a memory page, but does not free the page frame (see pmm_free_page_frame)
  * @param virt_addr The virtual address to which the page was mapped
  */
-void mem_unmap_page(uint32_t virt_addr);
+void mem_unmap_page(uint64_t virt_addr);
 
 /**
- * mem_map_page_in_dir:
- * Map a memory page frame into a currently non-selected page directory
- * @param page_dir The currently non-selected page directory
+ * mem_map_page_in_pml4:
+ * Map a memory page frame into a currently non-selected pml4 table
+ * @param pml4_table The currently non-selected pml4 table
  * @param virt_addr The desired virtual address to map to
  * @param phys_addr The physical address of the page
  * @param flags The flags for the page
  */
-void mem_map_page_in_dir(uint32_t* page_dir, uint32_t virt_addr, uint32_t phys_addr, uint32_t flags);
+void mem_map_page_in_pml4(uint64_t* pml4_table, uint64_t virt_addr, uint64_t phys_addr, uint32_t flags);
 
 /**
  * un_identity_map_first_page_table:
