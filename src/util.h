@@ -4,6 +4,7 @@
 
 #define CEIL_DIV(a,b) (((a + b) - 1 )/ b)
 #define ALIGN_DOWN(a, b) ((b) ? ((a) - ((a) % (b))) : (a))
+#define ALIGN_UP(a,b) (a + b - 1) & ~(a - 1)
 
 #define nullptr 0
 
