@@ -52,7 +52,7 @@ start:
     
     lgdt [gdt_descriptor]
 
-    jmp 0x08:long_mode_entry
+    jmp 0x08:trampoline
 
 align 8
 gdt_start:
@@ -70,8 +70,13 @@ extern kernel_physical_end
 extern kernel_virtual_start 
 extern kernel_virtual_end
 
-section .text
 bits 64
+section .trampoline
+trampoline:
+section .trampoline
+    jmp qword [rel long_mode_entry_address]
+
+section .text
 long_mode_entry:
 
     mov ax, 0x10
@@ -98,6 +103,9 @@ stack_top:
 
 
 section .bootdata
+long_mode_entry_address:
+    dq long_mode_entry  
+
 align 4096
 global initial_pml4_table
 initial_pml4_table:
