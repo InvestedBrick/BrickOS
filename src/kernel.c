@@ -23,17 +23,17 @@ user_process_t global_kernel_process;
 extern uint32_t stack_top;
 uint8_t dispatched_user_mode = 0;
 
-uint32_t calc_phys_alloc_start(multiboot_info_t* boot_info){
-    multiboot_module_t* mods = (multiboot_module_t*) boot_info->mods_addr;
-    uint32_t highest_mod_end = 0;
+uint64_t calc_phys_alloc_start(multiboot_info_t* boot_info){
+    multiboot_module_t* mods = (multiboot_module_t*)(uintptr_t)boot_info->mods_addr;
+    uint64_t highest_mod_end = 0;
 
-    for (uint32_t i = 0; i < boot_info->mods_count;i++){
-        if (mods[i].mod_end > highest_mod_end){
-            highest_mod_end = mods[i].mod_end;
+    for (uint32_t i = 0; i < boot_info->mods_count; i++){
+        if ((uint64_t)mods[i].mod_end > highest_mod_end){
+            highest_mod_end = (uint64_t)mods[i].mod_end;
         }
     }
 
-    return (highest_mod_end + 0xfff) & ~ 0xfff;
+    return ALIGN_UP(highest_mod_end, 0x1000); // align to 4kb
 }
 
 void setup_kernel_fds(){
@@ -102,8 +102,8 @@ void kmain(multiboot_info_t* boot_info)
     init_and_test_I8042_controller();
     log("Initialized the I8042 PS/2 controller");
 
-    uint32_t physical_alloc_start = calc_phys_alloc_start(boot_info);
-    init_memory(physical_alloc_start ,boot_info->mem_upper * 1024);
+    uint64_t physical_alloc_start = calc_phys_alloc_start(boot_info);
+    init_memory(physical_alloc_start ,boot_info->mem_upper * 1024); // mem_upper is in kb
     log("Initialized paged memory");
 
     init_framebuffer(boot_info,SCREEN_PIXEL_BUFFER_START);
