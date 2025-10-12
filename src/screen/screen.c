@@ -34,7 +34,7 @@ uint32_t screen_origin_y = 0;
 uint32_t screen_width;
 uint32_t screen_height;
 
-void map_framebuffer(uint32_t fb_phys,uint32_t fb_virt, uint32_t fb_size){
+void map_framebuffer(uint64_t fb_phys,uint64_t fb_virt, uint32_t fb_size){
 
     uint32_t n_pages = CEIL_DIV(fb_size,MEMORY_PAGE_SIZE);
     for (uint32_t i = 0; i < n_pages;i++){
@@ -42,9 +42,9 @@ void map_framebuffer(uint32_t fb_phys,uint32_t fb_virt, uint32_t fb_size){
     } 
 }
 
-void init_framebuffer(multiboot_info_t* mboot,uint32_t fb_start){
+void init_framebuffer(multiboot_info_t* mboot,uint64_t fb_start){
 
-    uint32_t fb_phys = (uint32_t)mboot->framebuffer_addr;
+    uint64_t fb_phys = (uint64_t)mboot->framebuffer_addr;
     uint32_t fb_size = mboot->framebuffer_pitch * mboot->framebuffer_height;
 
     fb = (volatile unsigned char*)(fb_start);

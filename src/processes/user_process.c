@@ -90,8 +90,8 @@ void free_pid(uint32_t pid){
 }
 
 void setup_arguments(user_process_t* proc,unsigned char* argv[]){
-    uint32_t page_phys = pmm_alloc_page_frame();
-    process_state_t* state = get_process_state_by_page_dir(proc->page_dir);
+    uint64_t page_phys = pmm_alloc_page_frame();
+    process_state_t* state = get_process_state_by_pml4(proc->pml4);
     // map temporarily to write memory into it
     mem_map_page(TEMP_KERNEL_COPY_ADDR,page_phys,PAGE_FLAG_WRITE | PAGE_FLAG_PRESENT);
     unsigned char* page = (unsigned char*)TEMP_KERNEL_COPY_ADDR;
@@ -99,7 +99,7 @@ void setup_arguments(user_process_t* proc,unsigned char* argv[]){
     uint32_t argc = 0;
     for(uint32_t i = 0; argv[i];i++) {argc++;}
 
-    uint32_t* arg_ptrs = (uint32_t*)kmalloc(argc * sizeof(uint32_t));    
+    uint64_t* arg_ptrs = (uint64_t*)kmalloc(argc * sizeof(uint64_t));    
     uint64_t sp = KERNEL_START;
     if (arg_ptrs){
         uint32_t write_ptr = MEMORY_PAGE_SIZE;
@@ -148,7 +148,7 @@ void setup_arguments(user_process_t* proc,unsigned char* argv[]){
 
 
     mem_unmap_page(TEMP_KERNEL_COPY_ADDR);
-    mem_map_page_in_dir(proc->page_dir,KERNEL_START - MEMORY_PAGE_SIZE,page_phys, PAGE_FLAG_USER | PAGE_FLAG_WRITE);
+    mem_map_page_in_pml4(proc->pml4,KERNEL_START - MEMORY_PAGE_SIZE,page_phys, PAGE_FLAG_USER | PAGE_FLAG_WRITE);
 }
 
 uint32_t create_user_process(unsigned char* binary, uint32_t size,unsigned char* process_name,uint8_t priv_lvl, unsigned char* argv[],process_fds_init_t* start_fds) {
@@ -157,7 +157,7 @@ uint32_t create_user_process(unsigned char* binary, uint32_t size,unsigned char*
 // To setup a user process:
   /**
    * create_user_page_dir()
-   * mem_change_page_dir()
+   * mem_change_pml4_table()
    * pmm_alloc_frame_page() for code/data and stack
    * load programs into page frames
    * mem_map_page() for both pages (code/data at 0x00000000, stack at 0xBFFFFFFB) with flag PAGE_FLAG_USER
@@ -167,7 +167,7 @@ uint32_t create_user_process(unsigned char* binary, uint32_t size,unsigned char*
     // All kmalloc calls need to be made before creating the page directory, otherwise they are not correctly copied 
 
     //allocate a kernel stack
-    uint32_t kernel_stack = (uint32_t)kmalloc(MEMORY_PAGE_SIZE);
+    uint64_t kernel_stack = (uint64_t)kmalloc(MEMORY_PAGE_SIZE);
     
     user_process_t* process = (user_process_t*)kmalloc(sizeof(user_process_t));
     
@@ -221,13 +221,13 @@ uint32_t create_user_process(unsigned char* binary, uint32_t size,unsigned char*
 
     vector_append(&user_process_vector,(vector_data_t)process); // too lazy to implement a vector for structs
     
-    uint32_t* pd = create_user_page_dir();
+    uint64_t* pml4 = create_user_pml4_table();
     
-    process->page_dir = pd;
+    process->pml4 = pml4;
     add_process_state(process);
     
     for (uint32_t i = 0; i < code_data_pages;i++){
-        uint32_t code_data_mem = pmm_alloc_page_frame();
+        uint64_t code_data_mem = pmm_alloc_page_frame();
         // some weird kernel mapping stuff because if I change the current page directory too early the OS shits itself
         mem_map_page(TEMP_KERNEL_COPY_ADDR,code_data_mem, PAGE_FLAG_WRITE | PAGE_FLAG_PRESENT);
         
@@ -240,15 +240,15 @@ uint32_t create_user_process(unsigned char* binary, uint32_t size,unsigned char*
         }
 
         mem_unmap_page(TEMP_KERNEL_COPY_ADDR);
-        mem_map_page_in_dir(process->page_dir,USER_CODE_DATA_VMEMORY_START + i * MEMORY_PAGE_SIZE,code_data_mem,PAGE_FLAG_WRITE | PAGE_FLAG_USER);
+        mem_map_page_in_pml4(process->pml4,USER_CODE_DATA_VMEMORY_START + i * MEMORY_PAGE_SIZE,code_data_mem,PAGE_FLAG_WRITE | PAGE_FLAG_USER);
     }
 
     setup_arguments(process,argv);
 
     // first page is managed by the argv setup
     for (uint32_t i = 1; i < USER_STACK_PAGES_PER_PROCESS;i++){
-        uint32_t stack_mem = pmm_alloc_page_frame();
-        mem_map_page_in_dir(process->page_dir,USER_STACK_VMEMORY_START - ((i + 1) * MEMORY_PAGE_SIZE),stack_mem,PAGE_FLAG_WRITE | PAGE_FLAG_USER);
+        uint64_t stack_mem = pmm_alloc_page_frame();
+        mem_map_page_in_pml4(process->pml4,USER_STACK_VMEMORY_START - ((i + 1) * MEMORY_PAGE_SIZE),stack_mem,PAGE_FLAG_WRITE | PAGE_FLAG_USER);
         
     }
     
@@ -262,7 +262,7 @@ void load_registers(){
     uint32_t int_save = get_interrupt_status();
     disable_interrupts();
     // we do a little pretending here so that when the scheduler returns with these values, everything starts
-    process_state_t* state = get_process_state_by_page_dir(mem_get_current_page_dir());
+    process_state_t* state = get_process_state_by_pml4(mem_get_current_pml4_table());
     const uint64_t user_mode_data_segment_selector = (0x20 | 0x3);
     
     state->regs.fs = user_mode_data_segment_selector;
@@ -281,11 +281,11 @@ void dispatch_user_process(uint32_t pid){
     user_process_t* process = get_user_process_by_pid(pid);
     if (process->running) return;
     process->running = 1;
-    uint32_t* old_pd = mem_get_current_page_dir();
-    mem_change_page_dir(process->page_dir); 
+    uint64_t* old_pml4 = mem_get_current_pml4_table();
+    mem_set_current_pml4_table(process->pml4); 
     set_kernel_stack(process->kernel_stack + MEMORY_PAGE_SIZE);
     load_registers();
-    mem_change_page_dir(old_pd);
+    mem_set_current_pml4_table(old_pml4);
 }
 
 
@@ -338,10 +338,10 @@ int kill_user_process(uint32_t pid){
         kfree(prev_vma);
     }
 
-    process_state_t* proc_state = get_process_state_by_page_dir(process->page_dir);
+    process_state_t* proc_state = get_process_state_by_pml4(process->pml4);
     if (!proc_state) {error("Getting process state failed"); return SYSCALL_FAIL;};
     remove_process_state(proc_state);
-    free_user_page_dir(process->page_dir);
+    free_user_pml4_table(process->pml4);
     kfree(process->process_name);
     kfree((void*)process->kernel_stack);
     kfree(process);

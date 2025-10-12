@@ -15,7 +15,7 @@
 
 //TODO: provide actually helpful error messages
 //TODO: add munmap
-int sys_write(user_process_t* p,uint32_t fd, unsigned char* buf, uint32_t size){
+uint64_t sys_write(user_process_t* p,uint32_t fd, unsigned char* buf, uint32_t size){
     if (fd >= MAX_FDS) return SYSCALL_FAIL;
 
     generic_file_t* file = p->fd_table[fd];
@@ -24,7 +24,7 @@ int sys_write(user_process_t* p,uint32_t fd, unsigned char* buf, uint32_t size){
 
     return file->ops->write(file,buf,size);
 }
-int sys_read(user_process_t* p,uint32_t fd, unsigned char* buf, uint32_t size){
+uint64_t sys_read(user_process_t* p,uint32_t fd, unsigned char* buf, uint32_t size){
     if (fd >= MAX_FDS) return SYSCALL_FAIL;
 
     generic_file_t* file = p->fd_table[fd];
@@ -34,7 +34,7 @@ int sys_read(user_process_t* p,uint32_t fd, unsigned char* buf, uint32_t size){
     return file->ops->read(file,buf,size);
 }
 
-int sys_open(user_process_t* p,unsigned char* filepath, uint8_t flags){
+uint64_t sys_open(user_process_t* p,unsigned char* filepath, uint8_t flags){
 
     generic_file_t* file = fs_open(filepath,flags);
 
@@ -43,7 +43,7 @@ int sys_open(user_process_t* p,unsigned char* filepath, uint8_t flags){
     return assign_fd(p,file);
 }
 
-int sys_close(user_process_t* p, uint32_t fd){
+uint64_t sys_close(user_process_t* p, uint32_t fd){
     if (fd >= MAX_FDS) return SYSCALL_FAIL;
 
     generic_file_t* file = p->fd_table[fd];
@@ -52,12 +52,12 @@ int sys_close(user_process_t* p, uint32_t fd){
 
     free_fd(p,file);
 
-    int ret_val = file->ops->close(file);
+    uint64_t ret_val = file->ops->close(file);
     kfree(file);
     return ret_val;
 }
 
-int sys_seek(user_process_t* p,uint32_t fd, uint32_t offset){
+uint64_t sys_seek(user_process_t* p,uint32_t fd, uint32_t offset){
     if (fd >= MAX_FDS) return SYSCALL_FAIL;
 
     generic_file_t* file = p->fd_table[fd];
@@ -67,7 +67,7 @@ int sys_seek(user_process_t* p,uint32_t fd, uint32_t offset){
     return file->ops->seek(file,offset);
 }
 
-int sys_ioctl(user_process_t* p, uint32_t fd,uint32_t cmd, void* arg){
+uint64_t sys_ioctl(user_process_t* p, uint32_t fd,uint32_t cmd, void* arg){
     if (fd >= MAX_FDS) return SYSCALL_FAIL;
 
     generic_file_t* file = p->fd_table[fd];
@@ -77,7 +77,7 @@ int sys_ioctl(user_process_t* p, uint32_t fd,uint32_t cmd, void* arg){
     return file->ops->ioctl(file,cmd,arg);
 }
 
-int sys_exit(user_process_t* p,interrupt_stack_frame_t* stack_frame){
+uint64_t sys_exit(user_process_t* p,interrupt_stack_frame_t* stack_frame){
     uint32_t pid = p->process_id;
     log("Process exited with error code");
     log_uint32(stack_frame->rbx);
@@ -88,7 +88,7 @@ int sys_exit(user_process_t* p,interrupt_stack_frame_t* stack_frame){
     return kill_user_process(pid);
 }
 
-int sys_mmap(user_process_t *p, void *addr, uint32_t size,uint32_t prot, uint32_t flags, uint32_t fd, uint32_t offset){
+uint64_t sys_mmap(user_process_t *p, void *addr, uint32_t size,uint32_t prot, uint32_t flags, uint32_t fd, uint32_t offset){
     if (size == 0 || (offset % MEMORY_PAGE_SIZE) != 0) return SYSCALL_FAIL;
     
     if (fd < 3) fd = MAP_FD_NONE;
@@ -149,17 +149,17 @@ int sys_mmap(user_process_t *p, void *addr, uint32_t size,uint32_t prot, uint32_
     vma->next = p->vm_areas;
     p->vm_areas = vma;
 
-    p->page_alloc_start = (uint32_t)addr + size;
+    p->page_alloc_start = (uint64_t)addr + size;
 
     // we kinda just pretend that the area is mapped and map it once we fault there
-    return (int)addr;
+    return (uint64_t)addr;
 }
 
-int sys_getcwd(unsigned char* buffer, uint32_t buf_len){
+uint64_t sys_getcwd(unsigned char* buffer, uint32_t buf_len){
     return get_full_active_path(buffer,buf_len);
 }
 
-int sys_getdents(user_process_t* p,uint32_t fd,dirent_t* ent_buffer,uint32_t size){
+uint64_t sys_getdents(user_process_t* p,uint32_t fd,dirent_t* ent_buffer,uint32_t size){
     if (!p->fd_table[fd]) return SYSCALL_FAIL;
     generic_file_t* file = p->fd_table[fd];
 
@@ -181,7 +181,7 @@ int sys_getdents(user_process_t* p,uint32_t fd,dirent_t* ent_buffer,uint32_t siz
     uint32_t bpos = 0;
     for (uint32_t i = 0; i < names->n_strings;i++){
         inode_t* entry_inode = get_inode_by_id(get_inode_id_by_name(open_file->inode_id,names->strings[i].str));
-        dirent_t* entry = (dirent_t*)((uint32_t)ent_buffer + bpos);
+        dirent_t* entry = (dirent_t*)((uint64_t)ent_buffer + bpos);
         entry->inode_id = entry_inode->id;
         entry->type = entry_inode->type;
         entry->len = sizeof(int) * 3 + names->strings[i].length + 1;
@@ -192,7 +192,7 @@ int sys_getdents(user_process_t* p,uint32_t fd,dirent_t* ent_buffer,uint32_t siz
     return names->n_strings;
 }
 
-int sys_chdir(unsigned char* dir_name){
+uint64_t sys_chdir(unsigned char* dir_name){
     inode_t* new_dir = get_inode_by_path(dir_name);
     if (!new_dir) return SYSCALL_FAIL;
     if (new_dir->type != FS_TYPE_DIR) return SYSCALL_FAIL;
@@ -202,7 +202,7 @@ int sys_chdir(unsigned char* dir_name){
     return SYSCALL_SUCCESS;
 }
 
-int sys_rmfile(unsigned char* filename){
+uint64_t sys_rmfile(unsigned char* filename){
     inode_t* file = get_inode_by_path(filename);
 
     if (!file) return SYSCALL_FAIL;
@@ -215,7 +215,7 @@ int sys_rmfile(unsigned char* filename){
 
 }
 
-int sys_mknod(unsigned char* filename,mknod_params_t* params){
+uint64_t sys_mknod(unsigned char* filename,mknod_params_t* params){
     if (params->type != FS_TYPE_PIPE) return SYSCALL_FAIL; // add other types later
     
     if (get_inode_by_path(filename)) return SYSCALL_FAIL;
@@ -265,7 +265,7 @@ int sys_mknod(unsigned char* filename,mknod_params_t* params){
     return SYSCALL_SUCCESS;
 }
 
-int sys_mssleep(interrupt_stack_frame_t* stack_frame, uint32_t time){
+uint64_t sys_mssleep(interrupt_stack_frame_t* stack_frame, uint32_t time){
     uint32_t sleep_ticks = (time * DESIRED_STANDARD_FREQ) / 1000;
     if (sleep_ticks == 0) sleep_ticks = 1;
     add_sleeping_process(get_current_process_state(),sleep_ticks);
@@ -274,10 +274,10 @@ int sys_mssleep(interrupt_stack_frame_t* stack_frame, uint32_t time){
     return SYSCALL_SUCCESS;
 }
 
-int sys_spawn(unsigned char* filename, unsigned char* argv[],process_fds_init_t* start_fds){
+uint64_t sys_spawn(unsigned char* filename, unsigned char* argv[],process_fds_init_t* start_fds){
     return run(filename,argv,start_fds,PRIV_STD);
 }
 
-int sys_getpid(user_process_t* p){
+uint64_t sys_getpid(user_process_t* p){
     return p->process_id;
 }

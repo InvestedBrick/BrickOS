@@ -13,11 +13,11 @@
 
 typedef struct {
     uint32_t process_id;
-    uint32_t* page_dir;
-    uint32_t kernel_stack;
+    uint64_t* pml4; 
+    uint64_t kernel_stack;
     unsigned char* process_name;
     uint8_t running;
-    uint32_t page_alloc_start;
+    uint64_t page_alloc_start;
     uint8_t priv_lvl;
     virt_mem_area_t* vm_areas;
     generic_file_t* fd_table[MAX_FDS];

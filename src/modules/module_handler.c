@@ -16,11 +16,11 @@ void save_module_binaries(multiboot_info_t* boot_info){
 
     if (!module_binary_structs) return;
 
-    multiboot_module_t* modules = (multiboot_module_t*)boot_info->mods_addr;
+    multiboot_module_t* modules = (multiboot_module_t*)(uint64_t)boot_info->mods_addr;
     for (uint32_t i = 0; i < module_count;i++){
         module_binary_structs[i].size = modules[i].mod_end - modules[i].mod_start;
         
-        unsigned char* cmd_line = (unsigned char*)modules[i].cmdline;
+        unsigned char* cmd_line = (unsigned char*)(uint64_t)modules[i].cmdline;
         // looks like "/modules/<module name>"
         uint32_t name_start_idx = find_char(&cmd_line[1],'/') + 2; // skip past the first '/' and return index to the first char of the name
         
@@ -34,10 +34,10 @@ void save_module_binaries(multiboot_info_t* boot_info){
             
         }
 
-        module_binary_structs[i].start = (uint32_t)kmalloc(module_binary_structs[i].size);
+        module_binary_structs[i].start = (uint64_t)kmalloc(module_binary_structs[i].size);
 
         // copy the module binary for future use
-        memcpy((unsigned char*)module_binary_structs[i].start,(unsigned char*)modules[i].mod_start,module_binary_structs[i].size);
+        memcpy((unsigned char*)module_binary_structs[i].start,(unsigned char*)(uint64_t)modules[i].mod_start,module_binary_structs[i].size);
 
     }
 

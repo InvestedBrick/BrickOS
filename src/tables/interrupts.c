@@ -17,7 +17,7 @@ extern void* idt_code_table[];
 
 static idt_t idt;
 
-static uint64_t ticks = 0;
+uint64_t ticks = 0;
 static volatile uint8_t interrupts_enabled = 1;
 static volatile uint8_t force_switch = 0;
 
@@ -73,7 +73,7 @@ void init_idt(){
 
 }
 
-int handle_software_interrupt(interrupt_stack_frame_t* stack_frame){
+uint64_t handle_software_interrupt(interrupt_stack_frame_t* stack_frame){
     switch (stack_frame->rax)
     {
     case SYS_DEBUG:
@@ -216,7 +216,7 @@ void interrupt_handler(interrupt_stack_frame_t* stack_frame) {
             stack_frame->rax = handle_software_interrupt(stack_frame);
             break;
         case INT_PAGE_FAULT:
-
+            ;
             uint64_t cr2;
             asm volatile ("mov %%cr2, %0" : "=r"(cr2));
             page_fault_handler(get_current_user_process(),cr2,stack_frame);

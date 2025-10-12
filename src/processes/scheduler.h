@@ -15,7 +15,7 @@ typedef struct process_state_struct{
     uint8_t exec_state;
     uint32_t pid;
     interrupt_stack_frame_t regs;
-    uint32_t* pd;
+    uint64_t* pml4;
     struct process_state_struct* next;
     uint32_t kernel_stack_top;
 } process_state_t;
@@ -55,11 +55,11 @@ void add_process_state(user_process_t* usr_proc);
 void remove_process_state(process_state_t* proc);
 
 /**
- * get_process_state_by_page_dir:
- * Returns a process state with a given page dir
- * @param page_dir The page directory of the process
+ * get_process_state_by_pml4:
+ * Returns a process state with a given pml4 table
+ * @param pml4 The pml4 table of the process
  */
-process_state_t* get_process_state_by_page_dir(uint32_t* page_dir);
+process_state_t* get_process_state_by_pml4(uint64_t* pml4);
 
 process_state_t* get_current_process_state();
 

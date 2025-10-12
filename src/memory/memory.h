@@ -97,7 +97,7 @@ void init_memory(uint64_t physical_alloc_start, uint64_t mem_high);
  * invalidates virtual memory page
  * @param vaddr The address of the memory page
  */
-void invalidate(uint32_t vaddr);
+void invalidate(uint64_t vaddr);
 
 /**
  * pmm_alloc_page_frame:
@@ -116,24 +116,32 @@ uint64_t pmm_alloc_page_frame();
 void mem_map_page(uint64_t virt_addr, uint64_t phys_addr, uint32_t flags);
 
 /**
- * mem_get_current_pml4_phys:
+ * mem_get_current_pml4_table:
  * Returns the current pml4 table
  * @return A pointer to the pml4 table
  */
-uint64_t* mem_get_current_pml4_phys();
+uint64_t* mem_get_current_pml4_table();
 
 /**
- * mem_change_pml4_table:
+ * mem_set_current_pml4_table:
  * changes the pml4 table
  * @param pml4_table The new pml4 table
  */
-void mem_change_pml4_table(uint64_t* pml4_table);
+void mem_set_current_pml4_table(uint64_t* pml4_table);
+
 /**
  * mem_set_current_pml4_phys:
  * Sets the current pml4 table
  * @param pml4_table The pml4 table
  */
 void mem_set_current_pml4_phys(uint64_t* pml4_table);
+
+/**
+ * mem_get_current_pml4_phys:
+ * Gets the current pml4 table
+ * @return The pml4 table
+ */
+uint64_t mem_get_current_pml4_phys();
 
 /**
  * sync_pml4_tables:

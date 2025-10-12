@@ -45,7 +45,7 @@ void create_kernel_process(){
     memset(global_kernel_process.fd_table,0,MAX_FDS);
 
     global_kernel_process.kernel_stack = stack_top;
-    global_kernel_process.page_dir = mem_get_current_page_dir();
+    global_kernel_process.pml4 = mem_get_current_pml4_table();
     global_kernel_process.process_id = get_pid();
     global_kernel_process.vm_areas = 0;
     global_kernel_process.priv_lvl = PRIV_ALUCARD; // the all-powerful
@@ -60,7 +60,7 @@ void create_kernel_process(){
 
 void shutdown(){
 
-    restore_kernel_memory_page_dir();
+    restore_kernel_pml4_table();
 
     cleanup_tmp();
     log("Cleaned up /tmp");

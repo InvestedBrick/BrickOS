@@ -3,7 +3,7 @@
 #include "memory/kmalloc.h"
 #include <stdint.h>
 void vector_resize(vector_t* vec,uint32_t new_capacity){
-    uint32_t* new_data = kmalloc(sizeof(vector_data_t) * new_capacity);
+    vector_data_t* new_data = kmalloc(sizeof(vector_data_t) * new_capacity);
     memcpy(new_data,vec->data,vec->size * sizeof(vector_data_t));
     kfree(vec->data);
 

@@ -27,7 +27,7 @@ void add_sleeping_process(process_state_t* proc,uint32_t sleep_ticks){
 }
 
 void remove_sleeping_process(sleeping_proc_t* sleepy_proc){
-    vector_erase_item(&sleeping_procs,(uint32_t)sleepy_proc);
+    vector_erase_item(&sleeping_procs,(uint64_t)sleepy_proc);
     kfree(sleepy_proc);
 }
 
@@ -62,7 +62,7 @@ void init_scheduler(){
     current_proc = 0;
 
     run("modules/loop.bin",nullptr,nullptr,PRIV_STD);
-    restore_kernel_memory_page_dir();
+    restore_kernel_pml4_table();
 
     // since the endless proc got attached to p_queue->next, we need to re-arrange this
     process_state_t* old_p_queue = p_queue;
@@ -73,10 +73,10 @@ void init_scheduler(){
     log("Set up endless process");
 }
 
-process_state_t* get_process_state_by_page_dir(uint32_t* page_dir){
+process_state_t* get_process_state_by_pml4(uint64_t* pml4){
     process_state_t* node = p_queue;
     while (node) {
-        if (node->pd == page_dir) return node;
+        if (node->pml4 == pml4) return node;
         node = node->next;
     }
     return 0;
@@ -88,7 +88,7 @@ void add_process_state(user_process_t* usr_proc){
         return;
     }
     process_state_t* proc = (process_state_t*)kmalloc(sizeof(process_state_t));
-    proc->pd = usr_proc->page_dir;
+    proc->pml4 = usr_proc->pml4;
     proc->next = 0;
     proc->kernel_stack_top = usr_proc->kernel_stack + MEMORY_PAGE_SIZE;
     proc->pid = usr_proc->process_id;
@@ -118,7 +118,7 @@ void switch_task(interrupt_stack_frame_t* regs){
         // the loop process is the only one left
         shutdown();
     }
-    uint32_t* old_pd = mem_get_current_page_dir();
+
     uint32_t interrupt_code = regs->interrupt_number;
 
     if (!first_switch){
@@ -132,7 +132,7 @@ void switch_task(interrupt_stack_frame_t* regs){
 
     set_kernel_stack(current_proc->kernel_stack_top);
 
-    mem_change_page_dir(current_proc->pd);
+    mem_set_current_pml4_table(current_proc->pml4);
     memcpy(regs,&current_proc->regs,sizeof(interrupt_stack_frame_t));
     regs->interrupt_number = interrupt_code; 
 }

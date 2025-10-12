@@ -5,7 +5,7 @@
 #include "../multiboot.h"
 typedef struct {
     uint32_t size;
-    uint32_t start;
+    uint64_t start;
     unsigned char* cmdline;
 }module_binary_t;
 

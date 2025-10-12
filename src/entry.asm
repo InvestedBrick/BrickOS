@@ -29,8 +29,8 @@ align 8
 global stack_top
 
 extern kmain ; external C function 
-section .boot
 global start
+section .boot
 start:
     ;Enable PAE
     mov eax, cr4

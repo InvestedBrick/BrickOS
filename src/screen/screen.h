@@ -46,6 +46,6 @@ extern generic_file_t screen_file;
  * @param mboot The multiboot information
  * @param fb_start The start of the buffer in virtual memory
  */
-void init_framebuffer(multiboot_info_t* mboot,uint32_t fb_start);
+void init_framebuffer(multiboot_info_t* mboot,uint64_t fb_start);
 
 #endif

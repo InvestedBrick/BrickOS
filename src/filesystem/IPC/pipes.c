@@ -94,7 +94,7 @@ int pipe_close(generic_file_t* file){
         
         kfree(pipe->buffer);
 
-        vector_erase_item(&pipe_vec,(uint32_t)pipe);
+        vector_erase_item(&pipe_vec,(uint64_t)pipe);
 
         kfree(pipe);
 
