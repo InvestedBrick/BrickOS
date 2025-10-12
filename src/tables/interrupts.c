@@ -121,12 +121,12 @@ int handle_software_interrupt(interrupt_stack_frame_t* stack_frame){
     return 0;
 }
 
-uint32_t init_new_page(virt_mem_area_t* vma,user_process_t* p,uint32_t aligned_fault_addr){
-    uint32_t frame = pmm_alloc_page_frame();        
+uint64_t init_new_page(virt_mem_area_t* vma,user_process_t* p,uint64_t aligned_fault_addr){
+    uint64_t frame = pmm_alloc_page_frame();        
     mem_map_page(TEMP_KERNEL_COPY_ADDR,frame,PAGE_FLAG_WRITE | PAGE_FLAG_PRESENT);
     
     if (vma->fd != MAP_FD_NONE){
-        uint32_t file_off = vma->offset + (aligned_fault_addr - (uint32_t)vma->addr);
+        uint64_t file_off = vma->offset + (aligned_fault_addr - (uint64_t)vma->addr);
         sys_seek(p,vma->fd,file_off);
         sys_read(p,vma->fd,(unsigned char*)TEMP_KERNEL_COPY_ADDR,MEMORY_PAGE_SIZE);
     }else{
@@ -158,13 +158,13 @@ void page_fault_handler(user_process_t* p,uint64_t fault_addr,interrupt_stack_fr
         sys_exit(p,stack_frame);
     }
 
-    uint32_t aligned_fault_addr = ALIGN_DOWN(fault_addr,MEMORY_PAGE_SIZE);
+    uint64_t aligned_fault_addr = ALIGN_DOWN(fault_addr,MEMORY_PAGE_SIZE);
 
-    uint32_t frame;
+    uint64_t frame;
 
     if (vma->shrd_obj){
         
-        int page_idx = ((aligned_fault_addr - (uint32_t)vma->addr) + vma->offset) / MEMORY_PAGE_SIZE;
+        int page_idx = ((aligned_fault_addr - (uint64_t)vma->addr) + vma->offset) / MEMORY_PAGE_SIZE;
 
         if (!vma->shrd_obj->shared_pages[page_idx]){
             frame = init_new_page(vma,p,aligned_fault_addr);
