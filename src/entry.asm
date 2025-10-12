@@ -43,7 +43,7 @@ start:
     or eax, (1 << 8)
     wrmsr
 
-    mov eax, pml4_table
+    mov eax, initial_pml4_table
     mov cr3, eax
 
     mov eax, cr0
@@ -86,11 +86,14 @@ stack_top:
 
 section .data
 align 4096
-pml4_table:
+global initial_pml4_table
+initial_pml4_table:
     dq pdpt + 0x3
+    times 511 dq 0
 align 4096
 pdpt:
     dq pd + 0x3
+    times 511 dq 0
 align 4096
 pd:
     dq 0x0000000000000083      ; 1GB page, identity map low memory
