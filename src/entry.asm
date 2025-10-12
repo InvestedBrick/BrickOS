@@ -49,8 +49,21 @@ start:
     mov eax, cr0
     or eax, (1 << 31) | 0x1 ; enable paging and protected mode
     mov cr0, eax
-    ;TODO: Setup minimal gdt here to have a more valid long jump
+    
+    lgdt [gdt_descriptor]
+
     jmp 0x08:long_mode_entry
+
+align 8
+gdt_start:
+    dq 0                     ; Null descriptor
+    dq 0x00AF9A000000FFFF     ; Code segment, long mode
+    dq 0x00AF92000000FFFF     ; Data segment
+gdt_end:
+
+gdt_descriptor:
+    dw gdt_end - gdt_start - 1
+    dq gdt_start
 
 extern kernel_physical_start
 extern kernel_physical_end 
@@ -84,7 +97,7 @@ stack_bottom:
 stack_top:
 
 
-section .data
+section .bootdata
 align 4096
 global initial_pml4_table
 initial_pml4_table:
