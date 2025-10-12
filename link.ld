@@ -5,7 +5,7 @@ SECTIONS {
     . = 1M;
 
     kernel_physical_start = .;
-    kernel_virtual_start = . + 0xffffffff80000000;
+    kernel_virtual_start = . + 0xffff800000000000;
 
     .multiboot ALIGN(8) : {
         *(.multiboot)
@@ -19,22 +19,22 @@ SECTIONS {
         *(.boot)
     }
 
-    . += 0xffffffff80000000;
-    .text ALIGN(4K): AT(ADDR(.text) - 0xffffffff80000000){
+    . += 0xffff800000000000;
+    .text ALIGN(4K): AT(ADDR(.text) - 0xffff800000000000){
         *(.text)
     }
 
-    .rodata ALIGN(4K): AT(ADDR(.rodata) - 0xffffffff80000000){
+    .rodata ALIGN(4K): AT(ADDR(.rodata) - 0xffff800000000000){
         *(.rodata*)
     }
-    .data ALIGN(4K): AT(ADDR(.data) - 0xffffffff80000000){
+    .data ALIGN(4K): AT(ADDR(.data) - 0xffff800000000000){
         *(.data*)
     }
-    .bss ALIGN(4K): AT(ADDR(.bss) - 0xC0000000){
+    .bss ALIGN(4K): AT(ADDR(.bss) - 0xffff800000000000){
         *(COMMON)
         *(.bss*)
     }
 
-    kernel_physical_end = . - 0xffffffff80000000;
+    kernel_physical_end = . - 0xffff800000000000;
     kernel_virtual_end = .;
 }
