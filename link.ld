@@ -17,6 +17,11 @@ SECTIONS {
 
     .boot ALIGN(4K) : {
         *(.boot)
+        *(.trampoline)
+    }
+
+    .bootdata ALIGN(4K) : {
+        *(.bootdata)
     }
 
     . += 0xffff800000000000;
