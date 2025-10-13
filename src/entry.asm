@@ -123,5 +123,7 @@ pdpt_higher:
 align 4096
 pd:
     dq 0x0000000000000083      ; 2MB page, identity map low memory
-    times 511 dq 0
+    dq 0x0000000000200083      
+    dq 0x0000000000400083      
+    times 509 dq 0
 
