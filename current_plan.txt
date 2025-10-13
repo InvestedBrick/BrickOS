@@ -6,10 +6,10 @@ plan:
     [X] process commandline args
     [X] window manager (needs to be optimized)
     [ ] BIG REWRITE
+    [ ] running more UI processes
     [ ] add correct shutdown procedure
     [ ] improve scheduler + spinlocks etc
     [ ] mouse driver
-    [ ] running more processes
     [ ] dynamic linked code
     [ ] text editor
     [?] better fileystem
