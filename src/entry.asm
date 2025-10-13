@@ -73,13 +73,12 @@ extern kernel_virtual_end
 bits 64
 section .trampoline
 trampoline:
-section .trampoline
     jmp qword [rel long_mode_entry_address]
 
 section .text
 long_mode_entry:
-
-    mov ax, 0x10
+    xor rax,rax
+    mov rax, 0x10
     mov ds, ax
     mov es, ax
     mov fs, ax
@@ -110,13 +109,19 @@ align 4096
 global initial_pml4_table
 initial_pml4_table:
     dq pdpt + 0x3
-    times 511 dq 0
+    times 255 dq 0
+    dq pdpt_higher + 0x3
+    times 255 dq 0
 align 4096
 pdpt:
     dq pd + 0x3
     times 511 dq 0
 align 4096
+pdpt_higher:
+    dq pd + 0x3
+    times 511 dq 0
+align 4096
 pd:
-    dq 0x0000000000000083      ; 1GB page, identity map low memory
+    dq 0x0000000000000083      ; 2MB page, identity map low memory
     times 511 dq 0
 
