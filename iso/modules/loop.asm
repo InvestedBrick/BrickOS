@@ -1,4 +1,4 @@
-org 0x00000000
-bits 32
+org 0x0000000000000000
+bits 64
 section .text
     jmp $

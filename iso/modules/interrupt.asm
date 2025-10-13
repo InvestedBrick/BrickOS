@@ -1,12 +1,11 @@
-org 0x00000000
-bits 32
+bits 64
+org 0x0000000000000000
 section .text
-    mov eax, 2
-    mov ecx, 5
+    mov rax, 0x10
     int 0x30
 
-    mov edx, 6
-    pushfd              ; Push EFLAGS onto the stack
-    pop eax             ; Pop into EAX
+    mov rdx, 6
+    pushfdq              ; Push EFLAGS onto the stack
+    pop rax             ; Pop into EAX
 
     jmp $

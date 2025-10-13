@@ -10,13 +10,13 @@ ASM_BINS := $(ASM_SRCS:.asm=.bin)
 
 NASM := nasm
 NASMFLAGS := -f bin
-NASMOBJFLAGS := -f elf32
+NASMOBJFLAGS := -f elf64
 
 CC := clang
 LLD := ld.lld
 OBJCOPY := llvm-objcopy
 
-CFLAGS = -target i386-elf -ffreestanding -m32 -nostdlib \
+CFLAGS = -target x86_64-elf -ffreestanding -m64 -nostdlib \
          -fno-builtin -fno-stack-protector -fno-exceptions -g \
          -Wno-pointer-sign -fno-pic -fno-pie -O1
 LDFLAGS := --no-pie -T link_c.ld

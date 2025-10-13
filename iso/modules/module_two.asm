@@ -1,5 +1,5 @@
-org 0x00000000
-bits 32
+bits 64
+org 0x0000000000000000
 section .text
-    mov ecx, 5
+    mov rcx, 5
     jmp $

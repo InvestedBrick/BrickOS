@@ -175,7 +175,7 @@ void handle_window_commit(framebuffer_t* fb_metadata,win_man_msg_t* msg){
 }
 
 void write_window_to_fb(framebuffer_t* fb_metadata, window_t* win) {
-    unsigned char* win_start = (unsigned char*)((uint32_t)fb0 + win->origin_y * fb_metadata->bytes_per_row + win->origin_x * screen_bytespp);
+    unsigned char* win_start = (unsigned char*)((uint64_t)fb0 + win->origin_y * fb_metadata->bytes_per_row + win->origin_x * screen_bytespp);
 
     uint32_t width_copy_size = ((win->origin_x + win->width > fb_metadata->width) ? (fb_metadata->width - win->origin_x) : win->width) * screen_bytespp;
     uint32_t rows_to_copy = (win->origin_y + win->height > fb_metadata->height) ? (fb_metadata->height - win->origin_y) : win->height;
