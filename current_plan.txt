@@ -22,4 +22,5 @@ BIG REWRITE:
 
 switch to 64 bit kernel:
     [X] Update memory manager
-    [ ] Update syscall context switch / things that depend on x86_32 calling conventions
+    [X] Update syscall context switch / things that depend on x86_32 calling conventions
+    [ ] finish patching up bugs
