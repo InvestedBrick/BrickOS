@@ -8,12 +8,18 @@
 #define KERNEL_MALLOC_END 0xffff8000f0000000 
 #define TEMP_KERNEL_COPY_ADDR 0xfffffffff0000000
 
-#define RECURSIVE_BASE ((uint64_t)RECURSIVE_SLOT << 39)
-#define PML4_VIRT RECURSIVE_BASE
-#define PDPT_VIRT(pml4_index) (RECURSIVE_BASE | ((uint64_t)(pml4_index) << 30))
-#define PD_VIRT(pml4_index,pdpt_index) (PDPT_VIRT(pml4_index) | ((uint64_t)(pdpt_index) << 21))
-#define PT_VIRT(pml4_index,pdpt_index,pd_index) (PD_VIRT(pml4_index,pdpt_index) | ((uint64_t)(pd_index) << 12))
+#define ENTRIES_PER_TABLE 512
+#define RECURSIVE_SLOT 511
 
+#define PML4E(a) (((a) >> 39) & 0x1ff)
+#define PDPTE(a) (((a) >> 30) & 0x1ff)
+#define PDE(a) (((a) >> 21) & 0x1ff)
+#define PTE(a) (((a) >> 12) & 0x1ff)
+
+#define PTE_ADDR_MASK 0x000ffffffffff000
+#define PTE_GET_ADDR(VALUE) ((VALUE) & PTE_ADDR_MASK)
+
+#define PML4_VIRT 0xfffffffffffff000
 
 #define MEMORY_PAGE_SIZE 0x1000
 
@@ -21,9 +27,6 @@
 #define PAGE_FLAG_WRITE (1 << 1)
 #define PAGE_FLAG_OWNER (1 << 9)
 #define PAGE_FLAG_USER  (1 << 2)
-
-#define ENTRIES_PER_TABLE 512
-#define RECURSIVE_SLOT (ENTRIES_PER_TABLE - 1)
 
 #define N_PML4_TABLES 256 
 
