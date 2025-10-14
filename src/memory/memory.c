@@ -175,10 +175,10 @@ void restore_kernel_pml4_table(){
     }
 }
 
-void create_table_if_not_present(uint64_t* parent_tbl,uint32_t parent_tbl_idx,uint64_t virt_addr, uint32_t flags){
-    if (!(parent_tbl[parent_tbl_idx] & PAGE_FLAG_PRESENT)){
+void create_table_if_not_present(uint64_t* pml4,uint32_t pml4_idx,uint64_t virt_addr,uint32_t flags){
+    if (!(pml4[pml4_idx] & PAGE_FLAG_PRESENT)){
         uint64_t phys_addr = pmm_alloc_page_frame();
-        parent_tbl[parent_tbl_idx] = phys_addr | PAGE_FLAG_PRESENT | PAGE_FLAG_WRITE  | PAGE_FLAG_OWNER | flags;
+        pml4[pml4_idx] = phys_addr | PAGE_FLAG_PRESENT | PAGE_FLAG_WRITE  | PAGE_FLAG_OWNER | flags;
 
         invalidate(virt_addr);
 
