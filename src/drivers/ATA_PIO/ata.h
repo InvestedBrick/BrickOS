@@ -3,7 +3,7 @@
 #define INCLUDE_ATA_H
 
 #include <stdint.h>
-extern uint32_t addressable_LBA28_sectors;
+extern uint64_t addressable_LBA28_sectors; 
 /**
  * Primary bus I/O ports:
  * 0x1f0 - 0x1f7
