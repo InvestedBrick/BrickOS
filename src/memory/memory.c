@@ -56,7 +56,7 @@ uint64_t virt_to_phys(uint64_t virt){
     uint64_t* pdpt = (uint64_t*)(PTE_GET_ADDR(pml4[pml4_idx]) + KERNEL_START);
     if (!(pdpt[pdpt_idx] & PAGE_FLAG_PRESENT)) return INVALID_PHYS_ADDR;
 
-    uint64_t* pd   = (uint64_t*)(PTE_GET_ADDR(pdpt[pdpt_idx] + KERNEL_START));
+    uint64_t* pd   = (uint64_t*)(PTE_GET_ADDR(pdpt[pdpt_idx]) + KERNEL_START);
     if (!(pd[pd_idx] & PAGE_FLAG_PRESENT)) return INVALID_PHYS_ADDR;
 
     uint64_t* pt   = (uint64_t*)(PTE_GET_ADDR(pd[pd_idx]) + KERNEL_START);
