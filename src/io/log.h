@@ -1,8 +1,8 @@
-
 #ifndef INCLUDE_LOG_H
 #define INCLUDE_LOG_H
 
 #include "io.h"
+#include <stdint.h>
 
 void serial_write_with_prefix(const unsigned char* prefix, const unsigned char* msg,uint16_t com);
 
@@ -25,12 +25,27 @@ void warn(const unsigned char* msg);
 void error(const unsigned char* msg);
 
 /**
- * log_uint32:
- * Writes an uint32_teger to the COM1 serial port
+ * log_uint64:
+ * Writes an unsigned 64-bit integer to the COM1 serial port
  * 
  * @param num The integer
  */
-void log_uint32(uint32_t num);
+void log_uint64(uint64_t num);
+
+/**
+ * log_hex64:
+ * Writes an unsigned 64-bit integer as hex (0x...) to the COM1 serial port
+ *
+ * @param num The integer
+ */
+void log_hex64(uint64_t num);
+
+/**
+ * printf-style helpers
+ */
+void logf(const unsigned char* fmt, ...);
+void warnf(const unsigned char* fmt, ...);
+void errorf(const unsigned char* fmt, ...);
 
 /**
  * panic: 
