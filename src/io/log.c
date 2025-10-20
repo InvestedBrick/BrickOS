@@ -2,7 +2,7 @@
 #include <stdarg.h>
 #include <stddef.h>
 #include <stdint.h>
-
+#include "../util.h"
 void serial_write_with_prefix(const unsigned char* prefix, const unsigned char* msg,uint16_t com){
     serial_write(prefix,com);
     serial_write(msg,com);
@@ -21,9 +21,9 @@ void error(const unsigned char* msg){
     serial_write_with_prefix("[ERROR] ",msg,SERIAL_COM1_BASE);
 }
 
-/* Convert unsigned 64-bit integer to decimal and log it */
 void log_uint64(uint64_t num){
-    char ascii[21] = {0}; /* max uint64 = 20 digits */
+    char ascii[21]; /* max uint64 = 20 digits */
+    memset(ascii,0x0,21);
     if(num == 0){
         log((const unsigned char*)"0");
         return;
@@ -126,6 +126,8 @@ static int simple_vsnprintf(char *buf, size_t bufsz, const char *fmt, va_list ap
                 char tmp[32];
                 int t = 0;
                 const char *hex = "0123456789abcdef";
+                buf[idx++] = '0';
+                buf[idx++] = 'x';
                 if(v == 0) tmp[t++] = '0';
                 while(v && t < (int)sizeof(tmp)){
                     tmp[t++] = hex[v & 0xF];
