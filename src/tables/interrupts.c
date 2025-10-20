@@ -142,10 +142,8 @@ void page_fault_handler(user_process_t* p,uint64_t fault_addr,interrupt_stack_fr
 
     virt_mem_area_t* vma = find_virt_mem_area(p->vm_areas,fault_addr);
     if (!vma){
-        error("A page fault has occured");
-        error("process:");
-        error(p->process_name);
-        log_uint64((uint64_t)fault_addr);
+        errorf("A page fault has occured in process: %s",p->process_name);
+        errorf("At address: %x",fault_addr);
         error("Cause:");
         if (stack_frame->error_code & 0x1) error("Access of non-present page");
         if (stack_frame->error_code & 0x2) error("Write access"); else error("Read access");
