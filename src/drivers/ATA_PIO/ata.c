@@ -3,7 +3,7 @@
 #include "../../io/log.h"
 #include "../../tables/interrupts.h"
 
-uint32_t addressable_LBA28_sectors = 0;
+uint64_t addressable_LBA28_sectors = 0;
 void await_bsy_clear(uint16_t bus){
     while(inb(ATA_STATUS_PORT(bus)) & 0x80);
 }
@@ -61,7 +61,7 @@ void init_disk_driver(){
     addressable_LBA28_sectors <<= 16;
     addressable_LBA28_sectors |= identify_info[60];
     log("Number of addressable LBA28 sectors: ");
-    log_uint32(addressable_LBA28_sectors);
+    log_uint64(addressable_LBA28_sectors);
     set_interrupt_status(old_int_status);
 
 }

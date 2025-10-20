@@ -80,9 +80,9 @@ uint64_t sys_ioctl(user_process_t* p, uint32_t fd,uint32_t cmd, void* arg){
 uint64_t sys_exit(user_process_t* p,interrupt_stack_frame_t* stack_frame){
     uint32_t pid = p->process_id;
     log("Process exited with error code");
-    log_uint32(stack_frame->rbx);
+    log_uint64(stack_frame->rbx);
     log("Pid:");
-    log_uint32(pid);
+    log_uint64((uint64_t)pid);
     log(p->process_name);
     switch_task(stack_frame);
     return kill_user_process(pid);

@@ -145,7 +145,7 @@ void page_fault_handler(user_process_t* p,uint64_t fault_addr,interrupt_stack_fr
         error("A page fault has occured");
         error("process:");
         error(p->process_name);
-        log_uint32((uint32_t)fault_addr);
+        log_uint64((uint64_t)fault_addr);
         error("Cause:");
         if (stack_frame->error_code & 0x1) error("Access of non-present page");
         if (stack_frame->error_code & 0x2) error("Write access"); else error("Read access");
