@@ -118,8 +118,15 @@ pdpt:
     times 511 dq 0
 align 4096
 pdpt_higher:
-    dq pd + 0x3
+    dq pd_kernel + 0x3
     times 511 dq 0
+align 4096
+pd_kernel:
+    ; Map 2MB-aligned pages of kernel physical region 
+    dq 0x0000000000000083         ; map 0x0 physical to 0xffff800000000000
+    dq 0x0000000000200083
+    dq 0x0000000000400083
+    times 509 dq 0
 align 4096
 pd:
     dq 0x0000000000000083      ; 2MB page, identity map low memory
