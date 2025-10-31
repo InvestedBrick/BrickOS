@@ -92,6 +92,7 @@ void free_pid(uint32_t pid){
 void setup_arguments(user_process_t* proc,unsigned char* argv[]){
     uint64_t page_phys = pmm_alloc_page_frame();
     process_state_t* state = get_process_state_by_pml4(proc->pml4);
+    if (!state) error("Failed to get process state");
     // map temporarily to write memory into it
     mem_map_page(TEMP_KERNEL_COPY_ADDR,page_phys,PAGE_FLAG_WRITE | PAGE_FLAG_PRESENT);
     unsigned char* page = (unsigned char*)TEMP_KERNEL_COPY_ADDR;
@@ -120,28 +121,28 @@ void setup_arguments(user_process_t* proc,unsigned char* argv[]){
 
         sp -= sizeof(char*);
         write_ptr -= sizeof(char*);
-        *(uint32_t*)&page[write_ptr] = 0;
+        *(uint64_t*)&page[write_ptr] = 0;
 
         // argv pointers
         for (int i = argc - 1; i >= 0; i--){
             sp -= sizeof(char*);
-            write_ptr -= sizeof(char*);
-            *(uint32_t*)&page[write_ptr] = arg_ptrs[i];
+            write_ptr -= sizeof(void*);
+            *(uint64_t*)&page[write_ptr] = arg_ptrs[i];
         }
 
-        sp -= sizeof(char*);
-        write_ptr -= sizeof(char*);
-        *(uint32_t*)&page[write_ptr] = sp + sizeof(char*);
+        sp -= sizeof(void*);
+        write_ptr -= sizeof(void*);
+        *(uint64_t*)&page[write_ptr] = sp + sizeof(void*);
 
-        sp -= sizeof(char*);
-        write_ptr -= sizeof(char*);
-        *(uint32_t*)&page[write_ptr] = argc;
+        sp -= sizeof(void*);
+        write_ptr -= sizeof(void*);
+        *(uint64_t*)&page[write_ptr] = argc;
 
-        sp -= sizeof(char*); // go one lower since [esp] is expected to be the return address
+        sp -= sizeof(void*); // go one lower since [rsp] is expected to be the return address
         
         kfree(arg_ptrs);
     }else{
-        sp -= 0x5; // to 0xbffffffb
+        sp = USER_STACK_VMEMORY_START;
     }
     state->regs.rsp = sp;
     state->regs.rsp = sp;
@@ -160,7 +161,7 @@ uint32_t create_user_process(unsigned char* binary, uint32_t size,unsigned char*
    * mem_change_pml4_table()
    * pmm_alloc_frame_page() for code/data and stack
    * load programs into page frames
-   * mem_map_page() for both pages (code/data at 0x00000000, stack at 0xBFFFFFFB) with flag PAGE_FLAG_USER
+   * mem_map_page() for both pages (code/data at 0x00000000, stack at 0xffff7ffffffffffc) with flag PAGE_FLAG_USER
    */
 
 
