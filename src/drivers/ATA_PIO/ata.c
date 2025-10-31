@@ -60,8 +60,7 @@ void init_disk_driver(){
     addressable_LBA28_sectors = identify_info[61];
     addressable_LBA28_sectors <<= 16;
     addressable_LBA28_sectors |= identify_info[60];
-    log("Number of addressable LBA28 sectors: ");
-    log_uint64(addressable_LBA28_sectors);
+    logf("Number of addressable LBA28 sectors: %d",addressable_LBA28_sectors);
     set_interrupt_status(old_int_status);
 
 }
