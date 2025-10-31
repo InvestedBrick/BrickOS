@@ -44,25 +44,25 @@ uint64_t phys_to_virt(uint64_t phys){
     return phys + KERNEL_START; // does not work for phys user pages
 }
 
-uint64_t virt_to_phys(uint64_t virt){
-    uint32_t pml4_idx = PML4E(virt);
-    uint32_t pdpt_idx = PDPTE(virt);
-    uint32_t pd_idx   = PDE(virt);
-    uint32_t pt_idx   = PTE(virt);
+uint64_t virt_to_phys(uint64_t virt_addr){
+    uint32_t pml4_idx = PML4E(virt_addr);
+    uint32_t pdpt_idx = PDPTE(virt_addr);
+    uint32_t pd_idx   = PDE(virt_addr);
+    uint32_t pt_idx   = PTE(virt_addr);
 
-    uint64_t* pml4 = (uint64_t*)PML4_VIRT;
+    uint64_t* pml4 = (uint64_t*)REC_PML4_VIRT;
     if (!(pml4[pml4_idx] & PAGE_FLAG_PRESENT)) return INVALID_PHYS_ADDR;
 
-    uint64_t* pdpt = (uint64_t*)(PTE_GET_ADDR(pml4[pml4_idx]) + KERNEL_START);
+    uint64_t* pdpt = (uint64_t*)(REC_PDPT_VIRT(pml4_idx));
     if (!(pdpt[pdpt_idx] & PAGE_FLAG_PRESENT)) return INVALID_PHYS_ADDR;
 
-    uint64_t* pd   = (uint64_t*)(PTE_GET_ADDR(pdpt[pdpt_idx]) + KERNEL_START);
+    uint64_t* pd   = (uint64_t*)(REC_PD_VIRT(pml4_idx,pdpt_idx));
     if (!(pd[pd_idx] & PAGE_FLAG_PRESENT)) return INVALID_PHYS_ADDR;
 
-    uint64_t* pt   = (uint64_t*)(PTE_GET_ADDR(pd[pd_idx]) + KERNEL_START);
+    uint64_t* pt   = (uint64_t*)(REC_PT_VIRT(pml4_idx,pdpt_idx,pd_idx));
     if (!(pt[pt_idx] & PAGE_FLAG_PRESENT)) return INVALID_PHYS_ADDR;
 
-    return (pt[pt_idx] & ~0xfff) | (virt & 0xfff);
+    return (PTE_GET_ADDR(pt[pt_idx])) | (virt_addr & 0xfff);
 }
 
 void pmm_init(uint64_t phys_alloc_start, uint64_t mem_high){
@@ -175,69 +175,54 @@ void restore_kernel_pml4_table(){
     }
 }
 
-void create_table_if_not_present(uint64_t* pml4,uint32_t pml4_idx,uint64_t virt_addr,uint32_t flags){
-    if (!(pml4[pml4_idx] & PAGE_FLAG_PRESENT)){
-        uint64_t phys_addr = pmm_alloc_page_frame();
-        pml4[pml4_idx] = phys_addr | PAGE_FLAG_PRESENT | PAGE_FLAG_WRITE  | PAGE_FLAG_OWNER | flags;
+void create_table_if_not_present(uint64_t* tbl,uint32_t tbl_idx,uint32_t flags,uint64_t addr){
+    if ((tbl[tbl_idx] & PAGE_FLAG_PRESENT)) return;
+        
+    uint64_t phys_addr = pmm_alloc_page_frame();
+    tbl[tbl_idx] = phys_addr | PAGE_FLAG_PRESENT | PAGE_FLAG_WRITE  | (flags & PAGE_FLAG_USER);
+    invalidate(addr);
 
-        invalidate(virt_addr);
-
-        uint64_t* new_tbl_virt = (uint64_t*)(phys_to_virt(phys_addr));
-        for (uint32_t i = 0; i < ENTRIES_PER_TABLE; i++) {
-            new_tbl_virt[i] = 0;
-        }
-    }
+    memset((void*)addr,0x0,MEMORY_PAGE_SIZE);
 }
 
 void mem_map_page_in_pml4(uint64_t* pml4, uint64_t virt_addr, uint64_t phys_addr, uint32_t flags) {
+
     uint32_t pml4_idx = PML4E(virt_addr);
     uint32_t pdpt_idx = PDPTE(virt_addr);
     uint32_t pd_idx   = PDE(virt_addr);
     uint32_t pt_idx   = PTE(virt_addr);
 
-    create_table_if_not_present(pml4,pml4_idx,virt_addr,flags);
-    uint64_t* pdpt = (uint64_t*)(PTE_GET_ADDR(pml4[pml4_idx]) + KERNEL_START);
+    uint64_t pdpt_addr = REC_PDPT_VIRT(pml4_idx);
+    uint64_t pd_addr   = REC_PD_VIRT(pml4_idx,pdpt_idx);
+    uint64_t pt_addr   = REC_PT_VIRT(pml4_idx,pdpt_idx,pd_idx);
 
-    create_table_if_not_present(pdpt,pdpt_idx,virt_addr,flags);
-    uint64_t* pd   = (uint64_t*)(PTE_GET_ADDR(pdpt[pdpt_idx]) + KERNEL_START);
+    create_table_if_not_present(pml4,pml4_idx,flags,pdpt_addr);
+    uint64_t* pdpt = (uint64_t*)(pdpt_addr);
+    
+    create_table_if_not_present(pdpt,pdpt_idx,flags,pd_addr);
+    uint64_t* pd   = (uint64_t*)(pd_addr);
 
-    create_table_if_not_present(pd,pd_idx,virt_addr,flags);
-    uint64_t* pt   = (uint64_t*)(PTE_GET_ADDR(pd[pd_idx]) + KERNEL_START);
+    create_table_if_not_present(pd,pd_idx,flags,pt_addr);
+    uint64_t* pt   = (uint64_t*)(pt_addr);
 
-    pt[pt_idx] = phys_addr | PAGE_FLAG_PRESENT | flags;
-
+    pt[pt_idx] = (phys_addr & ~0xfff) | PAGE_FLAG_PRESENT | flags;
+    mem_number_vpages++;
     invalidate(virt_addr);
+
 }
 
 void mem_map_page(uint64_t virt_addr, uint64_t phys_addr, uint32_t flags){
     uint64_t* prev_pml4_table = 0;
 
-    if (virt_addr >= KERNEL_MALLOC_START){ // if we are in kernel memory
+    if (virt_addr >= KERNEL_START){ // if we are in kernel memory
         prev_pml4_table = mem_get_current_pml4_table(); // switch to the kernel memory page
         if (prev_pml4_table != kernel_pml4){
             mem_set_current_pml4_table(kernel_pml4);
         }
     }
 
-    uint32_t pml4_idx = PML4E(virt_addr);
-    uint32_t pdpt_idx = PDPTE(virt_addr);
-    uint32_t pd_idx   = PDE(virt_addr);
-    uint32_t pt_idx   = PTE(virt_addr);
+    mem_map_page_in_pml4((uint64_t*)REC_PML4_VIRT, virt_addr, phys_addr, flags);
 
-    uint64_t* pml4 = (uint64_t*)PML4_VIRT;
-    create_table_if_not_present(pml4,pml4_idx,virt_addr,flags);
-    uint64_t* pdpt = (uint64_t*)(PTE_GET_ADDR(pml4[pml4_idx]) + KERNEL_START);
-
-    create_table_if_not_present(pdpt,pdpt_idx,virt_addr,flags);
-    uint64_t* pd   = (uint64_t*)(PTE_GET_ADDR(pdpt[pdpt_idx]) + KERNEL_START);
-
-    create_table_if_not_present(pd,pd_idx,virt_addr,flags);
-    uint64_t* pt   = (uint64_t*)(PTE_GET_ADDR(pd[pd_idx]) + KERNEL_START);
-
-
-    pt[pt_idx] = phys_addr | PAGE_FLAG_PRESENT | flags;
-    mem_number_vpages++;
-    invalidate(virt_addr);
     if (prev_pml4_table != 0){
         sync_pml4_tables();
         if (prev_pml4_table != kernel_pml4){
@@ -262,23 +247,22 @@ void mem_unmap_page(uint64_t virt_addr){
     uint32_t pd_idx   = PDE(virt_addr);
     uint32_t pt_idx   = PTE(virt_addr);
     
-    uint64_t* pml4 = (uint64_t*)PML4_VIRT;
+    uint64_t* pml4 = (uint64_t*)REC_PML4_VIRT;
     
     if (!(pml4[pml4_idx] & PAGE_FLAG_PRESENT)) goto invalid_unmap;
 
-    uint64_t* pdpt = (uint64_t*)(PTE_GET_ADDR(pml4[pml4_idx]) + KERNEL_START);
+    uint64_t* pdpt = (uint64_t*)(REC_PDPT_VIRT(pml4_idx));
     if (!(pdpt[pdpt_idx] & PAGE_FLAG_PRESENT)) goto invalid_unmap;
 
-    uint64_t* pd = (uint64_t*)(PTE_GET_ADDR(pdpt[pdpt_idx]) + KERNEL_START);
+    uint64_t* pd = (uint64_t*)(REC_PD_VIRT(pml4_idx,pdpt_idx));
     if (!(pd[pd_idx] & PAGE_FLAG_PRESENT)) goto invalid_unmap;
 
-    uint64_t* pt = (uint64_t*)(PTE_GET_ADDR(pd[pd_idx]) + KERNEL_START);
+    uint64_t* pt = (uint64_t*)(REC_PT_VIRT(pml4_idx,pdpt_idx,pd_idx));
     if (!(pt[pt_idx] & PAGE_FLAG_PRESENT)) goto invalid_unmap;
 
     pt[pt_idx] = 0x0;
     mem_number_vpages--;
     invalidate(virt_addr);
-
 
     uint8_t pt_empty = 1;
     for (int i = 0; i < (ENTRIES_PER_TABLE); i++) {
@@ -338,8 +322,8 @@ void init_memory(uint64_t physical_alloc_start, uint64_t mem_high){
     int64_t pml4_phys = (uint64_t)&initial_pml4_table; // initial pml4 table is identity-mapped physical address
     kernel_pml4 = (uint64_t*)(pml4_phys + KERNEL_START);
     
-    initial_pml4_table[RECURSIVE_SLOT] = (uint64_t)initial_pml4_table | PAGE_FLAG_PRESENT | PAGE_FLAG_WRITE;
-    invalidate(PML4_VIRT);
+    initial_pml4_table[RECURSIVE_SLOT] = (uint64_t)pml4_phys | PAGE_FLAG_PRESENT | PAGE_FLAG_WRITE;
+    invalidate(REC_PML4_VIRT);
     
     pmm_init(physical_alloc_start,mem_high);
     memset(pml4_tables,0,sizeof(pml4_tables));
