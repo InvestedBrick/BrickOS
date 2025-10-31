@@ -38,7 +38,7 @@ void map_framebuffer(uint64_t fb_phys,uint64_t fb_virt, uint32_t fb_size){
 
     uint32_t n_pages = CEIL_DIV(fb_size,MEMORY_PAGE_SIZE);
     for (uint32_t i = 0; i < n_pages;i++){
-        mem_map_page(fb_virt + i * MEMORY_PAGE_SIZE,fb_phys + i * MEMORY_PAGE_SIZE, PAGE_FLAG_WRITE | PAGE_FLAG_OWNER);
+        mem_map_page(fb_virt + i * MEMORY_PAGE_SIZE,fb_phys + i * MEMORY_PAGE_SIZE, PAGE_FLAG_WRITE);
     } 
 }
 
