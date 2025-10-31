@@ -40,8 +40,11 @@ void append_shared_object(shared_object_t* shrd_obj){
     vector_append(&shm_obj_vec,(vector_data_t)shrd_obj);
 }
 
-uint64_t phys_to_virt(uint64_t phys){
+uint64_t linear_phys_to_virt(uint64_t phys){
     return phys + KERNEL_START; // does not work for phys user pages
+}
+uint64_t linear_virt_to_phys(uint64_t virt){
+    return virt - KERNEL_START; 
 }
 
 uint64_t virt_to_phys(uint64_t virt_addr){
@@ -62,7 +65,7 @@ uint64_t virt_to_phys(uint64_t virt_addr){
     uint64_t* pt   = (uint64_t*)(REC_PT_VIRT(pml4_idx,pdpt_idx,pd_idx));
     if (!(pt[pt_idx] & PAGE_FLAG_PRESENT)) return INVALID_PHYS_ADDR;
 
-    return (PTE_GET_ADDR(pt[pt_idx])) | (virt_addr & 0xfff);
+    return (CANONICALIZE(PTE_GET_ADDR(pt[pt_idx]))) | (virt_addr & 0xfff);
 }
 
 void pmm_init(uint64_t phys_alloc_start, uint64_t mem_high){
@@ -70,7 +73,7 @@ void pmm_init(uint64_t phys_alloc_start, uint64_t mem_high){
     uint64_t bitmap_size = CEIL_DIV(total_pages, 8);
     total_alloced_pages = 0;
 
-    physical_memory_bitmap = (uint8_t*)phys_alloc_start;
+    physical_memory_bitmap = (uint8_t*)linear_phys_to_virt(phys_alloc_start);
     memset(physical_memory_bitmap,0,bitmap_size);
 
     // reserve the kernel pages
@@ -83,11 +86,11 @@ void pmm_init(uint64_t phys_alloc_start, uint64_t mem_high){
 
 uint64_t* mem_get_current_pml4_table() {
     uint64_t phys = mem_get_current_pml4_phys();
-    return (uint64_t*)phys_to_virt(phys);
+    return (uint64_t*)linear_phys_to_virt(phys);
 }
 
 void mem_set_current_pml4_table(uint64_t* virt) {
-    uint64_t phys = virt_to_phys((uint64_t)virt);
+    uint64_t phys = linear_virt_to_phys((uint64_t)virt);
     mem_set_current_pml4_phys((uint64_t*)phys);
 }
 
@@ -108,17 +111,17 @@ void free_user_pml4_table(uint64_t* user_pml4) {
     for (uint32_t pml4_idx = 0; pml4_idx < 256; pml4_idx++) {
         if (!(user_pml4[pml4_idx] & PAGE_FLAG_PRESENT)) continue;
 
-        uint64_t* pdpt = (uint64_t*)(phys_to_virt(user_pml4[pml4_idx] & ~0xFFF));
+        uint64_t* pdpt = (uint64_t*)(linear_phys_to_virt(user_pml4[pml4_idx] & ~0xFFF));
 
         for (uint32_t pdpt_idx = 0; pdpt_idx < ENTRIES_PER_TABLE; pdpt_idx++) {
             if (!(pdpt[pdpt_idx] & PAGE_FLAG_PRESENT)) continue;
 
-            uint64_t* pd = (uint64_t*)(phys_to_virt(pdpt[pdpt_idx] & ~0xFFF));
+            uint64_t* pd = (uint64_t*)(linear_phys_to_virt(pdpt[pdpt_idx] & ~0xFFF));
 
             for (uint32_t pd_idx = 0; pd_idx < ENTRIES_PER_TABLE; pd_idx++) {
                 if (!(pd[pd_idx] & PAGE_FLAG_PRESENT)) continue;
 
-                uint64_t* pt = (uint64_t*)(phys_to_virt(pd[pd_idx] & ~0xFFF));
+                uint64_t* pt = (uint64_t*)(linear_phys_to_virt(pd[pd_idx] & ~0xFFF));
 
                 for (uint32_t pt_idx = 0; pt_idx < ENTRIES_PER_TABLE; pt_idx++) {
                     if (pt[pt_idx] & PAGE_FLAG_PRESENT) {
@@ -132,7 +135,7 @@ void free_user_pml4_table(uint64_t* user_pml4) {
         free_table_entry(user_pml4,pml4_idx);
     }
 
-    uint64_t pml4_phys = virt_to_phys((uint64_t)user_pml4);
+    uint64_t pml4_phys = linear_virt_to_phys((uint64_t)user_pml4);
     pmm_free_page_frame(pml4_phys);
 }
 
@@ -147,25 +150,13 @@ uint64_t* create_user_pml4_table(){
                 pml4[j] = kernel_pml4[j];
             }
 
-            uint64_t pml4_phys = virt_to_phys((uint64_t)pml4);
+            uint64_t pml4_phys = linear_virt_to_phys((uint64_t)pml4);
             pml4[RECURSIVE_SLOT] = pml4_phys | PAGE_FLAG_PRESENT | PAGE_FLAG_WRITE;
             
             return pml4;
         }
     }
     return (uint64_t*)-1;
-}
-
-void sync_pml4_tables(){
-    for (uint32_t  i = 0; i < N_PML4_TABLES;i++){
-        if (pml4_table_used[i]){
-            uint64_t* pml4_table = pml4_tables[i];
-
-            for(int j = 256; j < ENTRIES_PER_TABLE;j++){
-                pml4_table[j] = kernel_pml4[j] & ~PAGE_FLAG_OWNER;
-            }
-        }
-    }
 }
 
 void restore_kernel_pml4_table(){
@@ -186,6 +177,13 @@ void create_table_if_not_present(uint64_t* tbl,uint32_t tbl_idx,uint32_t flags,u
 }
 
 void mem_map_page_in_pml4(uint64_t* pml4, uint64_t virt_addr, uint64_t phys_addr, uint32_t flags) {
+
+    uint64_t* old_pml4 = mem_get_current_pml4_table();
+    uint8_t switched_pml4 = 0;
+    if (pml4 != old_pml4) {
+        mem_set_current_pml4_table(pml4);
+        switched_pml4 = 1;
+    }
 
     uint32_t pml4_idx = PML4E(virt_addr);
     uint32_t pdpt_idx = PDPTE(virt_addr);
@@ -209,6 +207,10 @@ void mem_map_page_in_pml4(uint64_t* pml4, uint64_t virt_addr, uint64_t phys_addr
     mem_number_vpages++;
     invalidate(virt_addr);
 
+    if (switched_pml4) {
+        mem_set_current_pml4_table(old_pml4);
+    }
+
 }
 
 void mem_map_page(uint64_t virt_addr, uint64_t phys_addr, uint32_t flags){
@@ -221,13 +223,10 @@ void mem_map_page(uint64_t virt_addr, uint64_t phys_addr, uint32_t flags){
         }
     }
 
-    mem_map_page_in_pml4((uint64_t*)REC_PML4_VIRT, virt_addr, phys_addr, flags);
+    mem_map_page_in_pml4((uint64_t*)mem_get_current_pml4_table(), virt_addr, phys_addr, flags);
 
-    if (prev_pml4_table != 0){
-        sync_pml4_tables();
-        if (prev_pml4_table != kernel_pml4){
-            mem_set_current_pml4_table(prev_pml4_table);
-        }
+    if (prev_pml4_table != 0 && prev_pml4_table != kernel_pml4){
+        mem_set_current_pml4_table(prev_pml4_table);
     }
 }
 
@@ -273,13 +272,10 @@ void mem_unmap_page(uint64_t virt_addr){
         pd[pd_idx] = 0;
         pmm_free_page_frame(phys);
     }
-
+    //TODO: finish freeing for all layers
 invalid_unmap:
-    if (prev_pml4_table != 0){
-        sync_pml4_tables();
-        if (prev_pml4_table != kernel_pml4){
-            mem_set_current_pml4_table(kernel_pml4);
-        }
+    if (prev_pml4_table != 0 && prev_pml4_table != kernel_pml4){
+        mem_set_current_pml4_table(kernel_pml4);
     }
 }
 
