@@ -55,7 +55,6 @@
 
 #define PAGE_FLAG_PRESENT 0x1
 #define PAGE_FLAG_WRITE (1 << 1)
-#define PAGE_FLAG_OWNER (1 << 9)
 #define PAGE_FLAG_USER  (1 << 2)
 
 #define N_PML4_TABLES 256 
@@ -175,12 +174,6 @@ void mem_set_current_pml4_phys(uint64_t* pml4_table);
  * @return The pml4 table
  */
 uint64_t mem_get_current_pml4_phys();
-
-/**
- * sync_pml4_tables:
- * synchronices the pml4 tables
- */
-void sync_pml4_tables();
 
 /**
  * create_user_pml4_table:
