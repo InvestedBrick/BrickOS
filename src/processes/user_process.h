@@ -30,8 +30,8 @@ typedef struct {
     unsigned char* stderr_filename;
 }process_fds_init_t;
 
-#define USER_CODE_DATA_VMEMORY_START 0x00000000
-#define USER_STACK_VMEMORY_START     0xbffffffb
+#define USER_CODE_DATA_VMEMORY_START 0x0000000000000000
+#define USER_STACK_VMEMORY_START     (KERNEL_START - 0x8)
 
 #define USER_STACK_PAGES_PER_PROCESS 5
 
