@@ -88,9 +88,10 @@ void add_process_state(user_process_t* usr_proc){
         return;
     }
     process_state_t* proc = (process_state_t*)kmalloc(sizeof(process_state_t));
+    memset(proc,0x0,sizeof(*proc));
     proc->pml4 = usr_proc->pml4;
     proc->next = 0;
-    proc->kernel_stack_top = usr_proc->kernel_stack + MEMORY_PAGE_SIZE;
+    proc->kernel_stack_top = usr_proc->kernel_stack + (uint64_t)MEMORY_PAGE_SIZE;
     proc->pid = usr_proc->process_id;
     proc->exec_state = EXEC_STATE_INIT;
     process_state_t* last = p_queue;
