@@ -97,59 +97,59 @@ void setup_arguments(user_process_t* proc,unsigned char* argv[]){
     mem_map_page(TEMP_KERNEL_COPY_ADDR,page_phys,PAGE_FLAG_WRITE | PAGE_FLAG_PRESENT);
     unsigned char* page = (unsigned char*)TEMP_KERNEL_COPY_ADDR;
     memset(page,0x0,MEMORY_PAGE_SIZE);
-    uint32_t argc = 0;
+    uint64_t argc = 0;
     for(uint32_t i = 0; argv[i];i++) {argc++;}
 
     uint64_t* arg_ptrs = (uint64_t*)kmalloc(argc * sizeof(uint64_t));    
-    uint64_t sp = KERNEL_START;
-    if (arg_ptrs){
-        uint32_t write_ptr = MEMORY_PAGE_SIZE;
+    uint64_t sp = USER_STACK_VMEMORY_START;
+    uint32_t write_ptr = MEMORY_PAGE_SIZE;
         
-        // argv data
-        for (int i = argc - 1; i >= 0; i--){
-            uint32_t len = strlen(argv[i]) + 1;
-            sp -= len;
-            write_ptr -= len;
-            memcpy(&page[write_ptr],argv[i],len);
-            arg_ptrs[i] = sp;
-
-        }
-        // align the pointers
-        sp &= ~0x0f;
-        write_ptr &= ~0x0f;
-
-
-        sp -= sizeof(char*);
-        write_ptr -= sizeof(char*);
-        *(uint64_t*)&page[write_ptr] = 0;
-
-        // argv pointers
-        for (int i = argc - 1; i >= 0; i--){
-            sp -= sizeof(char*);
-            write_ptr -= sizeof(void*);
-            *(uint64_t*)&page[write_ptr] = arg_ptrs[i];
-        }
-
-        sp -= sizeof(void*);
-        write_ptr -= sizeof(void*);
-        *(uint64_t*)&page[write_ptr] = sp + sizeof(void*);
-
-        sp -= sizeof(void*);
-        write_ptr -= sizeof(void*);
-        *(uint64_t*)&page[write_ptr] = argc;
-
-        sp -= sizeof(void*); // go one lower since [rsp] is expected to be the return address
-        
-        kfree(arg_ptrs);
-    }else{
-        sp = USER_STACK_VMEMORY_START;
+    // argv data
+    for (int64_t i = argc - 1; i >= 0; i--){
+        uint32_t len = strlen(argv[i]) + 1;
+        sp -= len;
+        write_ptr -= len;
+        memcpy(&page[write_ptr],argv[i],len);
+        arg_ptrs[i] = sp;
     }
-    state->regs.rsp = sp;
-    state->regs.rsp = sp;
+    // align stack to 16 bits
+    sp &= ~0xfull;
+    write_ptr &= ~0xfull;
 
+    // Null terminator for argv
+    sp -= sizeof(char*);
+    write_ptr -= sizeof(char*);
+    *(uint64_t*)&page[write_ptr] = 0;
 
+    // argv pointers
+    for (int64_t i = argc - 1; i >= 0; i--){
+        sp -= sizeof(char*);
+        write_ptr -= sizeof(void*);
+        *(uint64_t*)&page[write_ptr] = arg_ptrs[i];
+    }
+
+    uint64_t argv_ptr = sp;
+
+    sp -= sizeof(void*);
+    write_ptr -= sizeof(void*);
+    *(uint64_t*)&page[write_ptr] = sp + sizeof(void*);
+
+    // not needed rn but for future ELF compatibility
+    sp -= sizeof(void*);
+    write_ptr -= sizeof(void*);
+    *(uint64_t*)&page[write_ptr] = argc;
+
+    sp &= ~0xfull;
+
+    
+    state->regs.rsp = sp;
+    state->regs.rdi = argc;
+    state->regs.rsi = argv_ptr;
+    
     mem_unmap_page(TEMP_KERNEL_COPY_ADDR);
     mem_map_page_in_pml4(proc->pml4,KERNEL_START - MEMORY_PAGE_SIZE,page_phys, PAGE_FLAG_USER | PAGE_FLAG_WRITE);
+    
+    kfree(arg_ptrs); // might be null, but kfree does check that
 }
 
 uint32_t create_user_process(unsigned char* binary, uint32_t size,unsigned char* process_name,uint8_t priv_lvl, unsigned char* argv[],process_fds_init_t* start_fds) {
@@ -161,7 +161,7 @@ uint32_t create_user_process(unsigned char* binary, uint32_t size,unsigned char*
    * mem_change_pml4_table()
    * pmm_alloc_frame_page() for code/data and stack
    * load programs into page frames
-   * mem_map_page() for both pages (code/data at 0x00000000, stack at 0xffff7ffffffffffc) with flag PAGE_FLAG_USER
+   * mem_map_page() for both pages (code/data at 0x0000000000000000, stack at 0x00007ffffffffffc) with flag PAGE_FLAG_USER
    */
 
 
@@ -192,7 +192,7 @@ uint32_t create_user_process(unsigned char* binary, uint32_t size,unsigned char*
 
     overwrite_current_proc(process);
     if (!start_fds){
-        // it is important that these are individua files to avoid double frees when exiting
+        // it is important that these are individual files to avoid double frees when exiting
         stdin = fs_open("dev/null",FILE_FLAG_NONE);
         stdout = fs_open("dev/null",FILE_FLAG_NONE);
         stderr = fs_open("dev/null",FILE_FLAG_NONE);  
@@ -284,7 +284,7 @@ void dispatch_user_process(uint32_t pid){
     process->running = 1;
     uint64_t* old_pml4 = mem_get_current_pml4_table();
     mem_set_current_pml4_table(process->pml4); 
-    set_kernel_stack(process->kernel_stack + MEMORY_PAGE_SIZE);
+    set_kernel_stack(process->kernel_stack + (uint64_t)MEMORY_PAGE_SIZE);
     load_registers();
     mem_set_current_pml4_table(old_pml4);
 }
