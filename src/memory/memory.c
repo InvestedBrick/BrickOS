@@ -225,7 +225,7 @@ void mem_map_page(uint64_t virt_addr, uint64_t phys_addr, uint32_t flags){
 
     mem_map_page_in_pml4((uint64_t*)mem_get_current_pml4_table(), virt_addr, phys_addr, flags);
 
-    if (prev_pml4_table != 0 && prev_pml4_table != kernel_pml4){
+    if (prev_pml4_table != 0){
         mem_set_current_pml4_table(prev_pml4_table);
     }
 }
@@ -274,8 +274,8 @@ void mem_unmap_page(uint64_t virt_addr){
     }
     //TODO: finish freeing for all layers
 invalid_unmap:
-    if (prev_pml4_table != 0 && prev_pml4_table != kernel_pml4){
-        mem_set_current_pml4_table(kernel_pml4);
+    if (prev_pml4_table != 0){
+        mem_set_current_pml4_table(prev_pml4_table);
     }
 }
 
