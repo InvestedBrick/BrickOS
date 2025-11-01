@@ -17,7 +17,7 @@ typedef struct process_state_struct{
     interrupt_stack_frame_t regs;
     uint64_t* pml4;
     struct process_state_struct* next;
-    uint32_t kernel_stack_top;
+    uint64_t kernel_stack_top;
 } process_state_t;
 
 typedef struct {
