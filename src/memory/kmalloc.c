@@ -10,7 +10,7 @@ static uint8_t kmalloc_initialized = 0;
 memory_block_t* head = 0;
 
 void alloc_and_map_new_page(){
-    if(heap_size + MEMORY_PAGE_SIZE > KERNEL_MALLOC_END) {panic("Kernel heap has run out of memory"); return;}
+    if(heap_size + (uint64_t)MEMORY_PAGE_SIZE > KERNEL_MALLOC_END) {panic("Kernel heap has run out of memory"); return;}
     uint64_t phys_addr = pmm_alloc_page_frame();
     uint32_t n_allocated_pages = CEIL_DIV(heap_size,MEMORY_PAGE_SIZE);
     uint64_t new_page_addr = KERNEL_MALLOC_START + n_allocated_pages * MEMORY_PAGE_SIZE;
