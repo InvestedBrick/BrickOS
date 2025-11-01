@@ -4,7 +4,7 @@
 #include "../../../filesystem/vfs/vfs.h"
 #include "../ps2_controller.h"
 uint8_t read_scan_code(){
-    return ps2_port_read(1);
+    return ps2_port_read(1); 
 }
 static unsigned char kb_buffer[KB_BUFFER_SIZE];
 static int kb_head = 0, kb_tail = 0;
@@ -179,6 +179,7 @@ unsigned char decode_scan_code(uint8_t scan_code){
 
 void handle_keyboard_interrupt(){
   uint8_t scan_code = read_scan_code();
+  if (!scan_code) return;
   unsigned char key = decode_scan_code(scan_code);
   if (key){
     kb_buffer_push(key);
