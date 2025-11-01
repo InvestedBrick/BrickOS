@@ -5,7 +5,7 @@ section .text
     int 0x30
 
     mov rdx, 6
-    pushfdq              ; Push EFLAGS onto the stack
+    pushfq              ; Push EFLAGS onto the stack
     pop rax             ; Pop into EAX
 
     jmp $
