@@ -271,16 +271,16 @@ void main(){
     if (k_to_wm_fd < 0) exit(2);
     framebuffer_t fb_metadata;
     if (ioctl(fb0_fd,DEV_FB0_GET_METADATA,&fb_metadata) < 0) exit(3);
-    
     screen_bytes_per_row = fb_metadata.bytes_per_row;
     screen_bytespp = fb_metadata.bpp / 8;
-
+    
     fb0 = (unsigned char*)mmap(fb_metadata.size, PROT_READ | PROT_WRITE, MAP_SHARED, fb0_fd,0);
     
     close(fb0_fd);
     if (!fb0) exit(4);
     
-    unsigned char buffer[256] = {0};
+    unsigned char buffer[256];
+    memset(buffer,0,sizeof(buffer));
     
     uint32_t n_input = 0;
     uint32_t n_kmsg = 0;
