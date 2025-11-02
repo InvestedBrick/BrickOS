@@ -12,6 +12,7 @@ uint32_t module_count;
 void save_module_binaries(multiboot_info_t* boot_info){
     
     module_count = boot_info->mods_count;
+    logf("Loaded %d modules", module_count);
     module_binary_structs = kmalloc(module_count * sizeof(module_binary_t));
 
     if (!module_binary_structs) return;
