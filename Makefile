@@ -15,7 +15,7 @@ AS = nasm
 
 CFLAGS = -target x86_64-elf -ffreestanding -m64 -nostdlib \
          -fno-builtin -fno-stack-protector -fno-exceptions -g \
-         -Wno-pointer-sign -fno-pic -fno-pie -mcmodel=large
+         -Wno-pointer-sign -fno-pic -fno-pie -mcmodel=large -O1
           # idgaf about casting const char* to char*
 LDFLAGS =  --no-pie
 
