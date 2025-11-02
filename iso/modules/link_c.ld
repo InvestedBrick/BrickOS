@@ -1,21 +1,21 @@
 SECTIONS
 {
     . = 0x0000000000000000;
-    .text ALIGN(8) : {
+    .text ALIGN(16) : {
         KEEP(*(.text.start))
         *(.text)
     } :text
 
-    .data ALIGN(8) : {
+    .data ALIGN(16) : {
         *(.data)
     } :data
 
-    .rodata ALIGN(8) : {
+    .rodata ALIGN(16) : {
         *(.rodata)
         *(.rodata.*)
     } :rodata
 
-    .bss ALIGN(8) : {
+    .bss ALIGN(16) : {
         *(.bss)
         *(.bss.*)
     } : bss
