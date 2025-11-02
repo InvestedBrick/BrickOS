@@ -150,13 +150,13 @@ void free_command(command_t com){
     free(com.args);
 }
 
-string_t parse_word(unsigned char* line, uint8_t start_idx, uint32_t line_length){
+string_t parse_word(unsigned char* line, uint32_t start_idx, uint32_t line_length){
     string_t word;
     word.length = 0;
     unsigned char* buffer = (unsigned char*)malloc(line_length + 1);
     memset(buffer,0,line_length + 1);
 
-    for (uint32_t i = start_idx; i < line_length && line[i] != ' '  ;i++){
+    for (uint32_t i = start_idx; i < line_length && line[i] != ' ' && line[i] != '\0' && line[i] != '\n' ;i++){
         buffer[i - start_idx] = line[i];
         word.length++;
     }
@@ -170,42 +170,40 @@ string_t parse_word(unsigned char* line, uint8_t start_idx, uint32_t line_length
     return word;
 }
 
-command_t parse_line(unsigned char* line,uint32_t line_length){
-    command_t comd;
-    comd.n_args = 0;
+void parse_line(unsigned char* line,uint32_t line_length,command_t* comd){
+    comd->n_args = 0;
     // skip any leading spaces
     uint32_t command_start = 0;
     while(line[command_start] == ' ') command_start++;
 
     // parse the main command
-    comd.command = parse_word(line,command_start,line_length);
+    comd->command = parse_word(line,command_start,line_length);
 
-    uint32_t i = command_start + comd.command.length;
+    uint32_t i = command_start + comd->command.length;
 
     while (i < line_length) {
         while (i < line_length && line[i] == ' ') i++;
         if (i < line_length) {
-            comd.n_args++;
+            comd->n_args++;
             // Skip the word
             while (i < line_length && line[i] != ' ') i++;
         }
     }
-    comd.args = (string_t*)malloc(sizeof(string_t) * comd.n_args);
+    comd->args = (string_t*)malloc(sizeof(string_t) * comd->n_args);
 
     uint32_t arg_idx = 0;
     //parse optional arguments
-    for(uint32_t i = command_start + comd.command.length; i < line_length;i++){
-        while (i < line_length && line[i] == ' ') i++;
-        
-        if (i >= line_length) break;
+    uint32_t j = command_start + comd->command.length;
+    while (j < line_length) {
+        while (j < line_length && line[j] == ' ') j++;
+        if (j >= line_length) break;
+        if (arg_idx >= comd->n_args) break;
 
-        string_t word = parse_word(line,i,line_length);
-        comd.args[arg_idx++] = word;
+        string_t word = parse_word(line, j, line_length);
+        comd->args[arg_idx++] = word;
 
-        i+=word.length;
+        j += word.length;
     }
-
-    return comd;
 
 }
 
@@ -226,11 +224,12 @@ void main(int argc, char* argv[]){
         line[read_bytes] = '\0';
         print("\n");
         
-        comd = parse_line(line,strlen(line));
-        comd.executing_dir = dir_buffer;
+        parse_line(line,strlen(line),&comd);
         
-        if (!comd.command.length) continue;
+        comd.executing_dir = dir_buffer;
 
+        if (!comd.command.length) continue;
+        
         unsigned char* main_cmd = comd.command.str;
         uint8_t found = 0;
         if (streq(main_cmd,"exit")){
