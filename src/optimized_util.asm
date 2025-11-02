@@ -45,20 +45,17 @@ strlen:
 ; rdi = str, rsi = char
 global find_char
 find_char:
-    movzx edx, byte [rdi]
-    test dl, dl 
-    je .not_found
     xor rax, rax
-    jmp .entry
 .loop:
-    inc rax
     movzx edx, byte [rdi + rax]
     test dl, dl 
     je .not_found ;string terminated, was not found
-.entry:
     cmp sil, dl
-    jne .loop
-
+    je .found
+    inc rax
+    jmp .loop
+.found:
+    ret
 .not_found:
     mov eax, -1
     ret
