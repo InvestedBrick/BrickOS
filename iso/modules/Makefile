@@ -22,8 +22,10 @@ CFLAGS = -target x86_64-elf -ffreestanding -m64 -nostdlib \
 LDFLAGS := --no-pie -T link_c.ld
 
 CSTDLIB_DIR := cstdlib
-CSTDLIB_SRCS := $(wildcard $(CSTDLIB_DIR)/*.c)
-CSTDLIB_OBJS := $(patsubst $(CSTDLIB_DIR)/%.c, $(CSTDLIB_DIR)/%.o, $(CSTDLIB_SRCS))
+CSTDLIB_C_SRCS := $(wildcard $(CSTDLIB_DIR)/*.c)
+CSTDLIB_ASM_SRCS := $(wildcard $(CSTDLIB_DIR)/*.asm)
+CSTDLIB_OBJS := $(patsubst $(CSTDLIB_DIR)/%.c, $(CSTDLIB_DIR)/%.o, $(CSTDLIB_C_SRCS)) \
+			    $(patsubst $(CSTDLIB_DIR)/%.asm, $(CSTDLIB_DIR)/%.o, $(CSTDLIB_ASM_SRCS))
 
 .PHONY: all clean
 
@@ -32,6 +34,10 @@ all: $(ASM_BINS) $(C_BINS)
 # Compile cstdlib .c to .o
 $(CSTDLIB_DIR)/%.o: $(CSTDLIB_DIR)/%.c
 	$(CC) $(CFLAGS) -c -o $@ $<
+
+# Compile cstdlib .asm to .o
+$(CSTDLIB_DIR)/%.o: $(CSTDLIB_DIR)/%.asm
+	$(NASM) $(NASMOBJFLAGS) -o $@ $<
 
 # Compile .c to .o
 %.o: %.c
