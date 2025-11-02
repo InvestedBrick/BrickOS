@@ -1,11 +1,11 @@
-**Brick OS** is a work-in-progress 32-bit operating system created mainly for learning purposes. 
+**Brick OS** is a work-in-progress 64-bit operating system created mainly for learning purposes. 
 
 # Branches
 The normal branch where I will be writing everything in C will be `main`
 
-The branch `unstable` is mostly for testing and trying to write this in `Brick-Lang` 
+The branch `unstable` is mostly for testing and trying to write this in `Brick-Lang` (currently abandoned, may cross-compile it one day)
 
-I am currently rewriting this OS for a 64 bit architechture which is happening on the `x64_port` branch
+
 
 # Building
 
@@ -13,7 +13,7 @@ I am currently rewriting this OS for a 64 bit architechture which is happening o
 This project depends on you having installed the following binaries yourself:
 
 - `grub-mkrescue`
-- `qemu-system-i386`
+- `qemu-system-x86_64`
 - `qemu-img` 
 - `make`
 - `nasm` 
