@@ -190,7 +190,6 @@ void interrupt_handler(interrupt_stack_frame_t* stack_frame) {
 
     switch (stack_frame->interrupt_number) {
         case INT_KEYBOARD:
-            log("Keyboard interrupt");
             handle_keyboard_interrupt();
             acknowledge_PIC(stack_frame->interrupt_number);
             break;
