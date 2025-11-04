@@ -1,1 +1,0 @@
-qemu-img create -f raw hdd.img 256M
