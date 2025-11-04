@@ -33,8 +33,19 @@ $(TARGET): $(ASM_OBJS) $(C_OBJS)
 iso: $(TARGET)
 	cp kernel.elf iso/boot
 	make -C iso/modules
-	bash stage3.sh
+	grub-mkrescue -o BrickOS.iso iso --modules="vbe vga video gfxterm"
 
+
+run: iso
+	qemu-img create -f raw hdd.img 256M
+	qemu-system-x86_64 -s \
+    -drive file=hdd.img,format=raw,if=ide \
+    -serial file:serial.log \
+    -boot d \
+    -cdrom BrickOS.iso \
+    -m 512 \
+    -vga std 
 clean:
 	rm -f $(ASM_OBJS) $(C_OBJS) $(TARGET) $(ISO)
+	rm hdd.img
 	make -C iso/modules clean
