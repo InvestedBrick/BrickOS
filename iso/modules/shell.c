@@ -3,7 +3,7 @@
 #include "cstdlib/stdutils.h"
 #include "cstdlib/syscalls.h"
 #include "cstdlib/malloc.h"
-#include "../../src/filesystem/devices/device_defines.h"
+#include "../../kernel/src/filesystem/devices/device_defines.h"
 #include <stdint.h>
 
 #define LINE_BUFFER_SIZE 256

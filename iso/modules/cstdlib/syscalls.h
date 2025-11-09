@@ -13,7 +13,7 @@ typedef struct {
     unsigned char* stderr_filename;
 }process_fds_init_t;
 
-#include "../../../src/tables/syscall_defines.h"
+#include "../../../kernel/src/tables/syscall_defines.h"
 #include <stdint.h>
 /**
  * write:

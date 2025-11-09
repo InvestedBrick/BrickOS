@@ -3,8 +3,8 @@
 #include "cstdlib/stdutils.h"
 #include "cstdlib/malloc.h"
 #include "cstdlib/stdio.h"
-#include "../../src/filesystem/devices/device_defines.h"
-#include "../../src/screen/font_bitmaps.h"
+#include "../../kernel/src/filesystem/devices/device_defines.h"
+#include "../../kernel/src/screen/font_bitmaps.h"
 #include <stdint.h>
 
 #define WINDOW_HEIGHT 400

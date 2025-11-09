@@ -2,7 +2,7 @@
 #ifndef INCLUDE_FS_H
 #define INCLUDE_FS_H
 
-#include "../../../src/filesystem/fs_defines.h"
+#include "../../../kernel/src/filesystem/fs_defines.h"
 #include <stdint.h>
 typedef struct {
     uint32_t inode_id;

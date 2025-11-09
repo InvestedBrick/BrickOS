@@ -1,7 +1,7 @@
 #include "cstdlib/stdutils.h"
 #include "cstdlib/syscalls.h"
 #include "cstdlib/stdio.h"
-#include "../../src/filesystem/devices/device_defines.h"
+#include "../../kernel/src/filesystem/devices/device_defines.h"
 #include "cstdlib/malloc.h"
 typedef struct {
     uint32_t cmd;
