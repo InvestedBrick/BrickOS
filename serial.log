@@ -1,0 +1,58 @@
+[LOG] Set up serial port
+[LOG] Initialized the GDT
+[LOG] Initialized the PIT
+[LOG] Initialized the IDT
+[LOG] PS/2 controller passed test
+[LOG] PS/2 port 1 is operational
+[LOG] PS/2 port 2 is operational
+[LOG] Initialized the PS/2 keyboard
+[LOG] Initialized the PS/2 mouse
+[LOG] Initialized the I8042 PS/2 controller
+[LOG] Initialized paged memory
+[LOG] Set up framebuffer
+[LOG] Initialized kmalloc
+[LOG] Loaded 6 modules
+[LOG] Saved module binaries
+[LOG] Initialized shared memory objects vector
+[LOG] Initialized user process vector
+[LOG] Selected Drive supports LBA48
+[LOG] Number of addressable LBA28 sectors: 524288
+[LOG] Initialized disk driver
+[LOG] Initialized the filesystem
+[LOG] Initialized /modules, /home, /dev and /tmp directories
+[LOG] Set up kernel process
+[LOG] Initialized devices
+[LOG] Wrote module binaries to files in the modules directory
+[LOG] SPAWNING PROC
+[LOG] modules/loop.bin
+[LOG] Set up endless process
+[LOG] Initialized the scheduler
+[LOG] SPAWNING PROC
+[LOG] modules/terminal.bin
+[LOG] SPAWNING PROC
+[LOG] modules/win_man.bin
+[LOG] Shell setup complete
+[ERROR] PS/2 controller not responding to read
+[LOG] Mouse interrupt
+[LOG] SPAWNING PROC
+[LOG] modules/shell.bin
+[LOG] Process modules/shell.bin exited with error code 0
+[ERROR] A page fault has occured in process: modules/loop.bin
+[ERROR] At address: 0xffff80000940d000
+[ERROR] Cause:
+[ERROR] Read access
+[ERROR] Protection key violation
+[LOG] Process modules/loop.bin exited with error code 1
+[ERROR] A page fault has occured in process: modules/terminal.bin
+[ERROR] At address: 0xffff8000092b4000
+[ERROR] Cause:
+[ERROR] Read access
+[ERROR] Protection key violation
+[LOG] Process modules/terminal.bin exited with error code 1
+[ERROR] A page fault has occured in process: modules/win_man.bin
+[ERROR] At address: 0xffff8000092c8000
+[ERROR] Cause:
+[ERROR] Read access
+[ERROR] Protection key violation
+[LOG] Process modules/win_man.bin exited with error code 1
+[ERROR] Getting process state failed

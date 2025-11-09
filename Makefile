@@ -1,6 +1,6 @@
 
-ASM_SOURCES = $(shell find src/ -type f -name '*.asm')
-C_SOURCES   = $(shell find src/ -type f -name '*.c')
+ASM_SOURCES = $(shell find kernel/src/ -type f -name '*.asm')
+C_SOURCES   = $(shell find kernel/src/ -type f -name '*.c')
 
 LD_SCRIPT = link.ld
 
