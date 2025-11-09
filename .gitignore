@@ -9,5 +9,6 @@ kernel/freestnd-c-hdrs
 kernel/limine-protocol
 kernel/.deps-obtained
 linecounter.py
+limine.conf
 hdd.img
 *.bin
