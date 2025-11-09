@@ -7,7 +7,7 @@ limine/
 kernel/cc-runtime
 kernel/freestnd-c-hdrs
 kernel/limine-protocol
-kernel/.deps-optained
+kernel/.deps-obtained
 linecounter.py
 hdd.img
 *.bin
