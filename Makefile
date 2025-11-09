@@ -49,8 +49,10 @@ limine/limine:
 kernel/.deps-obtained:
 	./kernel/get-deps
 
+limine.conf:
+	bash limine_conf_gen.sh
 
-$(ISO): $(TARGET) kernel/.deps-obtained limine/limine
+$(ISO): $(TARGET) kernel/.deps-obtained limine/limine limine.conf
 	make -C iso/modules
 	rm -rf iso_root
 	mkdir -p iso_root/boot
@@ -79,7 +81,7 @@ run: $(ISO)
     -serial file:serial.log \
     -boot d \
     -cdrom $(ISO) \
-    -m 512 \
+    -m 512M \
     -vga std 
 clean:
 	rm -f $(ASM_OBJS) $(C_OBJS) $(TARGET) $(ISO)
