@@ -38,7 +38,7 @@ all: $(ISO)
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(TARGET): $(ASM_OBJS) $(C_OBJS)
+$(TARGET): limine/limine $(ASM_OBJS) $(C_OBJS) 
 	$(LLD) $(LDFLAGS)  $(ASM_OBJS) $(C_OBJS) -o $(TARGET)
 
 limine/limine:
@@ -57,7 +57,7 @@ kernel/.deps-obtained:
 limine.conf:
 	bash limine_conf_gen.sh
 
-$(ISO): $(TARGET) kernel/.deps-obtained limine/limine limine.conf
+$(ISO): $(TARGET) kernel/.deps-obtained limine.conf
 	make -C iso/modules
 	rm -rf iso_root
 	mkdir -p iso_root/boot
