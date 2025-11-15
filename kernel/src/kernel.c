@@ -19,8 +19,31 @@
 #include "filesystem/file_operations.h"
 #include "drivers/PS2/ps2_controller.h"
 #include "drivers/PS2/keyboard/keyboard.h"
+
+#include <stdint.h>
+#include <stddef.h>
+#include <stdbool.h>
+#include "../../limine/limine.h"
+
+
+__attribute__((used, section(".limine_requests")))
+static volatile uint64_t limine_base_revision[] = LIMINE_BASE_REVISION(3);
+
+
+__attribute__((used, section(".limine_requests")))
+static volatile struct limine_framebuffer_request framebuffer_request = {
+    .id = LIMINE_FRAMEBUFFER_REQUEST,
+    .revision = 0
+};
+
+__attribute__((used, section(".limine_requests_start")))
+static volatile uint64_t limine_requests_start_marker[] = LIMINE_REQUESTS_START_MARKER;
+
+__attribute__((used, section(".limine_requests_end")))
+static volatile uint64_t limine_request_end_marker[] = LIMINE_REQUESTS_END_MARKER;
+
 user_process_t global_kernel_process;
-extern uint32_t stack_top;
+uint32_t stack_top = 0; //TODO: adjust to limine
 uint8_t dispatched_user_mode = 0;
 
 uint64_t calc_phys_alloc_start(multiboot_info_t* boot_info){
@@ -72,13 +95,6 @@ void shutdown(){
 
 void kmain(multiboot_info_t* boot_info)
 {   
-    if (!(boot_info->flags & (1 << 12))) { // check for RGB graphics mode
-        panic("RGB Setup failed!");
-    }
-
-    if (!(boot_info->framebuffer_type == 1)){
-        panic("Invalid framebuffer type");
-    }
     
     // Serial port setup
     serial_configure_baud_rate(SERIAL_COM1_BASE,3);
@@ -87,6 +103,26 @@ void kmain(multiboot_info_t* boot_info)
     serial_configure_modem(SERIAL_COM1_BASE);
     log("Set up serial port");
     
+    if (!LIMINE_BASE_REVISION_SUPPORTED(limine_base_revision)){
+        panic("Limine base revision unsupported");
+    }
+
+    if (framebuffer_request.response == NULL 
+     || framebuffer_request.response->framebuffer_count < 1){
+        panic("No Framebuffer");
+    }
+
+
+    struct limine_framebuffer *framebuffer = framebuffer_request.response->framebuffers[0];
+
+    // Note: we assume the framebuffer model is RGB with 32-bit pixels.
+    for (size_t i = 0; i < 100; i++) {
+        volatile uint32_t *fb_ptr = framebuffer->address;
+        fb_ptr[i * (framebuffer->pitch / 4) + i] = 0xffffff;
+    }
+
+    panic("End of the world");
+
     // Set up global descriptor table
     init_gdt();
     log("Initialized the GDT");
