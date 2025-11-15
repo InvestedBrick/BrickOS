@@ -21,9 +21,14 @@ HOST_LIBS :=
 
 CFLAGS = -target x86_64-elf -ffreestanding -m64 -nostdlib \
          -fno-builtin -fno-stack-protector -fno-exceptions -g \
-         -Wno-pointer-sign -fno-pic -fno-pie -mcmodel=large -O1
+         -Wno-pointer-sign -fno-pic -fno-pie -mcmodel=kernel -O1
           # idgaf about casting const char* to char*
-LDFLAGS =  --no-pie
+LDFLAGS = \
+    -nostdlib \
+	-static \
+    -z max-page-size=0x1000 \
+    --gc-sections \
+	-T $(LD_SCRIPT)
 
 all: $(ISO)
 
@@ -34,7 +39,7 @@ all: $(ISO)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(TARGET): $(ASM_OBJS) $(C_OBJS)
-	$(LLD) $(LDFLAGS) -T $(LD_SCRIPT) $(ASM_OBJS) $(C_OBJS) -o $(TARGET)
+	$(LLD) $(LDFLAGS)  $(ASM_OBJS) $(C_OBJS) -o $(TARGET)
 
 limine/limine:
 	rm -rf limine
