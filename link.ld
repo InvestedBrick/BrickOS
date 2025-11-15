@@ -1,45 +1,54 @@
 OUTPUT_FORMAT(elf64-x86-64)
-ENTRY(start)
+ENTRY(kmain)
+
+PHDRS
+{
+    limine_requests PT_LOAD;
+    text PT_LOAD;
+    rodata PT_LOAD;
+    data PT_LOAD;
+}
 
 SECTIONS {
-    . = 1M;
+    . = 0xffffffff80000000;
 
-    kernel_physical_start = .;
-    kernel_virtual_start = . + 0xffff800000000000;
+    .limine_requests : {
+        KEEP(*(.limine_requests_start))
+        KEEP(*(.limine_requests))
+        KEEP(*(.limine_requests_end))
+    } :limine_requests
 
-    .multiboot ALIGN(8) : {
-        *(.multiboot)
-    }
+    . = ALIGN(CONSTANT(MAXPAGESIZE));
 
-    .note.gnu.build-id ALIGN(4K): {
+    .text : {
+        *(.text .text.*)
+    } :text
+
+    . = ALIGN(CONSTANT(MAXPAGESIZE));
+
+    .rodata : {
+        *(.rodata .rodata.*)
+    } :rodata
+
+
+    .note.gnu.build-id : {
         *(.note.gnu.build-id)
-    }
+    } :rodata
 
-    .boot ALIGN(4K) : {
-        *(.boot)
-        *(.trampoline)
-    }
+    . = ALIGN(CONSTANT(MAXPAGESIZE));
 
-    .bootdata ALIGN(4K) : {
-        *(.bootdata)
-    }
+    .data : {
+        *(.data .data.*)
+    } :data
 
-    . += 0xffff800000000000;
-    .text ALIGN(4K): AT(ADDR(.text) - 0xffff800000000000){
-        *(.text)
-    }
-
-    .rodata ALIGN(4K): AT(ADDR(.rodata) - 0xffff800000000000){
-        *(.rodata*)
-    }
-    .data ALIGN(4K): AT(ADDR(.data) - 0xffff800000000000){
-        *(.data*)
-    }
-    .bss ALIGN(4K): AT(ADDR(.bss) - 0xffff800000000000){
+    ..bss : {
+        *(.bss .bss.*)
         *(COMMON)
-        *(.bss*)
+    } :data
+
+    /DISCARD/ : {
+        *(.eh_frame*)
+        *(.note .note.*)
     }
 
-    kernel_physical_end = . - 0xffff800000000000;
-    kernel_virtual_end = .;
 }
