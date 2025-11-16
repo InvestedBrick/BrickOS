@@ -27,12 +27,27 @@
 
 
 __attribute__((used, section(".limine_requests")))
-static volatile uint64_t limine_base_revision[] = LIMINE_BASE_REVISION(3);
+static volatile uint64_t limine_base_revision[] = LIMINE_BASE_REVISION(4);
 
 
 __attribute__((used, section(".limine_requests")))
 static volatile struct limine_framebuffer_request framebuffer_request = {
-    .id = LIMINE_FRAMEBUFFER_REQUEST,
+    .id = LIMINE_FRAMEBUFFER_REQUEST_ID,
+    .revision = 0
+};
+
+__attribute__((used, section(".limine_requests")))
+static volatile struct limine_paging_mode_request paging_mode_request = {
+    .id = LIMINE_PAGING_MODE_REQUEST_ID,
+    .revision = 1,
+    .mode = LIMINE_PAGING_MODE_X86_64_4LVL,
+    .min_mode = LIMINE_PAGING_MODE_X86_64_4LVL,
+    .max_mode = LIMINE_PAGING_MODE_X86_64_4LVL,
+};
+
+__attribute__((used, section(".limine_requests")))
+static volatile struct limine_date_at_boot_request date_at_boot_request = {
+    .id = LIMINE_DATE_AT_BOOT_REQUEST_ID,
     .revision = 0
 };
 
@@ -42,22 +57,11 @@ static volatile uint64_t limine_requests_start_marker[] = LIMINE_REQUESTS_START_
 __attribute__((used, section(".limine_requests_end")))
 static volatile uint64_t limine_request_end_marker[] = LIMINE_REQUESTS_END_MARKER;
 
+
+
 user_process_t global_kernel_process;
 uint32_t stack_top = 0; //TODO: adjust to limine
 uint8_t dispatched_user_mode = 0;
-
-uint64_t calc_phys_alloc_start(multiboot_info_t* boot_info){
-    multiboot_module_t* mods = (multiboot_module_t*)(uintptr_t)boot_info->mods_addr;
-    uint64_t highest_mod_end = 0;
-
-    for (uint32_t i = 0; i < boot_info->mods_count; i++){
-        if ((uint64_t)mods[i].mod_end > highest_mod_end){
-            highest_mod_end = (uint64_t)mods[i].mod_end;
-        }
-    }
-
-    return ALIGN_UP(highest_mod_end, 0x1000); // align to 4kb
-}
 
 void setup_kernel_fds(){
     global_kernel_process.fd_table[FD_STDIN] = fs_open("dev/kb0",FILE_FLAG_NONE);
@@ -107,11 +111,15 @@ void kmain(multiboot_info_t* boot_info)
         panic("Limine base revision unsupported");
     }
 
+    if (date_at_boot_request.response){
+        uint64_t timestamp = date_at_boot_request.response->timestamp;
+        logf("Seconds since 1970: %d",timestamp);
+    }
+
     if (framebuffer_request.response == NULL 
      || framebuffer_request.response->framebuffer_count < 1){
         panic("No Framebuffer");
     }
-
 
     struct limine_framebuffer *framebuffer = framebuffer_request.response->framebuffers[0];
 
@@ -138,8 +146,7 @@ void kmain(multiboot_info_t* boot_info)
     init_and_test_I8042_controller();
     log("Initialized the I8042 PS/2 controller");
 
-    uint64_t physical_alloc_start = calc_phys_alloc_start(boot_info);
-    init_memory(physical_alloc_start ,boot_info->mem_upper * 1024); // mem_upper is in kb
+    init_memory(0/*TODO:*/ ,boot_info->mem_upper * 1024); // mem_upper is in kb
     log("Initialized paged memory");
 
     init_framebuffer(boot_info,SCREEN_PIXEL_BUFFER_START);
