@@ -36,16 +36,15 @@
 #include "../filesystem/vfs/vfs.h"
 #include "../multiboot.h"
 #include <stdint.h>
-extern uint16_t g_cursor_pos;
+
 extern generic_file_t screen_file;
 
 
 /**
  * init_framebuffer:
  * Initializes the framebuffer
- * @param mboot The multiboot information
  * @param fb_start The start of the buffer in virtual memory
  */
-void init_framebuffer(multiboot_info_t* mboot,uint64_t fb_start);
+void init_framebuffer(uint64_t fb_start);
 
 #endif
