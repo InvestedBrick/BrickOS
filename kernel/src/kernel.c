@@ -111,9 +111,12 @@ void kmain(multiboot_info_t* boot_info)
         panic("Limine base revision unsupported");
     }
 
+    
     if (date_at_boot_request.response){
+        date_t date;
         uint64_t timestamp = date_at_boot_request.response->timestamp;
-        logf("Seconds since 1970: %d",timestamp);
+        parse_unix_timestamp(timestamp,&date);
+        logf("Booted on %d.%d.%d @ %d:%d and %d seconds",date.day,date.month,date.year,date.hour,date.minute,date.second);
     }
 
     if (framebuffer_request.response == NULL 
