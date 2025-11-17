@@ -2,6 +2,7 @@
 #include "io/log.h"
 #include "multiboot.h"
 #include "tables/gdt.h"
+#include "kernel_header.h"
 #include "memory/memory.h"
 #include "screen/screen.h"
 #include "memory/kmalloc.h"
@@ -19,22 +20,15 @@
 #include "filesystem/file_operations.h"
 #include "drivers/PS2/ps2_controller.h"
 #include "drivers/PS2/keyboard/keyboard.h"
-
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
 #include "../../limine/limine.h"
 
+limine_data_t limine_data;
 
 __attribute__((used, section(".limine_requests")))
 static volatile uint64_t limine_base_revision[] = LIMINE_BASE_REVISION(4);
-
-
-__attribute__((used, section(".limine_requests")))
-static volatile struct limine_framebuffer_request framebuffer_request = {
-    .id = LIMINE_FRAMEBUFFER_REQUEST_ID,
-    .revision = 0
-};
 
 __attribute__((used, section(".limine_requests")))
 static volatile struct limine_paging_mode_request paging_mode_request = {
@@ -45,9 +39,21 @@ static volatile struct limine_paging_mode_request paging_mode_request = {
     .max_mode = LIMINE_PAGING_MODE_X86_64_4LVL,
 };
 
+__attribute__((used,section(".limine_requests")))
+static volatile struct limine_hhdm_request hhdm_request = {
+    .id = LIMINE_HHDM_REQUEST_ID,
+    .revision = 0,
+};
+
 __attribute__((used, section(".limine_requests")))
 static volatile struct limine_date_at_boot_request date_at_boot_request = {
     .id = LIMINE_DATE_AT_BOOT_REQUEST_ID,
+    .revision = 0
+};
+
+__attribute__((used, section(".limine_requests")))
+static volatile struct limine_framebuffer_request framebuffer_request = {
+    .id = LIMINE_FRAMEBUFFER_REQUEST_ID,
     .revision = 0
 };
 
@@ -56,8 +62,6 @@ static volatile uint64_t limine_requests_start_marker[] = LIMINE_REQUESTS_START_
 
 __attribute__((used, section(".limine_requests_end")))
 static volatile uint64_t limine_request_end_marker[] = LIMINE_REQUESTS_END_MARKER;
-
-
 
 user_process_t global_kernel_process;
 uint32_t stack_top = 0; //TODO: adjust to limine
@@ -97,7 +101,7 @@ void shutdown(){
     panic("This is the end of the world");
 }
 
-void kmain(multiboot_info_t* boot_info)
+void kmain()
 {   
     
     // Serial port setup
@@ -111,7 +115,10 @@ void kmain(multiboot_info_t* boot_info)
         panic("Limine base revision unsupported");
     }
 
-    
+    if (!hhdm_request.response) panic("No HHDM request response");
+
+    limine_data.hhdm = hhdm_request.response->offset;
+    logf("Kernel mapped at offset: %x",limine_data.hhdm);
     if (date_at_boot_request.response){
         date_t date;
         uint64_t timestamp = date_at_boot_request.response->timestamp;
@@ -119,17 +126,17 @@ void kmain(multiboot_info_t* boot_info)
         logf("Booted on %d.%d.%d @ %d:%d and %d seconds",date.day,date.month,date.year,date.hour,date.minute,date.second);
     }
 
-    if (framebuffer_request.response == NULL 
+     if (framebuffer_request.response == NULL 
      || framebuffer_request.response->framebuffer_count < 1){
         panic("No Framebuffer");
     }
 
-    struct limine_framebuffer *framebuffer = framebuffer_request.response->framebuffers[0];
+    limine_data.framebuffer = framebuffer_request.response->framebuffers[0];
 
     // Note: we assume the framebuffer model is RGB with 32-bit pixels.
     for (size_t i = 0; i < 100; i++) {
-        volatile uint32_t *fb_ptr = framebuffer->address;
-        fb_ptr[i * (framebuffer->pitch / 4) + i] = 0xffffff;
+        volatile uint32_t *fb_ptr = limine_data.framebuffer->address;
+        fb_ptr[i * (limine_data.framebuffer->pitch / 4) + i] = 0xffffff;
     }
 
     panic("End of the world");
@@ -149,16 +156,16 @@ void kmain(multiboot_info_t* boot_info)
     init_and_test_I8042_controller();
     log("Initialized the I8042 PS/2 controller");
 
-    init_memory(0/*TODO:*/ ,boot_info->mem_upper * 1024); // mem_upper is in kb
+    init_memory(0/*TODO:*/ ,0/*TODO:*/); // mem_upper is in kb
     log("Initialized paged memory");
 
-    init_framebuffer(boot_info,SCREEN_PIXEL_BUFFER_START);
+    init_framebuffer(SCREEN_PIXEL_BUFFER_START);
     log("Set up framebuffer");
 
     init_kmalloc(MEMORY_PAGE_SIZE);
     log("Initialized kmalloc");
     
-    save_module_binaries(boot_info);
+    save_module_binaries(0/*TODO:*/);
     log("Saved module binaries");
     
     // Fully commit to virtual memory now
