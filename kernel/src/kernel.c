@@ -45,6 +45,11 @@ static volatile struct limine_hhdm_request hhdm_request = {
     .revision = 0,
 };
 
+__attribute__((used,section(".limine_requests")))
+static volatile struct limine_memmap_request memmap_request = {
+    .id = LIMINE_MEMMAP_REQUEST_ID,
+    .revision = 0,
+};
 __attribute__((used, section(".limine_requests")))
 static volatile struct limine_date_at_boot_request date_at_boot_request = {
     .id = LIMINE_DATE_AT_BOOT_REQUEST_ID,
@@ -63,7 +68,7 @@ static volatile uint64_t limine_requests_start_marker[] = LIMINE_REQUESTS_START_
 __attribute__((used, section(".limine_requests_end")))
 static volatile uint64_t limine_request_end_marker[] = LIMINE_REQUESTS_END_MARKER;
 
-user_process_t global_kernel_process;
+struct user_process global_kernel_process;
 uint32_t stack_top = 0; //TODO: adjust to limine
 uint8_t dispatched_user_mode = 0;
 
@@ -126,7 +131,14 @@ void kmain()
         logf("Booted on %d.%d.%d @ %d:%d and %d seconds",date.day,date.month,date.year,date.hour,date.minute,date.second);
     }
 
-     if (framebuffer_request.response == NULL 
+    if (memmap_request.response == NULL) panic("No memmap recieved");
+
+    limine_data.mmap_data.n_entries = memmap_request.response->entry_count;
+    limine_data.mmap_data.memmap_entries = memmap_request.response->entries; 
+
+    parse_and_log_limine_memory_mapping();
+
+    if (framebuffer_request.response == NULL 
      || framebuffer_request.response->framebuffer_count < 1){
         panic("No Framebuffer");
     }
@@ -139,8 +151,6 @@ void kmain()
         fb_ptr[i * (limine_data.framebuffer->pitch / 4) + i] = 0xffffff;
     }
 
-    panic("End of the world");
-
     // Set up global descriptor table
     init_gdt();
     log("Initialized the GDT");
@@ -148,16 +158,17 @@ void kmain()
     init_pit(DESIRED_STANDARD_FREQ);
     log("Initialized the PIT");
     disable_interrupts(); // We dont want interrupts right now, since we cant correctly return to kernel land once we interrupt
-
+    
     //Set up Interrupt descriptor table
     init_idt();
     log("Initialized the IDT");
-
+    
     init_and_test_I8042_controller();
     log("Initialized the I8042 PS/2 controller");
-
-    init_memory(0/*TODO:*/ ,0/*TODO:*/); // mem_upper is in kb
+    
+    init_memory(); // mem_upper is in kb
     log("Initialized paged memory");
+    panic("End of the world");
 
     init_framebuffer(SCREEN_PIXEL_BUFFER_START);
     log("Set up framebuffer");
