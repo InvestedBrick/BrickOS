@@ -55,11 +55,11 @@ void add_process_state(user_process_t* usr_proc);
 void remove_process_state(process_state_t* proc);
 
 /**
- * get_process_state_by_pml4:
- * Returns a process state with a given pml4 table
- * @param pml4 The pml4 table of the process
+ * get_process_state_by_pid:
+ * Returns a process state with a given pid
+ * @param pid The pid of the process
  */
-process_state_t* get_process_state_by_pml4(uint64_t* pml4);
+process_state_t* get_process_state_by_pid(uint32_t pid);
 
 process_state_t* get_current_process_state();
 
