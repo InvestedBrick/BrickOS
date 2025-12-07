@@ -9,36 +9,30 @@
 module_binary_t* module_binary_structs;
 uint32_t module_count;
 
-void save_module_binaries(multiboot_info_t* boot_info){
+void save_module_binaries(struct limine_module_response* module_response){
     
-    module_count = boot_info->mods_count;
+
+    module_count = module_response->module_count;
     logf("Loaded %d modules", module_count);
     module_binary_structs = kmalloc(module_count * sizeof(module_binary_t));
-
     if (!module_binary_structs) return;
+    struct limine_file** modules = module_response->modules; 
 
-    multiboot_module_t* modules = (multiboot_module_t*)(uint64_t)boot_info->mods_addr;
     for (uint32_t i = 0; i < module_count;i++){
-        module_binary_structs[i].size = modules[i].mod_end - modules[i].mod_start;
+        module_binary_structs[i].size = modules[i]->size;
         
-        unsigned char* cmd_line = (unsigned char*)(uint64_t)modules[i].cmdline;
-        // looks like "/modules/<module name>"
-        uint32_t name_start_idx = find_char(&cmd_line[1],'/') + 2; // skip past the first '/' and return index to the first char of the name
-        
-        if (name_start_idx == ((uint32_t)-1) + 2) 
-            {error("Finding name for module failed");}
-        else{
-            uint32_t mod_name_len = strlen(&cmd_line[name_start_idx]);
-            module_binary_structs[i].cmdline = (unsigned char*)kmalloc(mod_name_len + 1);
-            memcpy(module_binary_structs[i].cmdline,&cmd_line[name_start_idx],mod_name_len);
-            module_binary_structs[i].cmdline[mod_name_len] = '\0';
+        unsigned char* cmd_line = (unsigned char*)(uint64_t)modules[i]->cmdline;
+
+        uint32_t mod_name_len = strlen(cmd_line);
+        module_binary_structs[i].cmdline = (unsigned char*)kmalloc(mod_name_len + 1);
+        memcpy(module_binary_structs[i].cmdline,cmd_line,mod_name_len);
+        module_binary_structs[i].cmdline[mod_name_len] = '\0';
             
-        }
 
         module_binary_structs[i].start = (uint64_t)kmalloc(module_binary_structs[i].size);
 
         // copy the module binary for future use
-        memcpy((unsigned char*)module_binary_structs[i].start,(unsigned char*)(uint64_t)modules[i].mod_start,module_binary_structs[i].size);
+        memcpy((unsigned char*)module_binary_structs[i].start,(unsigned char*)(uint64_t)modules[i]->address,module_binary_structs[i].size);
 
     }
 
