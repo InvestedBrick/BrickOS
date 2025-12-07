@@ -3,13 +3,20 @@
 #define INCLUDE_MEMORY_H
 #include <stdint.h>
 #include "../filesystem/vfs/vfs.h"
-#define KERNEL_START          0xffff800000000000 
-#define KERNEL_MALLOC_START   0xffff8000d0000000 // give the kernel some space
-#define KERNEL_MALLOC_END     0xffff8000f0000000 
-#define TEMP_KERNEL_COPY_ADDR 0xffff9ffffffff000
+#include "../kernel_header.h"
 
 #define ENTRIES_PER_TABLE 512
-#define RECURSIVE_SLOT 511
+#define TABLE_SIZE (ENTRIES_PER_TABLE * sizeof(uint64_t))
+#define N_PML4_TABLES 256 
+
+#define HHDM                     (limine_data.hhdm) 
+#define KERNEL_MALLOC_START      (HHDM + 0xd0000000) 
+#define KERNEL_MALLOC_END        (HHDM + 0xf0000000) 
+#define KERNEL_PML4_TABLES_START (HHDM + 0x100000000)
+#define KERNEL_PML4_TABLES_END   (KERNEL_PML4_TABLES_START + N_PML4_TABLES * TABLE_SIZE);
+
+#define TEMP_KERNEL_COPY_ADDR 0xffff9ffffffff000
+#define KERNEL_SHARED_MAPPING_IDX 256
 
 #define PML4_SHIFT 39
 #define PDPT_SHIFT 30
@@ -28,43 +35,19 @@
 
 #define CANONICALIZE(addr) ((((addr) & (1ull << 47)) ? (addr | SIGN_EXTEND_MASK) : (addr & ~SIGN_EXTEND_MASK)))
 
-#define REC_PML4_VIRT CANONICALIZE( \
-    ((uint64_t)RECURSIVE_SLOT << PML4_SHIFT) | \
-    ((uint64_t)RECURSIVE_SLOT << PDPT_SHIFT) | \
-    ((uint64_t)RECURSIVE_SLOT << PD_SHIFT) | \
-    ((uint64_t)RECURSIVE_SLOT << PT_SHIFT))
-
-#define REC_PDPT_VIRT(pml4_idx) CANONICALIZE( \
-    ((uint64_t)RECURSIVE_SLOT << PML4_SHIFT) | \
-    ((uint64_t)RECURSIVE_SLOT << PDPT_SHIFT) | \
-    ((uint64_t)RECURSIVE_SLOT << PD_SHIFT) | \
-    ((uint64_t)pml4_idx << PT_SHIFT))
-
-#define REC_PD_VIRT(pml4_idx, pdpt_idx) CANONICALIZE( \
-    ((uint64_t)RECURSIVE_SLOT << PML4_SHIFT) | \
-    ((uint64_t)RECURSIVE_SLOT << PDPT_SHIFT) | \
-    ((uint64_t)pml4_idx << PD_SHIFT) | \
-    ((uint64_t)pdpt_idx << PT_SHIFT))
-
-#define REC_PT_VIRT(pml4_idx, pdpt_idx, pd_idx) CANONICALIZE( \
-    ((uint64_t)RECURSIVE_SLOT << PML4_SHIFT) | \
-    ((uint64_t)pml4_idx << PDPT_SHIFT) | \
-    ((uint64_t)pdpt_idx << PD_SHIFT) | \
-    ((uint64_t)pd_idx << PT_SHIFT))
 #define MEMORY_PAGE_SIZE 0x1000
 
 #define PAGE_FLAG_PRESENT 0x1
 #define PAGE_FLAG_WRITE (1 << 1)
 #define PAGE_FLAG_USER  (1 << 2)
 
-#define N_PML4_TABLES 256 
 
 #define INVALID_PHYS_ADDR (uint64_t)-1
 
 #include "../vector.h"
 
 typedef struct {
-    uint32_t phys_addr;
+    uint64_t phys_addr;
     uint32_t ref_count;
 } shared_page_t;
 
@@ -104,7 +87,6 @@ shared_object_t* find_shared_object_by_id(uint32_t unique_id);
 
 extern vector_t shm_obj_vec;
 
-extern uint64_t initial_pml4_table[ENTRIES_PER_TABLE];
 /**
  * find_virt_mem_area:
  * finds a virtual memory area in a virt_mem_area_t linked list, assuming addr is page-aligned
@@ -118,11 +100,9 @@ virt_mem_area_t* find_virt_mem_area(virt_mem_area_t* start,uint64_t addr);
 
 /**
  * init_memory:
- * sets up memory pages
- * @param physical_alloc_start The calculated start of the phsyical allocations
- * @param mem_high The upper memory provided by the boot info
+ * Sets up the physical and virtual memory manager
  */
-void init_memory(uint64_t physical_alloc_start, uint64_t mem_high);
+void init_memory();
 
 /**
  * invalidate:
@@ -220,16 +200,13 @@ void mem_unmap_page(uint64_t virt_addr);
  */
 void mem_map_page_in_pml4(uint64_t* pml4_table, uint64_t virt_addr, uint64_t phys_addr, uint32_t flags);
 
-/**
- * un_identity_map_first_page_table:
- * Do you really need an explanation for this?
- */
-void un_identity_map_first_page_table();
-
 
 /**
  * flush_tlb:
  * Refreshes the translation lookaside buffer
  */
 void flush_tlb();
+
+
+void parse_and_log_limine_memory_mapping();
 #endif
