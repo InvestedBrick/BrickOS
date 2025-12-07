@@ -73,10 +73,10 @@ void init_scheduler(){
     log("Set up endless process");
 }
 
-process_state_t* get_process_state_by_pml4(uint64_t* pml4){
+process_state_t* get_process_state_by_pid(uint32_t pid){
     process_state_t* node = p_queue;
     while (node) {
-        if (node->pml4 == pml4) return node;
+        if (node->pid == pid) return node;
         node = node->next;
     }
     return 0;
