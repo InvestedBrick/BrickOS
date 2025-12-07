@@ -2,7 +2,8 @@
 #ifndef INCLUDE_SCREEN_H
 #define INCLUDE_SCREEN_H
 
-#define SCREEN_PIXEL_BUFFER_START 0xffff800100000000
+#include "../memory/memory.h"
+#define SCREEN_PIXEL_BUFFER_START (HHDM) + 0x100000000
 
 #define SCREEN_ROWS 25
 #define SCREEN_COLUMNS 80
@@ -37,14 +38,11 @@
 #include "../multiboot.h"
 #include <stdint.h>
 
-extern generic_file_t screen_file;
-
 
 /**
  * init_framebuffer:
  * Initializes the framebuffer
- * @param fb_start The start of the buffer in virtual memory
  */
-void init_framebuffer(uint64_t fb_start);
+void init_framebuffer();
 
 #endif
