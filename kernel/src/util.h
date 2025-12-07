@@ -15,6 +15,11 @@ typedef struct {
 } string_t;
 
 typedef struct {
+    uint64_t first;
+    uint64_t second;
+} uint64_pair_t;
+
+typedef struct {
     uint32_t n_strings;
     string_t* strings;
 }string_array_t;
