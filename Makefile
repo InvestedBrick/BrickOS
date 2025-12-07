@@ -54,14 +54,15 @@ limine/limine:
 kernel/.deps-obtained:
 	./kernel/get-deps
 
-limine.conf:
-	bash limine_conf_gen.sh
 
-$(ISO): $(TARGET) kernel/.deps-obtained limine.conf
+$(ISO): $(TARGET) kernel/.deps-obtained
+	bash limine_conf_gen.sh
 	make -C iso/modules
 	rm -rf iso_root
 	mkdir -p iso_root/boot
 	cp -v $(TARGET) iso_root/boot/
+	mkdir -p iso_root/modules
+	cp -v  $(wildcard iso/modules/*.bin) iso_root/modules
 	mkdir -p iso_root/boot/limine
 	cp -v limine.conf iso_root/boot/limine
 	mkdir -p iso_root/EFI/BOOT
@@ -87,9 +88,10 @@ run: $(ISO)
     -boot d \
     -cdrom $(ISO) \
     -m 512M \
-    -vga std 
+    -vga std \
+	-d int
 clean:
 	rm -f $(ASM_OBJS) $(C_OBJS) $(TARGET) $(ISO)
-	rm hdd.img
 	rm -rf limine
 	make -C iso/modules clean
+	rm hdd.img
