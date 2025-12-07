@@ -91,7 +91,7 @@ void free_pid(uint32_t pid){
 
 void setup_arguments(user_process_t* proc,unsigned char* argv[]){
     uint64_t page_phys = pmm_alloc_page_frame();
-    process_state_t* state = get_process_state_by_pml4(proc->pml4);
+    process_state_t* state = get_process_state_by_pid(proc->process_id);
     if (!state) error("Failed to get process state");
     // map temporarily to write memory into it
     mem_map_page(TEMP_KERNEL_COPY_ADDR,page_phys,PAGE_FLAG_WRITE | PAGE_FLAG_PRESENT);
@@ -147,8 +147,8 @@ void setup_arguments(user_process_t* proc,unsigned char* argv[]){
     state->regs.rsi = argv_ptr;
     
     mem_unmap_page(TEMP_KERNEL_COPY_ADDR);
-    mem_map_page_in_pml4(proc->pml4,KERNEL_START - MEMORY_PAGE_SIZE,page_phys, PAGE_FLAG_USER | PAGE_FLAG_WRITE);
-    
+    mem_map_page_in_pml4(proc->pml4,HHDM - MEMORY_PAGE_SIZE,page_phys, PAGE_FLAG_USER | PAGE_FLAG_WRITE);
+
     kfree(arg_ptrs); // might be null, but kfree does check that
 }
 
@@ -259,11 +259,11 @@ uint32_t create_user_process(unsigned char* binary, uint32_t size,unsigned char*
 
 }
 
-void load_registers(){
+void load_registers(uint32_t pid){
     uint32_t int_save = get_interrupt_status();
     disable_interrupts();
     // we do a little pretending here so that when the scheduler returns with these values, everything starts
-    process_state_t* state = get_process_state_by_pml4(mem_get_current_pml4_table());
+    process_state_t* state = get_process_state_by_pid(pid);
     const uint64_t user_mode_data_segment_selector = (0x20 | 0x3);
     
     state->regs.fs = user_mode_data_segment_selector;
@@ -285,7 +285,7 @@ void dispatch_user_process(uint32_t pid){
     uint64_t* old_pml4 = mem_get_current_pml4_table();
     mem_set_current_pml4_table(process->pml4); 
     set_kernel_stack(process->kernel_stack + (uint64_t)MEMORY_PAGE_SIZE);
-    load_registers();
+    load_registers(pid);
     mem_set_current_pml4_table(old_pml4);
 }
 
@@ -339,7 +339,7 @@ int kill_user_process(uint32_t pid){
         kfree(prev_vma);
     }
 
-    process_state_t* proc_state = get_process_state_by_pml4(process->pml4);
+    process_state_t* proc_state = get_process_state_by_pid(process->process_id);
     if (!proc_state) {error("Getting process state failed"); return SYSCALL_FAIL;};
     remove_process_state(proc_state);
     free_user_pml4_table(process->pml4);
@@ -388,8 +388,8 @@ int run(char* filepath,unsigned char* argv[],process_fds_init_t* start_fds,uint8
 
     uint32_t pid = create_user_process(binary,file->size,filepath,priv_lvl,argv,start_fds);
 
+    kfree(binary);
     if (!pid) {
-        kfree(binary);
         error("Creating user process failed");
         return -1;
     }

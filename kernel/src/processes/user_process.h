@@ -11,7 +11,7 @@
 #define FD_STDOUT 0x1
 #define FD_STDERR 0x2
 
-typedef struct {
+typedef struct user_process{
     uint32_t process_id;
     uint64_t* pml4; 
     uint64_t kernel_stack;
@@ -19,7 +19,7 @@ typedef struct {
     uint8_t running;
     uint64_t page_alloc_start;
     uint8_t priv_lvl;
-    virt_mem_area_t* vm_areas;
+    struct virt_mem_area* vm_areas; 
     generic_file_t* fd_table[MAX_FDS];
 } __attribute__((packed)) user_process_t;
 
@@ -31,7 +31,7 @@ typedef struct {
 }process_fds_init_t;
 
 #define USER_CODE_DATA_VMEMORY_START 0x0000000000000000
-#define USER_STACK_VMEMORY_START     CANONICALIZE(KERNEL_START - 0x8) 
+#define USER_STACK_VMEMORY_START     CANONICALIZE(HHDM - 0x8) 
 
 #define USER_STACK_PAGES_PER_PROCESS 5
 
