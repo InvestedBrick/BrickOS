@@ -20,13 +20,8 @@ This project depends on you having installed the following binaries yourself:
 - `clang`
 - `llvm-objcopy`
 
-## Compilation
-You can simply compile this project using `make iso`
-
-You will also need to create a virtual disk for the filesystem. This disk can be created using the `make_disk.sh` bash script
-
-## Running
-To start the virtual machine with the OS run `bash start_vm.sh` 
+## Compilation && Running
+You can simply run `make run` to compile and start the OS. 
 
 # Notice
-This project is still highly in development and kinda unstable, so if something breaks try to create a new disk or wait for a more stable version.
+This project is still highly in development and kinda unstable, so things are not unlikely to break.
