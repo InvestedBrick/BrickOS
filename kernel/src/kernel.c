@@ -23,16 +23,16 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
-#include "../../limine/limine.h"
+#include "../limine-protocol/include/limine.h"
 
 limine_data_t limine_data;
 
 __attribute__((used, section(".limine_requests")))
-static volatile uint64_t limine_base_revision[] = LIMINE_BASE_REVISION(4);
+volatile static LIMINE_BASE_REVISION(4);
 
 __attribute__((used, section(".limine_requests")))
 static volatile struct limine_paging_mode_request paging_mode_request = {
-    .id = LIMINE_PAGING_MODE_REQUEST_ID,
+    .id = LIMINE_PAGING_MODE_REQUEST,
     .revision = 1,
     .mode = LIMINE_PAGING_MODE_X86_64_4LVL,
     .min_mode = LIMINE_PAGING_MODE_X86_64_4LVL,
@@ -41,35 +41,40 @@ static volatile struct limine_paging_mode_request paging_mode_request = {
 
 __attribute__((used,section(".limine_requests")))
 static volatile struct limine_hhdm_request hhdm_request = {
-    .id = LIMINE_HHDM_REQUEST_ID,
+    .id = LIMINE_HHDM_REQUEST,
     .revision = 0,
 };
 
 __attribute__((used,section(".limine_requests")))
 static volatile struct limine_memmap_request memmap_request = {
-    .id = LIMINE_MEMMAP_REQUEST_ID,
+    .id = LIMINE_MEMMAP_REQUEST,
     .revision = 0,
 };
 __attribute__((used, section(".limine_requests")))
-static volatile struct limine_date_at_boot_request date_at_boot_request = {
-    .id = LIMINE_DATE_AT_BOOT_REQUEST_ID,
+static volatile struct limine_boot_time_request date_at_boot_request = {
+    .id = LIMINE_BOOT_TIME_REQUEST,
     .revision = 0
 };
 
 __attribute__((used, section(".limine_requests")))
 static volatile struct limine_framebuffer_request framebuffer_request = {
-    .id = LIMINE_FRAMEBUFFER_REQUEST_ID,
+    .id = LIMINE_FRAMEBUFFER_REQUEST,
+    .revision = 0
+};
+
+__attribute((used,section(".limine_requests")))
+static volatile struct limine_module_request module_request = {
+    .id = LIMINE_MODULE_REQUEST,
     .revision = 0
 };
 
 __attribute__((used, section(".limine_requests_start")))
-static volatile uint64_t limine_requests_start_marker[] = LIMINE_REQUESTS_START_MARKER;
+static volatile LIMINE_REQUESTS_START_MARKER;
 
 __attribute__((used, section(".limine_requests_end")))
-static volatile uint64_t limine_request_end_marker[] = LIMINE_REQUESTS_END_MARKER;
+static volatile LIMINE_REQUESTS_END_MARKER;
 
 struct user_process global_kernel_process;
-uint32_t stack_top = 0; //TODO: adjust to limine
 uint8_t dispatched_user_mode = 0;
 
 void setup_kernel_fds(){
@@ -77,7 +82,7 @@ void setup_kernel_fds(){
     global_kernel_process.fd_table[FD_STDOUT] = fs_open("dev/null",FILE_FLAG_NONE);
 }
 
-void create_kernel_process(){
+void create_kernel_process(uint64_t stack_top){
     memset(global_kernel_process.fd_table,0,MAX_FDS);
 
     global_kernel_process.kernel_stack = stack_top;
@@ -108,7 +113,8 @@ void shutdown(){
 
 void kmain()
 {   
-    
+    uint64_t stack_top;
+    asm volatile ("mov %%rsp, %0" : "=r"(stack_top));
     // Serial port setup
     serial_configure_baud_rate(SERIAL_COM1_BASE,3);
     serial_configure_line(SERIAL_COM1_BASE);
@@ -116,7 +122,7 @@ void kmain()
     serial_configure_modem(SERIAL_COM1_BASE);
     log("Set up serial port");
     
-    if (!LIMINE_BASE_REVISION_SUPPORTED(limine_base_revision)){
+    if (!LIMINE_BASE_REVISION_SUPPORTED){
         panic("Limine base revision unsupported");
     }
 
@@ -126,17 +132,16 @@ void kmain()
     logf("Kernel mapped at offset: %x",limine_data.hhdm);
     if (date_at_boot_request.response){
         date_t date;
-        uint64_t timestamp = date_at_boot_request.response->timestamp;
+        uint64_t timestamp = date_at_boot_request.response->boot_time;
         parse_unix_timestamp(timestamp,&date);
         logf("Booted on %d.%d.%d @ %d:%d and %d seconds",date.day,date.month,date.year,date.hour,date.minute,date.second);
     }
 
     if (memmap_request.response == NULL) panic("No memmap recieved");
+    if (module_request.response == NULL) warn("No modules were loaded, likely not intended");
 
     limine_data.mmap_data.n_entries = memmap_request.response->entry_count;
     limine_data.mmap_data.memmap_entries = memmap_request.response->entries; 
-
-    parse_and_log_limine_memory_mapping();
 
     if (framebuffer_request.response == NULL 
      || framebuffer_request.response->framebuffer_count < 1){
@@ -166,21 +171,17 @@ void kmain()
     init_and_test_I8042_controller();
     log("Initialized the I8042 PS/2 controller");
     
-    init_memory(); // mem_upper is in kb
+    init_memory();
     log("Initialized paged memory");
-    panic("End of the world");
 
-    init_framebuffer(SCREEN_PIXEL_BUFFER_START);
+    init_framebuffer();
     log("Set up framebuffer");
 
     init_kmalloc(MEMORY_PAGE_SIZE);
     log("Initialized kmalloc");
-    
-    save_module_binaries(0/*TODO:*/);
+
+    save_module_binaries(module_request.response);
     log("Saved module binaries");
-    
-    // Fully commit to virtual memory now
-    //un_identity_map_first_page_table();
     
     init_shm_obj_vector();
     log("Initialized shared memory objects vector");
@@ -203,7 +204,7 @@ void kmain()
         log("Initialized /modules, /home, /dev and /tmp directories");
     }
 
-    create_kernel_process();
+    create_kernel_process(stack_top);
     log("Set up kernel process");
 
     initialize_devices(); // needs the global kernel process
