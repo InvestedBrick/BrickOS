@@ -56,13 +56,13 @@ kernel/.deps-obtained:
 
 
 $(ISO): $(TARGET) kernel/.deps-obtained
-	bash limine_conf_gen.sh
 	make -C iso/modules
+	bash limine_conf_gen.sh
 	rm -rf iso_root
 	mkdir -p iso_root/boot
 	cp -v $(TARGET) iso_root/boot/
 	mkdir -p iso_root/modules
-	cp -v  $(wildcard iso/modules/*.bin) iso_root/modules
+	cp -v iso/modules/*.bin iso_root/modules
 	mkdir -p iso_root/boot/limine
 	cp -v limine.conf iso_root/boot/limine
 	mkdir -p iso_root/EFI/BOOT
