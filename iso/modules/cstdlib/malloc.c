@@ -35,7 +35,6 @@ void merge_blocks(memory_block_t* block){
 
 void* malloc(uint32_t size){
     if (size <= 0) return 0;
-    
     memory_block_t* block = find_free_block(size);
     
     if (!block){
@@ -46,11 +45,10 @@ void* malloc(uint32_t size){
         block = (memory_block_t*)mmap(total_size, PROT_READ | PROT_WRITE, MAP_ANONYMOUS,MAP_FD_NONE,0);
         block->free = 1;
         block->next = 0;
-        block->size = CEIL_DIV(total_size,MEMORY_PAGE_SIZE) * MEMORY_BLOCK_SIZE;
-
+        block->size = CEIL_DIV(total_size,MEMORY_PAGE_SIZE) * MEMORY_PAGE_SIZE;
         if(last) last->next = block; else malloc_head = block;
     }
-
+    
     split_block(block,size);
     block->free = 0;
     return (void*)((char*)block + MEMORY_BLOCK_SIZE);
