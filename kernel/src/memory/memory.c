@@ -168,7 +168,7 @@ uint64_t* create_user_pml4_table(){
             uint8_t used = (byte >> j) & 0x1;
             if (used) continue;
 
-            byte |= (1 << i); //set 
+            byte |= (1 << j); //set 
             pml4_bitmap[i] = byte;
 
             uint64_t pml4_phys = pmm_alloc_page_frame();
