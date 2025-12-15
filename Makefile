@@ -92,8 +92,7 @@ run: $(ISO)
     -boot d \
     -cdrom $(ISO) \
     -m 512M \
-    -vga std \
-	-d int
+    -vga std 
 clean:
 	rm -f $(ASM_OBJS) $(C_OBJS) $(TARGET) $(ISO)
 	rm -rf limine
