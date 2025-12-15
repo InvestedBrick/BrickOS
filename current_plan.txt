@@ -16,7 +16,7 @@ plan:
 
 BIG REWRITE:
     [X] switch to 64 bit kernel
-    [ ] switch from grub to limine
+    [X] switch from grub to limine
     [ ] implement ACPI tables parsing
     [ ] implement (IO)APIC
 
