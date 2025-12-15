@@ -32,10 +32,11 @@ LDFLAGS = \
 
 all: $(ISO)
 
-.PHONY: modules
+.PHONY: always_run
 
-modules:
+always_run:
 	make -C iso/modules
+	bash limine_conf_gen.sh
 
 %.o: %.asm
 	$(AS) -g -f elf64 $< -o $@
@@ -59,8 +60,7 @@ limine/limine:
 kernel/.deps-obtained:
 	./kernel/get-deps
 
-
-$(ISO): modules $(TARGET) kernel/.deps-obtained
+$(ISO): always_run $(TARGET) kernel/.deps-obtained 
 	rm -rf iso_root
 	mkdir -p iso_root/boot
 	cp -v $(TARGET) iso_root/boot/
@@ -84,7 +84,6 @@ $(ISO): modules $(TARGET) kernel/.deps-obtained
 	rm -rf iso_root
 
 run: $(ISO)
-	bash limine_conf_gen.sh
 	qemu-img create -f raw hdd.img 256M
 	qemu-system-x86_64 -s \
     -drive file=hdd.img,format=raw,if=ide \
