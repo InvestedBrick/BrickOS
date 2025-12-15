@@ -10,7 +10,6 @@ static uint64_t total_pages;
 static uint64_t mem_number_vpages;
 static uint64_t mem_phys_alloc_start;
 static uint8_t* memory_bitmap;
-static uint8_t pml4_bitmap[N_PML4_TABLES / 8];
 vector_t shm_obj_vec;
 static uint64_t* kernel_pml4;
 
@@ -97,7 +96,6 @@ void pmm_init(uint64_t phys_alloc_start, uint64_t mem_high){
 }
 
 uint64_t* mem_get_current_pml4_table() {
-    //TODO: fix to make this return the correct pml4
     uint64_t phys = mem_get_current_pml4_phys();
     return (uint64_t*)linear_phys_to_virt(phys);
 }
@@ -149,10 +147,6 @@ void free_user_pml4_table(uint64_t* user_pml4) {
         free_table_entry(user_pml4,pml4_idx);
     }
 
-    uint32_t bitmap_idx = ((uint64_t)user_pml4 - KERNEL_PML4_TABLES_START) / MEMORY_PAGE_SIZE;
-    uint32_t byte = bitmap_idx / 8;
-    uint32_t bit  = bitmap_idx % 8;
-    pml4_bitmap[byte] &= ~(1 << bit);
 
     mem_unmap_page((uint64_t)user_pml4);
     uint64_t pml4_phys = virt_to_phys((uint64_t)user_pml4);
@@ -160,33 +154,18 @@ void free_user_pml4_table(uint64_t* user_pml4) {
 }
 
 uint64_t* create_user_pml4_table(){
-    for (uint32_t i = 0; i < (N_PML4_TABLES / 8);i++){
-        uint8_t byte = pml4_bitmap[i];
-        if (byte == 0xff) continue;
 
-        for (uint32_t j = 0; j < 8;j++){
-            uint8_t used = (byte >> j) & 0x1;
-            if (used) continue;
-
-            byte |= (1 << j); //set 
-            pml4_bitmap[i] = byte;
-
-            uint64_t pml4_phys = pmm_alloc_page_frame();
-            uint64_t virt_addr = KERNEL_PML4_TABLES_START + (i * 8 + j) * MEMORY_PAGE_SIZE;
-            mem_map_page(virt_addr,pml4_phys,PAGE_FLAG_WRITE); // we can't use kmalloc since that does not guarantee to be page aligned
-            uint64_t* pml4 = (uint64_t*)virt_addr;
-            memset(pml4,0,TABLE_SIZE);
-            // Copy Kernel mapping
-            for (uint32_t j = KERNEL_SHARED_MAPPING_IDX; j < ENTRIES_PER_TABLE;j++){
-                pml4[j] = kernel_pml4[j];
-            }
-            return pml4;
-        }
+    uint64_t pml4_phys = pmm_alloc_page_frame();
+    uint64_t virt_addr = pml4_phys + HHDM;
+    mem_map_page(virt_addr,pml4_phys,PAGE_FLAG_WRITE); // we can't use kmalloc since that does not guarantee to be page aligned
+    uint64_t* pml4 = (uint64_t*)virt_addr;
+    memset(pml4,0,TABLE_SIZE);
+    // Copy Kernel mapping
+    for (uint32_t j = KERNEL_SHARED_MAPPING_IDX; j < ENTRIES_PER_TABLE;j++){
+        pml4[j] = kernel_pml4[j];
     }
+    return pml4;
 
-    warn("Not enough pml4 tables");
-    return 0;
-        
 }
 
 void restore_kernel_pml4_table(){
@@ -354,7 +333,6 @@ void init_memory(){
     kernel_pml4 = (uint64_t*)(pml4_phys + HHDM);
     
     pmm_init(pair.first,pair.first + pair.second);
-    memset(pml4_bitmap,0,sizeof(pml4_bitmap));
 }
 
 void parse_and_log_limine_memory_mapping(){
