@@ -7,24 +7,27 @@
 #include "../../kernel/src/screen/font_bitmaps.h"
 #include <stdint.h>
 
-#define WINDOW_HEIGHT 400
-#define WINDOW_WIDTH 650
+#define REQ_WIDTH  650
+#define REQ_HEIGHT 400
+
+static uint32_t term_win_width = 0;
+static uint32_t term_win_height = 0;
 
 static uint32_t term_cursor_x = 0;
 static uint32_t term_cursor_y = 0;
-static uint32_t term_cursor_x_max = WINDOW_WIDTH / COLUMNS_PER_CHAR;
-static uint32_t term_cursor_y_max = WINDOW_HEIGHT / ROWS_PER_CHAR;
+static uint32_t term_cursor_x_max = 0;
+static uint32_t term_cursor_y_max = 0;
 
 static unsigned char* term_fb = 0;
 uint32_t kb_fd;
 
-#define VBE_COLOR_BLACK 0xFF000000
-#define VBE_COLOR_GRAY  0xFFAAAAAA
+#define VBE_COLOR_BLACK 0xff000000
+#define VBE_COLOR_GRAY  0xffaaaaaa
 
 void term_write_pixel(uint32_t x, uint32_t y, uint32_t color){
-    if (x >= WINDOW_WIDTH || y >= WINDOW_HEIGHT) return;
+    if (x >= term_win_width || y >= term_win_height) return;
     volatile uint32_t *fb32 = (volatile uint32_t*)term_fb;
-    fb32[y * WINDOW_WIDTH + x] = color;
+    fb32[y * term_win_width + x] = color;
 }
 
 void term_write_char(uint8_t ch, uint32_t fg, uint32_t bg){
@@ -47,8 +50,8 @@ void term_write_char(uint8_t ch, uint32_t fg, uint32_t bg){
 }
 
 void term_clear_screen(uint32_t color){
-    for (uint32_t i = 0; i < WINDOW_HEIGHT; i++) {
-        for (uint32_t j = 0; j < WINDOW_WIDTH; j++) {
+    for (uint32_t i = 0; i < term_win_height; i++) {
+        for (uint32_t j = 0; j < term_win_width; j++) {
             term_write_pixel(j, i, color);
         }
     }
@@ -95,6 +98,7 @@ void term_handle_input(unsigned char c){
             break;
         }
         case '\e':{
+            debug("CLEARING...");
             term_clear_screen(VBE_COLOR_BLACK);
             break;
         }
@@ -140,13 +144,20 @@ unsigned char* request_window(uint32_t width,uint32_t height){
     kb_fd = answer->kb_fd;
     unsigned char* fb = (unsigned char*)mmap(answer->width * answer->height * sizeof(uint32_t),PROT_READ | PROT_WRITE, MAP_SHARED,backing_fd,0);
     
+    term_win_height = answer->height;
+    term_win_width = answer->width;
+
+    term_cursor_x_max = term_win_width / COLUMNS_PER_CHAR;
+    term_cursor_y_max = term_win_height / ROWS_PER_CHAR;
+    
     close(backing_fd);
     rmfile(answer->filename); // dispose of the connector
     chdir("../../..");
     free(pid_str);
     free(answer);
     close(wm_fd);
-
+    if (term_win_width == 0 || term_win_height == 0) return 0;
+    
     return fb;
 }
 
@@ -177,7 +188,7 @@ void main(){
     memcpy(&stdout[sizeof("tmp/stdout_") - 1],pid_str,pid_strlen + 1);
     free(pid_str);
 
-    term_fb = request_window(WINDOW_WIDTH,WINDOW_HEIGHT);
+    term_fb = request_window(REQ_WIDTH,REQ_HEIGHT);
     if (!term_fb) exit(2);
 
     term_clear_screen(VBE_COLOR_BLACK);
