@@ -6,13 +6,11 @@ The normal branch where I will be writing everything in C will be `main`
 The branch `unstable` is mostly for testing and trying to write this in `Brick-Lang` (currently abandoned, may cross-compile it one day)
 
 
-
 # Building
 
 ## Dependancies
 This project depends on you having installed the following binaries yourself:
 
-- `grub-mkrescue`
 - `qemu-system-x86_64`
 - `qemu-img` 
 - `make`
@@ -22,6 +20,9 @@ This project depends on you having installed the following binaries yourself:
 
 ## Compilation && Running
 You can simply run `make run` to compile and start the OS. 
+
+## Known issues
+- The terminal fails when running `clear` (work in progress)
 
 # Notice
 This project is still highly in development and kinda unstable, so things are not unlikely to break.
