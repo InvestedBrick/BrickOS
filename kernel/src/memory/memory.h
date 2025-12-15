@@ -8,14 +8,13 @@
 #define ENTRIES_PER_TABLE 512
 #define TABLE_SIZE (ENTRIES_PER_TABLE * sizeof(uint64_t))
 #define N_PML4_TABLES 256 
+#define MEMORY_PAGE_SIZE 0x1000
 
 #define HHDM                     (limine_data.hhdm) 
 #define KERNEL_MALLOC_START      (HHDM + 0xd0000000) 
 #define KERNEL_MALLOC_END        (HHDM + 0xf0000000) 
-#define KERNEL_PML4_TABLES_START (HHDM + 0x100000000)
-#define KERNEL_PML4_TABLES_END   (KERNEL_PML4_TABLES_START + N_PML4_TABLES * TABLE_SIZE);
+#define TEMP_KERNEL_COPY_ADDR    (KERNEL_MALLOC_END + MEMORY_PAGE_SIZE)
 
-#define TEMP_KERNEL_COPY_ADDR 0xffff9ffffffff000
 #define KERNEL_SHARED_MAPPING_IDX 256
 
 #define PML4_SHIFT 39
@@ -35,7 +34,6 @@
 
 #define CANONICALIZE(addr) ((((addr) & (1ull << 47)) ? (addr | SIGN_EXTEND_MASK) : (addr & ~SIGN_EXTEND_MASK)))
 
-#define MEMORY_PAGE_SIZE 0x1000
 
 #define PAGE_FLAG_PRESENT 0x1
 #define PAGE_FLAG_WRITE (1 << 1)
