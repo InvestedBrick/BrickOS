@@ -98,7 +98,6 @@ void term_handle_input(unsigned char c){
             break;
         }
         case '\e':{
-            debug("CLEARING...");
             term_clear_screen(VBE_COLOR_BLACK);
             break;
         }
