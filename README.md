@@ -21,8 +21,5 @@ This project depends on you having installed the following binaries yourself:
 ## Compilation && Running
 You can simply run `make run` to compile and start the OS. 
 
-## Known issues
-- The terminal fails when running `clear` (work in progress)
-
 # Notice
 This project is still highly in development and kinda unstable, so things are not unlikely to break.
