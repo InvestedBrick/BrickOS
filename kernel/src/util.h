@@ -24,15 +24,6 @@ typedef struct {
     string_t* strings;
 }string_array_t;
 
-typedef struct {
-    uint16_t year;
-    uint8_t month; // 1 == Jan, 2 == Feb ...
-    uint8_t day;
-    uint8_t hour;
-    uint8_t minute;
-    uint8_t second;
-}date_t;
-
 /**
  * memset:
  * Sets n bytes of dest to val
@@ -124,13 +115,5 @@ uint32_t find_char(unsigned char* str,unsigned char c);
  *         (uint32_t)-1 of not found
  */
 uint32_t rfind_char(unsigned char* str, unsigned char c);
-
-/**
- * parse_unix_timestamp:
- * Parses a unix timestamp into date_t struct
- * @param timestamp The Unix timestamp
- * @param date a pointer to the date_t struct in which the values will be returned
- */
-void parse_unix_timestamp(uint64_t timestamp,date_t* date);
 
 #endif
