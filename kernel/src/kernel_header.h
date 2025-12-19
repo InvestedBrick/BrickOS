@@ -13,6 +13,7 @@ typedef struct {
     struct limine_framebuffer* framebuffer;
     uint64_t hhdm;
     limine_mmap_data_t mmap_data; 
+    uint64_t boot_time;
     
 }limine_data_t;
 
