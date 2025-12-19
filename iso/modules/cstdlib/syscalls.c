@@ -185,3 +185,23 @@ void debug(unsigned char* msg){
         : "memory"
     );
 }
+
+uint64_t gettimeofday(){
+    uint64_t ret;
+    asm volatile (
+        "int $0x30"
+        : "=a"(ret)
+        : "a"(SYS_GETTIMEOFDAY)
+        : "memory"
+    );
+    return ret;
+}
+
+void settimeofday(uint64_t timestamp){
+    asm volatile (
+        "int $0x30"
+        :
+        : "a"(SYS_SETTIMEOFDAY), "b"(timestamp)
+        : "memory"
+    );
+}
