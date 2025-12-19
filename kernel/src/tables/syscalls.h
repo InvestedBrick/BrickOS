@@ -38,4 +38,8 @@ uint64_t sys_mssleep(interrupt_stack_frame_t* stack_frame, uint32_t time);
 uint64_t sys_spawn(unsigned char* filename, unsigned char* argv[],process_fds_init_t* start_fds);
 
 uint64_t sys_getpid(user_process_t* p);
+
+uint64_t sys_gettimeofday();
+
+uint64_t sys_settimeofday(user_process_t* p,uint64_t timestamp);
 #endif
