@@ -101,7 +101,7 @@ uint64_t* mem_get_current_pml4_table() {
 }
 
 void mem_set_current_pml4_table(uint64_t* virt) {
-    uint64_t phys = virt_to_phys((uint64_t)virt);
+    uint64_t phys = linear_virt_to_phys((uint64_t)virt);
     mem_set_current_pml4_phys((uint64_t*)phys);
 }
 
