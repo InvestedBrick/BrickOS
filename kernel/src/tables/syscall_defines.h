@@ -21,6 +21,8 @@
 #define SYS_MSSLEEP 0xe
 #define SYS_SPAWN 0xf
 #define SYS_GETPID 0x10 
+#define SYS_GETTIMEOFDAY 0x11
+#define SYS_SETTIMEOFDAY 0x12
 
 #define SYSCALL_FAIL -1
 #define SYSCALL_SUCCESS 0
