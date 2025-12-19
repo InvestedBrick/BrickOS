@@ -70,7 +70,7 @@ typedef struct {
 }__attribute__((packed)) interrupt_stack_frame_t;
 
 extern uint64_t ticks;
-
+extern uint64_t current_timestamp;
 /**
  * set_idt_entry:
  * creates an idt entry with the given parameters

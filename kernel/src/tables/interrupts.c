@@ -18,6 +18,7 @@ extern void* idt_code_table[];
 static idt_t idt;
 
 uint64_t ticks = 0;
+uint64_t current_timestamp = 0;
 static volatile uint8_t interrupts_enabled = 1;
 static volatile uint8_t force_switch = 0;
 
@@ -114,8 +115,12 @@ uint64_t handle_software_interrupt(interrupt_stack_frame_t* stack_frame){
         return sys_spawn((unsigned char*)stack_frame->rbx,(unsigned char**)stack_frame->rcx,(process_fds_init_t*)stack_frame->rdx);
     case SYS_GETPID:
         return sys_getpid(get_current_user_process());    
+    case SYS_GETTIMEOFDAY:
+        return sys_gettimeofday();
+    case SYS_SETTIMEOFDAY:
+        return sys_settimeofday(get_current_user_process(),stack_frame->rbx);
     default:
-        break;
+        return SYSCALL_FAIL;
     }
 
     return 0;
@@ -200,7 +205,9 @@ void interrupt_handler(interrupt_stack_frame_t* stack_frame) {
             break;
         case INT_TIMER:
             ticks++;
-
+            if (ticks % DESIRED_STANDARD_FREQ == 0){
+                current_timestamp++; // tick once a second here
+            }
             manage_sleeping_processes();
 
             if (ticks % TASK_SWITCH_TICKS == 0 || force_switch) {
