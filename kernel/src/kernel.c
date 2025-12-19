@@ -131,10 +131,9 @@ void kmain()
     limine_data.hhdm = hhdm_request.response->offset;
     logf("Kernel mapped at offset: %x",limine_data.hhdm);
     if (date_at_boot_request.response){
-        date_t date;
-        uint64_t timestamp = date_at_boot_request.response->boot_time;
-        parse_unix_timestamp(timestamp,&date);
-        logf("Booted on %d.%d.%d @ %d:%d and %d seconds",date.day,date.month,date.year,date.hour,date.minute,date.second);
+        limine_data.boot_time = date_at_boot_request.response->boot_time;
+        current_timestamp = limine_data.boot_time; // kernel setup is disregarded as it only takes ~2secs
+        logf("Boot unix timestamp: %d",current_timestamp);
     }
 
     if (memmap_request.response == NULL) panic("No memmap recieved");
@@ -149,12 +148,6 @@ void kmain()
     }
 
     limine_data.framebuffer = framebuffer_request.response->framebuffers[0];
-
-    // Note: we assume the framebuffer model is RGB with 32-bit pixels.
-    for (size_t i = 0; i < 100; i++) {
-        volatile uint32_t *fb_ptr = limine_data.framebuffer->address;
-        fb_ptr[i * (limine_data.framebuffer->pitch / 4) + i] = 0xffffff;
-    }
 
     // Set up global descriptor table
     init_gdt();
@@ -223,6 +216,8 @@ void kmain()
     run("modules/terminal.bin",nullptr,nullptr,PRIV_STD);
 
     run("modules/win_man.bin",nullptr,nullptr,PRIV_SPECIAL); // window manager should open dev/kb0
+
+    sys_settimeofday(&global_kernel_process,sys_gettimeofday() + 3600); // add 1h for UTC+1 timezone (mine)
 
     setup_timer_switch();
     // need to manually enable since run just restores whatever was before that
