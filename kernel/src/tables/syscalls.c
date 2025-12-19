@@ -277,3 +277,13 @@ uint64_t sys_spawn(unsigned char* filename, unsigned char* argv[],process_fds_in
 uint64_t sys_getpid(user_process_t* p){
     return p->process_id;
 }
+
+uint64_t sys_gettimeofday(){
+    return current_timestamp;
+}
+
+uint64_t sys_settimeofday(user_process_t* p,uint64_t timestamp){
+    if (p->priv_lvl > PRIV_SPECIAL) return SYSCALL_FAIL;
+    current_timestamp = timestamp;
+    return SYSCALL_SUCCESS;
+}
