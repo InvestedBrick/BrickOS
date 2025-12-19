@@ -192,5 +192,23 @@ int mknod(unsigned char* filename, mknod_params_t* params);
  */
 int getpid();
 
+/**
+ * debug:
+ * Writes a debug message to the serial output log
+ */
 void debug(unsigned char* msg);
+
+/**
+ * gettimeofday:
+ * Returns the current Unix timestamp
+ */
+uint64_t gettimeofday();
+
+/**
+ * settimeofday:
+ * Sets the current Unix timestamp
+ * 
+ * @note Calling process must have necessary permissions
+ */
+void settimeofday(uint64_t timestamp);
 #endif
