@@ -23,4 +23,5 @@ void cmd_cd(command_t*);
 void cmd_mkf(command_t*);
 void cmd_mkdir(command_t*);
 void cmd_rm(command_t*);
+void cmd_clock(command_t*);
 #endif

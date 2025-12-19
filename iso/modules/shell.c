@@ -3,6 +3,7 @@
 #include "cstdlib/stdutils.h"
 #include "cstdlib/syscalls.h"
 #include "cstdlib/malloc.h"
+#include "cstdlib/time.h"
 #include "../../kernel/src/filesystem/devices/device_defines.h"
 #include <stdint.h>
 
@@ -17,6 +18,7 @@ shell_command_t commands[] = {
     {"mkf", cmd_mkf, "Creates a file"},
     {"mkdir",cmd_mkdir, "Creates a directory"},
     {"rm",cmd_rm,"Deletes a file"},
+    {"clock",cmd_clock,"Prints current date and time"},
     {0,0,0}
 };
 
@@ -142,6 +144,46 @@ void cmd_rm(command_t* cmd){
             print("Failed to delete file\n");
     }
 }
+
+void cmd_clock(command_t* cmd){
+    uint64_t timestamp = gettimeofday();
+    date_t date;
+    parse_unix_timestamp(timestamp,&date);
+    print("Today is the ");
+    char* day = uint32_to_ascii(date.day);
+    char* year = uint32_to_ascii(date.year);
+    char* months[] = {"January","February","March","April","May","June","July","August","September","October","November","December"};
+    print(day);
+    char last_num = day[strlen(day) - 1];
+    switch (last_num)
+    {
+    case '1':
+        print("st");
+        break;
+    case '2':
+        print("nd");
+    case '3':
+        print("rd");
+    default:
+        print("th");
+    }
+
+    print(" of ");
+    print(months[date.month - 1]);
+    print(" "); print(year); print("\nThe time is: ");
+    free(day); 
+    free(year);
+    char* hour = uint32_to_ascii(date.hour);
+    char* minute = uint32_to_ascii(date.minute);
+    char* second = uint32_to_ascii(date.second);
+    print(hour); print(":"); 
+    if (date.minute < 10) print("0");
+    print(minute); print(" and "); print(second); print(" seconds\n");
+    free(hour);
+    free(minute);
+    free(second);
+
+}
 void free_command(command_t com){
     free(com.command.str);
     for (uint32_t i = 0; i < com.n_args;i++){
@@ -210,7 +252,6 @@ void parse_line(unsigned char* line,uint32_t line_length,command_t* comd){
 __attribute__((section(".text.start")))
 void main(int argc, char* argv[]){
     print("BrickOS Shell started\n");
-    
     unsigned char* line = (unsigned char*)malloc(LINE_BUFFER_SIZE + 1);
     unsigned char* dir_buffer = (unsigned char*)malloc(100);
     command_t comd;
