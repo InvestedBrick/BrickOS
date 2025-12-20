@@ -5,22 +5,12 @@ plan:
     [X] correctly cross-compiling the kernel
     [X] process commandline args
     [X] window manager (needs to be optimized)
-    [ ] BIG REWRITE
-    [ ] running more UI processes
-    [ ] add correct shutdown procedure
+    [X] 64 bit kernel && switch to limine
+    [ ] ACPI table parsing with uAPIC
+    [ ] implement IOAPIC
     [ ] improve scheduler + spinlocks etc
     [ ] mouse driver
     [ ] dynamic linked code
     [ ] text editor
     [?] better fileystem
-
-BIG REWRITE:
-    [X] switch to 64 bit kernel
-    [X] switch from grub to limine
-    [ ] implement ACPI tables parsing
-    [ ] implement (IO)APIC
-
-switch to 64 bit kernel:
-    [X] Update memory manager
-    [X] Update syscall context switch / things that depend on x86_32 calling conventions
-    [X] finish patching up bugs
+    [ ] running more UI processes
