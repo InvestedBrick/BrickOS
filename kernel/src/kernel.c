@@ -25,6 +25,19 @@
 #include <stdbool.h>
 #include "../limine-protocol/include/limine.h"
 
+typedef struct XSDP {
+ char Signature[8];
+ uint8_t Checksum;
+ char OEMID[6];
+ uint8_t Revision;
+ uint32_t RsdtAddress;      // deprecated since version 2.0
+
+ uint32_t Length;
+ uint64_t XsdtAddress;
+ uint8_t ExtendedChecksum;
+ uint8_t reserved[3];
+}XSDP_t __attribute__ ((packed));
+
 limine_data_t limine_data;
 
 __attribute__((used, section(".limine_requests")))
@@ -37,6 +50,12 @@ static volatile struct limine_paging_mode_request paging_mode_request = {
     .mode = LIMINE_PAGING_MODE_X86_64_4LVL,
     .min_mode = LIMINE_PAGING_MODE_X86_64_4LVL,
     .max_mode = LIMINE_PAGING_MODE_X86_64_4LVL,
+};
+
+__attribute__((used,section(".limine_requests")))
+static volatile struct limine_rsdp_request rsdp_request = {
+    .id = LIMINE_RSDP_REQUEST,
+    .revision = 0
 };
 
 __attribute__((used,section(".limine_requests")))
@@ -126,6 +145,13 @@ void kmain()
         panic("Limine base revision unsupported");
     }
 
+    if (!rsdp_request.response) warn("No XSDP table given");
+    else {
+        uint64_t rsdp = (uint64_t)rsdp_request.response->address;
+        logf("RSDP: %x",rsdp);
+        XSDP_t* xsdp = (XSDP_t*)rsdp;
+        logf("Physical XSDT addr: %x",xsdp->XsdtAddress);
+    }
     if (!hhdm_request.response) panic("No HHDM request response");
 
     limine_data.hhdm = hhdm_request.response->offset;
