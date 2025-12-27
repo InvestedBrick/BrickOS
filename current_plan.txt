@@ -6,11 +6,12 @@ plan:
     [X] process commandline args
     [X] window manager (needs to be optimized)
     [X] 64 bit kernel && switch to limine
+    [ ] improve scheduler + spinlocks/mutexes/semaphores
+    [ ] PCI stuff
     [ ] ACPI table parsing with uACPI
     [ ] implement IOAPIC
-    [ ] improve scheduler + spinlocks etc
-    [ ] mouse driver
+    [ ] fix mouse driver
     [ ] dynamic linked code
+    [ ] running more UI processes
     [ ] text editor
     [?] better fileystem
-    [ ] running more UI processes
