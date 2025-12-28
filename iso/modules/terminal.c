@@ -30,6 +30,26 @@ void term_write_pixel(uint32_t x, uint32_t y, uint32_t color){
     fb32[y * term_win_width + x] = color;
 }
 
+void scroll_up(){
+    if (term_win_height == 0 || term_win_width == 0) return;
+
+    uint32_t bytes_per_row = term_win_width * sizeof(uint32_t);
+    uint32_t rows_to_move = ROWS_PER_CHAR;
+
+    uint32_t dest_rows = term_win_height - rows_to_move;
+
+    for (uint32_t r = 0; r < dest_rows; r++) {
+        unsigned char* dst = term_fb + (r * bytes_per_row);
+        unsigned char* src = term_fb + ((r + rows_to_move) * bytes_per_row);
+        memcpy(dst, src, bytes_per_row);
+    }
+
+    unsigned char* clear_start = term_fb + (dest_rows * bytes_per_row);
+    memset(clear_start, 0, rows_to_move * bytes_per_row);
+
+    if (term_cursor_y > 0) term_cursor_y--;
+}
+
 void term_write_char(uint8_t ch, uint32_t fg, uint32_t bg){
     if (ch < ' ' || ch > '~') return;
     const uint8_t map_idx = ch - ' ';
@@ -46,7 +66,9 @@ void term_write_char(uint8_t ch, uint32_t fg, uint32_t bg){
     }
     term_cursor_x++;
     if (term_cursor_x >= term_cursor_x_max) { term_cursor_x = 0; term_cursor_y++; }
-    if (term_cursor_y >= term_cursor_y_max) term_cursor_y = term_cursor_y_max - 1;
+    if (term_cursor_y >= term_cursor_y_max) {
+        scroll_up();
+    }
 }
 
 void term_clear_screen(uint32_t color){
@@ -84,9 +106,10 @@ void term_erase_one_char(){
 
 void term_newline(){
     term_write_char(' ', VBE_COLOR_BLACK, VBE_COLOR_BLACK);
-    if (term_cursor_y < term_cursor_y_max - 1) {
-        term_cursor_y++;
-        term_cursor_x = 0;
+    term_cursor_y++;
+    term_cursor_x = 0;
+    if (term_cursor_y >= term_cursor_y_max) {
+        scroll_up();
     }
     term_update_cursor();
 }
