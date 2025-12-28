@@ -28,7 +28,7 @@ typedef struct {
     uint64_t wakeup_tick; 
 }sleeping_thread_t;
 
-#define TASK_SWITCH_DELAY_MS 20
+#define TASK_SWITCH_DELAY_MS 10
 #define TASK_SWITCH_TICKS ((TASK_SWITCH_DELAY_MS * DESIRED_STANDARD_FREQ) / 1000)
 
 
