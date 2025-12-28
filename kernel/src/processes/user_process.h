@@ -13,15 +13,19 @@
 
 typedef struct user_process{
     uint32_t process_id;
-    uint64_t* pml4; 
-    uint64_t kernel_stack;
     unsigned char* process_name;
+    
+    uint64_t* pml4; 
+    uint64_t kernel_stack_top; 
     uint8_t running;
-    uint64_t page_alloc_start;
     uint8_t priv_lvl;
+    
+    struct thread* main_thread;
+
+    uint64_t page_alloc_start;
     struct virt_mem_area* vm_areas; 
     generic_file_t* fd_table[MAX_FDS];
-} __attribute__((packed)) user_process_t;
+} user_process_t;
 
 
 typedef struct {
