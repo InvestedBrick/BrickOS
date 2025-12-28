@@ -264,7 +264,7 @@ uint64_t sys_mknod(unsigned char* filename,mknod_params_t* params){
 uint64_t sys_mssleep(interrupt_stack_frame_t* stack_frame, uint32_t time){
     uint32_t sleep_ticks = (time * DESIRED_STANDARD_FREQ) / 1000;
     if (sleep_ticks == 0) sleep_ticks = 1;
-    add_sleeping_process(get_current_process_state(),sleep_ticks);
+    add_sleeping_thread(get_current_thread(),sleep_ticks);
     switch_task(stack_frame);
 
     return SYSCALL_SUCCESS;

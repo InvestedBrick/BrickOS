@@ -60,7 +60,7 @@ limine/limine:
 kernel/.deps-obtained:
 	./kernel/get-deps
 
-$(ISO): always_run kernel/.deps-obtained  $(TARGET) 
+$(ISO): always_run kernel/.deps-obtained $(TARGET) 
 	rm -rf iso_root
 	mkdir -p iso_root/boot
 	cp -v $(TARGET) iso_root/boot/

@@ -147,6 +147,7 @@ void handle_window_request(framebuffer_t* fb_metadata,win_man_msg_t* msg){
     new_win->comitted_buffer = (unsigned char*)malloc(new_win->buffer_size);
     // be sure that all pages are present, so that when the user process maps it, the file can be isntantly deleted (not good practise but eh, probably only temporary solution)
     memset(new_win->live_buffer,0,new_win->buffer_size);
+    memset(new_win->comitted_buffer,0,new_win->buffer_size);
     close(new_win->backing_fd);
     
     window_creation_ans_t creation_ans = {

@@ -10,102 +10,118 @@
 #include "../filesystem/filesystem.h"
 #include "../kernel_header.h"
 #include "../vector.h"
-process_state_t* p_queue;
-process_state_t* current_proc;
+
+thread_t* t_queue;
+thread_t* current_thread;
 uint8_t locked = 0;
 uint8_t first_switch = 1;
-vector_t sleeping_procs;
+vector_t sleeping_threads;
 extern uint32_t stack_top;
 
-void add_sleeping_process(process_state_t* proc,uint32_t sleep_ticks){
-    sleeping_proc_t* sleepy_proc = (sleeping_proc_t*)kmalloc(sizeof(sleeping_proc_t));
-    proc->exec_state = EXEC_STATE_SLEEPING;
-    sleepy_proc->proc = proc;
-    sleepy_proc->wakeup_tick = ticks + sleep_ticks;
+void add_sleeping_thread(thread_t* thread,uint32_t sleep_ticks){
+    sleeping_thread_t* sleepy_thread = (sleeping_thread_t*)kmalloc(sizeof(sleeping_thread_t));
+    thread->exec_state = EXEC_STATE_SLEEPING;
+    sleepy_thread->thread = thread;
+    sleepy_thread->wakeup_tick = ticks + sleep_ticks;
 
-    vector_append(&sleeping_procs,(vector_data_t)sleepy_proc);
+    vector_append(&sleeping_threads,(vector_data_t)sleepy_thread);
 }
 
-void remove_sleeping_process(sleeping_proc_t* sleepy_proc){
-    vector_erase_item(&sleeping_procs,(uint64_t)sleepy_proc);
-    kfree(sleepy_proc);
+void remove_sleeping_thread(sleeping_thread_t* sleepy_thread){
+    vector_erase_item(&sleeping_threads,(uint64_t)sleepy_thread);
+    kfree(sleepy_thread);
 }
 
-void manage_sleeping_processes(){
-    sleeping_proc_t* awoken_procs[256];
-    memset(awoken_procs,0,256);
+void manage_sleeping_threads(){
+    sleeping_thread_t* awoken_threads[256];
+    memset(awoken_threads,0,sizeof(awoken_threads));
     uint32_t waked_up_procs_idx = 0;
 
-    for (uint32_t i = 0; i < sleeping_procs.size;i++){
-        sleeping_proc_t* sleepy_proc = (sleeping_proc_t*)sleeping_procs.data[i];
-        if (sleepy_proc->wakeup_tick <= ticks){
-            sleepy_proc->proc->exec_state = EXEC_STATE_RUNNING;
-            awoken_procs[waked_up_procs_idx] = sleepy_proc;
+    for (uint32_t i = 0; i < sleeping_threads.size;i++){
+        sleeping_thread_t* sleepy_thread = (sleeping_thread_t*)sleeping_threads.data[i];
+        if (sleepy_thread->wakeup_tick <= ticks){
+            sleepy_thread->thread->exec_state = EXEC_STATE_RUNNING;
+            awoken_threads[waked_up_procs_idx] = sleepy_thread;
             waked_up_procs_idx++; 
         }
     }
 
     for (uint32_t i = 0; i < waked_up_procs_idx; i++){
-        remove_sleeping_process(awoken_procs[i]);
+        remove_sleeping_thread(awoken_threads[i]);
     }
 }
 
-process_state_t* get_current_process_state(){
-    return current_proc;
+thread_t* get_current_thread(){
+    return current_thread;
 }
 
 void init_scheduler(){
-    init_vector(&sleeping_procs);
+    init_vector(&sleeping_threads);
 
-    p_queue = (process_state_t*)kmalloc(sizeof(process_state_t));
-    p_queue->next = 0;
-    current_proc = 0;
+    t_queue = (thread_t*)kmalloc(sizeof(thread_t));
+    t_queue->next = 0;
+    current_thread = 0;
 
     run("modules/loop.bin",nullptr,nullptr,PRIV_STD);
     restore_kernel_pml4_table();
 
-    // since the endless proc got attached to p_queue->next, we need to re-arrange this
-    process_state_t* old_p_queue = p_queue;
-    p_queue = p_queue->next;
-    kfree(old_p_queue);
-    current_proc = p_queue;
+    // since the endless proc got attached to t_queue->next, we need to re-arrange this
+    thread_t* old_t_queue = t_queue;
+    t_queue = t_queue->next;
+    kfree(old_t_queue);
+    current_thread = t_queue;
     locked = 1;
     log("Set up endless process");
 }
 
-process_state_t* get_process_state_by_pid(uint32_t pid){
-    process_state_t* node = p_queue;
+thread_t* get_thread_by_tid(uint32_t tid){
+    thread_t* node = t_queue;
     while (node) {
-        if (node->pid == pid) return node;
+        if (node->tid == tid) return node;
         node = node->next;
     }
     return 0;
 }
 
-void add_process_state(user_process_t* usr_proc){
-    if (!p_queue) {
+int add_thread(struct user_process* usr_proc){
+    if (!t_queue) {
         error("Process queue not initialized");
-        return;
+        return -1;
     }
-    process_state_t* proc = (process_state_t*)kmalloc(sizeof(process_state_t));
-    memset(proc,0x0,sizeof(*proc));
-    proc->pml4 = usr_proc->pml4;
-    proc->next = 0;
-    proc->kernel_stack_top = usr_proc->kernel_stack + (uint64_t)MEMORY_PAGE_SIZE;
-    proc->pid = usr_proc->process_id;
-    proc->exec_state = EXEC_STATE_INIT;
-    process_state_t* last = p_queue;
+    thread_t* thread = (thread_t*)kmalloc(sizeof(thread_t));
+    memset(thread,0x0,sizeof(thread_t));
+    thread->next = 0;
+    int tid = get_pid(); // need to put it here so that compiler does not generate weird opcode for some reason
+    thread->next_proc_thread = 0;
+
+    if (tid == -1) {error("Failed to assign thread id"); return -1;}
+    thread->tid = tid;
+    thread->owner_proc = usr_proc;
+    thread->exec_state = EXEC_STATE_INIT;
+
+    // add to main thread queue
+    thread_t* last = t_queue;
 
     while(last->next) {last = last->next;}
+    last->next = thread;
 
-    last->next = proc;
+    // add to user process thread queue
+    if (!usr_proc->main_thread) {usr_proc->main_thread = thread;}
+    else{
+        last = usr_proc->main_thread;
+        while(last->next_proc_thread) {last = last->next_proc_thread;}
+        last->next_proc_thread = thread; 
+    }
+
+    return thread->tid;
+
 }
 
-process_state_t* find_schedule_candidate(){
-    process_state_t* candidate = current_proc;
+thread_t* find_schedule_candidate(){
+    thread_t* candidate = current_thread;
     do {
         if (candidate->next) candidate = candidate->next;
-        else candidate = p_queue;
+        else candidate = t_queue;
     }
     while(candidate->exec_state != EXEC_STATE_RUNNING);
 
@@ -115,34 +131,48 @@ process_state_t* find_schedule_candidate(){
 void switch_task(interrupt_stack_frame_t* regs){
     // only switch when the scheduler was set up 
     if (!locked) return;
-    if (!p_queue->next){
+    if (!t_queue->next){
         // the loop process is the only one left
         shutdown();
     }
-
+    thread_t* old_thread = current_thread;
     uint32_t interrupt_code = regs->interrupt_number;
 
     if (!first_switch){
         // first switch is from kernel -> shell, but we dont want our loop process to contain the kernels code
-        memcpy(&current_proc->regs, regs,sizeof(interrupt_stack_frame_t));
+        memcpy(&current_thread->regs, regs,sizeof(interrupt_stack_frame_t));
     }else{
         first_switch = 0;
     }
 
-    current_proc = find_schedule_candidate();
+    current_thread = find_schedule_candidate();
 
-    set_kernel_stack(current_proc->kernel_stack_top);
+    if (old_thread->owner_proc->process_id != current_thread->owner_proc->process_id){
+        set_kernel_stack(current_thread->owner_proc->kernel_stack_top);
+        mem_set_current_pml4_table(current_thread->owner_proc->pml4);
+    }
 
-    mem_set_current_pml4_table(current_proc->pml4);
-    memcpy(regs,&current_proc->regs,sizeof(interrupt_stack_frame_t));
+    memcpy(regs,&current_thread->regs,sizeof(interrupt_stack_frame_t));
     regs->interrupt_number = interrupt_code; 
 }
 
-void remove_process_state(process_state_t* proc){
-    process_state_t* before_proc = p_queue;
-    while(before_proc->next && before_proc->next != proc) before_proc = before_proc->next;
+void remove_thread(thread_t* thread){
+    if (!thread) return;
+    thread_t* before_thread = t_queue;
+    while(before_thread->next && before_thread->next != thread) before_thread = before_thread->next;
 
-    before_proc->next = proc->next;
-    // page dir is freed by kill_user_process
-    kfree(proc);
+    before_thread->next = thread->next;
+
+    before_thread = thread->owner_proc->main_thread;
+    if (before_thread == thread){
+        // thread is main thread
+        thread->owner_proc->main_thread = thread->next_proc_thread;
+        kfree(thread);
+        return;
+    }
+
+    while(before_thread->next_proc_thread && before_thread->next_proc_thread != thread) before_thread = before_thread->next_proc_thread;
+    before_thread->next_proc_thread = thread->next_proc_thread;
+
+    kfree(thread);
 }

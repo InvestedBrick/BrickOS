@@ -11,19 +11,22 @@
 #define EXEC_STATE_SLEEPING 0x3
 #define EXEC_STATE_DEAD 0x4
 
-typedef struct process_state_struct{
+typedef struct thread{
+    uint32_t tid;
     uint8_t exec_state;
-    uint32_t pid;
+    
     interrupt_stack_frame_t regs;
-    uint64_t* pml4;
-    struct process_state_struct* next;
-    uint64_t kernel_stack_top;
-} process_state_t;
+
+    struct user_process* owner_proc; 
+    
+    struct thread* next;
+    struct thread* next_proc_thread;
+} thread_t;
 
 typedef struct {
-    process_state_t* proc;
-    uint32_t wakeup_tick;
-}sleeping_proc_t;
+    thread_t* thread;
+    uint64_t wakeup_tick; 
+}sleeping_thread_t;
 
 #define TASK_SWITCH_DELAY_MS 10
 #define TASK_SWITCH_TICKS ((TASK_SWITCH_DELAY_MS * DESIRED_STANDARD_FREQ) / 1000)
@@ -41,39 +44,40 @@ void init_scheduler();
  */
 void switch_task(interrupt_stack_frame_t* regs);
 /**
- * add_process_state:
- * Adds a process to the process state linked list
+ * add_thread:
+ * Adds a thread to the given process and its thread id
  * @param usr_proc The user process struct
+ * @return The thread id
  */
-void add_process_state(user_process_t* usr_proc);
+int add_thread(struct user_process* usr_proc);
 
 /**
- * remove_process_state:
- * Removes a process from the process state linked list
- * @param proc The process state
+ * remove_thread:
+ * Removes a thread from all its associated linked lists and frees it
+ * @param thread The thread
  */
-void remove_process_state(process_state_t* proc);
+void remove_thread(thread_t* thread);
 
 /**
- * get_process_state_by_pid:
- * Returns a process state with a given pid
- * @param pid The pid of the process
+ * get_thread_by_tid:
+ * Returns a thread with a given tid
+ * @param tid The thread id of the process
  */
-process_state_t* get_process_state_by_pid(uint32_t pid);
+thread_t* get_thread_by_tid(uint32_t tid);
 
-process_state_t* get_current_process_state();
-
-/**
- * manage_sleeping_processes:
- * Wakes up sleeping processes if their wakeup tick has passed
- */
-void manage_sleeping_processes();
+thread_t* get_current_thread();
 
 /**
- * add_sleeping_process:
- * Add a process to the sleeping queue
- * @param proc The process to send to sleep
- * @param sleep_ticks The number of ticks to make the process sleep
+ * manage_sleeping_threads:
+ * Wakes up sleeping threds if their wakeup tick has passed
  */
-void add_sleeping_process(process_state_t* proc,uint32_t sleep_ticks);
+void manage_sleeping_threads();
+
+/**
+ * add_sleeping_thread:
+ * Add a thread to the sleeping queue
+ * @param th The process to send to sleep
+ * @param sleep_ticks The number of ticks to make the thread sleep
+ */
+void add_sleeping_thread(thread_t* thread,uint32_t sleep_ticks);
 #endif

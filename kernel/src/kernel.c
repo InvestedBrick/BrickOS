@@ -36,7 +36,7 @@ typedef struct XSDP {
  uint64_t XsdtAddress;
  uint8_t ExtendedChecksum;
  uint8_t reserved[3];
-}XSDP_t __attribute__ ((packed));
+}__attribute__ ((packed)) XSDP_t ;
 
 limine_data_t limine_data;
 
@@ -104,7 +104,7 @@ void setup_kernel_fds(){
 void create_kernel_process(uint64_t stack_top){
     memset(global_kernel_process.fd_table,0,MAX_FDS);
 
-    global_kernel_process.kernel_stack = stack_top;
+    global_kernel_process.kernel_stack_top = stack_top;
     global_kernel_process.pml4 = mem_get_current_pml4_table();
     global_kernel_process.process_id = get_pid();
     global_kernel_process.vm_areas = 0;

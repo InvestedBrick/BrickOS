@@ -17,6 +17,7 @@
 #include "../kernel_header.h"
 #include "../tables/syscall_defines.h"
 #include "../filesystem/devices/devs.h"
+
 vector_t user_process_vector;
 static uint8_t pid_used[MAX_PIDS] = {0};
 static uint32_t next_pid = 1;
@@ -36,11 +37,9 @@ user_process_t* get_current_user_process(){
 
     if (overwrite_proc) return overwrite_proc;
 
-    process_state_t* state = get_current_process_state();
+    thread_t* curr_thread = get_current_thread();
 
-    uint32_t curr_pid = state->pid;
-
-    return get_user_process_by_pid(curr_pid);
+    return curr_thread->owner_proc;
 
 }
 
@@ -91,8 +90,8 @@ void free_pid(uint32_t pid){
 
 void setup_arguments(user_process_t* proc,unsigned char* argv[]){
     uint64_t page_phys = pmm_alloc_page_frame();
-    process_state_t* state = get_process_state_by_pid(proc->process_id);
-    if (!state) error("Failed to get process state");
+    thread_t* main_thread = proc->main_thread;
+    if (!main_thread) error("Failed to get main thread");
     // map temporarily to write memory into it
     mem_map_page(TEMP_KERNEL_COPY_ADDR,page_phys,PAGE_FLAG_WRITE | PAGE_FLAG_PRESENT);
     unsigned char* page = (unsigned char*)TEMP_KERNEL_COPY_ADDR;
@@ -142,9 +141,9 @@ void setup_arguments(user_process_t* proc,unsigned char* argv[]){
     sp &= ~0xfull;
 
     
-    state->regs.rsp = sp;
-    state->regs.rdi = argc;
-    state->regs.rsi = argv_ptr;
+    main_thread->regs.rsp = sp;
+    main_thread->regs.rdi = argc;
+    main_thread->regs.rsi = argv_ptr;
     
     mem_unmap_page(TEMP_KERNEL_COPY_ADDR);
     mem_map_page_in_pml4(proc->pml4,HHDM - MEMORY_PAGE_SIZE,page_phys, PAGE_FLAG_USER | PAGE_FLAG_WRITE);
@@ -176,7 +175,7 @@ uint32_t create_user_process(unsigned char* binary, uint32_t size,unsigned char*
     if (pid == -1) return 0;
     process->process_id = pid;
     
-    memset(process->fd_table,0,MAX_FDS);
+    memset(process->fd_table,0,MAX_FDS * sizeof(generic_file_t*));
 
     generic_file_t* stdin;
     generic_file_t* stdout;
@@ -214,7 +213,7 @@ uint32_t create_user_process(unsigned char* binary, uint32_t size,unsigned char*
     
     process->vm_areas = nullptr;
     process->running = 0;
-    process->kernel_stack = kernel_stack;
+    process->kernel_stack_top = kernel_stack + MEMORY_PAGE_SIZE;
     
 
     uint32_t code_data_pages = CEIL_DIV(size,MEMORY_PAGE_SIZE);
@@ -225,7 +224,10 @@ uint32_t create_user_process(unsigned char* binary, uint32_t size,unsigned char*
     uint64_t* pml4 = create_user_pml4_table();
     
     process->pml4 = pml4;
-    add_process_state(process);
+    process->main_thread = nullptr;
+    int tid = add_thread(process);
+    if (tid == -1) return 0;
+    process->main_thread = get_thread_by_tid(tid);
     
     for (uint32_t i = 0; i < code_data_pages;i++){
         uint64_t code_data_mem = pmm_alloc_page_frame();
@@ -259,22 +261,21 @@ uint32_t create_user_process(unsigned char* binary, uint32_t size,unsigned char*
 
 }
 
-void load_registers(uint32_t pid){
+void load_registers(thread_t* main_thread){
     uint32_t int_save = get_interrupt_status();
     disable_interrupts();
     // we do a little pretending here so that when the scheduler returns with these values, everything starts
-    process_state_t* state = get_process_state_by_pid(pid);
     const uint64_t user_mode_data_segment_selector = (0x20 | 0x3);
     
-    state->regs.fs = user_mode_data_segment_selector;
-    state->regs.gs = user_mode_data_segment_selector;
+    main_thread->regs.fs = user_mode_data_segment_selector;
+    main_thread->regs.gs = user_mode_data_segment_selector;
 
-    state->regs.cs = (0x18 | 0x3);
-    state->regs.eflags = (1 << 9) | (3 << 12); // enable interrupts for user
-    state->regs.rip = USER_CODE_DATA_VMEMORY_START;
+    main_thread->regs.cs = (0x18 | 0x3);
+    main_thread->regs.eflags = (1 << 9) | (3 << 12); // enable interrupts for user
+    main_thread->regs.rip = USER_CODE_DATA_VMEMORY_START;
     //esp and ebp are already set up
-    state->regs.ss = user_mode_data_segment_selector;
-    state->exec_state = EXEC_STATE_RUNNING;
+    main_thread->regs.ss = user_mode_data_segment_selector;
+    main_thread->exec_state = EXEC_STATE_RUNNING;
     set_interrupt_status(int_save);
 }
 
@@ -284,8 +285,8 @@ void dispatch_user_process(uint32_t pid){
     process->running = 1;
     uint64_t* old_pml4 = mem_get_current_pml4_table();
     mem_set_current_pml4_table(process->pml4); 
-    set_kernel_stack(process->kernel_stack + (uint64_t)MEMORY_PAGE_SIZE);
-    load_registers(pid);
+    set_kernel_stack(process->kernel_stack_top);
+    load_registers(process->main_thread);
     mem_set_current_pml4_table(old_pml4);
 }
 
@@ -339,12 +340,12 @@ int kill_user_process(uint32_t pid){
         kfree(prev_vma);
     }
 
-    process_state_t* proc_state = get_process_state_by_pid(process->process_id);
-    if (!proc_state) {error("Getting process state failed"); return SYSCALL_FAIL;};
-    remove_process_state(proc_state);
+
+    while(process->main_thread) remove_thread(process->main_thread); // moves the main thread along by itself
+
     free_user_pml4_table(process->pml4);
     kfree(process->process_name);
-    kfree((void*)process->kernel_stack);
+    kfree((void*)(process->kernel_stack_top - MEMORY_PAGE_SIZE));
     kfree(process);
     free_pid(pid);
 
