@@ -198,7 +198,7 @@ void interrupt_handler(interrupt_stack_frame_t* stack_frame) {
             handle_keyboard_interrupt();
             acknowledge_PIC(stack_frame->interrupt_number);
             break;
-        case INT_MOUSE:
+            case INT_MOUSE:
             log("Mouse interrupt");
             handle_mouse_interrupt();
             acknowledge_PIC(stack_frame->interrupt_number);
@@ -208,8 +208,8 @@ void interrupt_handler(interrupt_stack_frame_t* stack_frame) {
             if (ticks % DESIRED_STANDARD_FREQ == 0){
                 current_timestamp++; // tick once a second here
             }
-            manage_sleeping_processes();
-
+            manage_sleeping_threads();
+            
             if (ticks % TASK_SWITCH_TICKS == 0 || force_switch) {
                 if (force_switch) force_switch = 0;
                 switch_task(stack_frame);
@@ -226,6 +226,7 @@ void interrupt_handler(interrupt_stack_frame_t* stack_frame) {
             page_fault_handler(get_current_user_process(),cr2,stack_frame);
             break;
         default:
+            if (stack_frame->interrupt_number < 0x20 && stack_frame->interrupt_number != 0xd)logf("Fault occured: %x",stack_frame->interrupt_number);
             break;
     }
 
