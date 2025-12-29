@@ -79,9 +79,16 @@ uint64_t sys_ioctl(user_process_t* p, uint32_t fd,uint32_t cmd, void* arg){
 
 uint64_t sys_exit(user_process_t* p,interrupt_stack_frame_t* stack_frame){
     uint32_t pid = p->process_id;
+
     logf("PID %d (%s) exited with %d",p->process_id,p->process_name,stack_frame->rbx);
+    thread_t* thread = p->main_thread;
+    while(thread) {
+        // mark as dead and let the scheduler clean them up
+        thread->exec_state = EXEC_STATE_DEAD;
+        thread = thread->next_proc_thread;
+    }
     switch_task(stack_frame);
-    return kill_user_process(pid);
+    return 0; // will never get reached 
 }
 
 uint64_t sys_mmap(user_process_t *p, void *addr, uint32_t size,uint32_t prot, uint32_t flags, uint32_t fd, uint32_t offset){
