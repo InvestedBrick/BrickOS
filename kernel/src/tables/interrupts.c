@@ -209,12 +209,11 @@ void interrupt_handler(interrupt_stack_frame_t* stack_frame) {
                 current_timestamp++; // tick once a second here
             }
             manage_sleeping_threads();
-            
+            acknowledge_PIC(stack_frame->interrupt_number);
             if (ticks % TASK_SWITCH_TICKS == 0 || force_switch) {
                 if (force_switch) force_switch = 0;
                 switch_task(stack_frame);
             }
-            acknowledge_PIC(stack_frame->interrupt_number);
             break;
         case INT_SOFTWARE: 
             stack_frame->rax = handle_software_interrupt(stack_frame);
