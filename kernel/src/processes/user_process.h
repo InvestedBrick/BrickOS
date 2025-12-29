@@ -112,4 +112,13 @@ int run(char* filepath,unsigned char* argv[],process_fds_init_t* start_fds,uint8
 void overwrite_current_proc(user_process_t* proc);
 
 void restore_active_proc();
+
+/**
+ * enter_user_mode:
+ * synthesizes an interrupt return stack and returns with iretq to enter user mode for a thread
+ * @param thread The thread that is supposed to enter user mode
+ * 
+ * @note does not return
+ */
+void enter_user_mode(struct thread* thread);
 #endif
