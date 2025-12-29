@@ -17,7 +17,7 @@
 #include "../kernel_header.h"
 #include "../tables/syscall_defines.h"
 #include "../filesystem/devices/devs.h"
-
+#include "scheduler.h"
 vector_t user_process_vector;
 static uint8_t pid_used[MAX_PIDS] = {0};
 static uint32_t next_pid = 1;
@@ -141,7 +141,7 @@ void setup_arguments(user_process_t* proc,unsigned char* argv[]){
     sp &= ~0xfull;
 
     
-    main_thread->regs.rsp = sp;
+    main_thread->init_user_rsp = sp;
     main_thread->regs.rdi = argc;
     main_thread->regs.rsi = argv_ptr;
     
@@ -271,11 +271,11 @@ void load_registers(thread_t* main_thread){
     main_thread->regs.gs = user_mode_data_segment_selector;
 
     main_thread->regs.cs = (0x18 | 0x3);
-    main_thread->regs.eflags = (1 << 9) | (3 << 12); // enable interrupts for user
+    main_thread->regs.rflags = (1 << 9); // enable interrupts for user
     main_thread->regs.rip = USER_CODE_DATA_VMEMORY_START;
     //esp and ebp are already set up
-    main_thread->regs.ss = user_mode_data_segment_selector;
-    main_thread->exec_state = EXEC_STATE_RUNNING;
+    main_thread->init_user_ss = user_mode_data_segment_selector;
+    main_thread->exec_state = EXEC_STATE_FINALIZED;
     set_interrupt_status(int_save);
 }
 
@@ -284,10 +284,7 @@ void dispatch_user_process(uint32_t pid){
     if (process->running) return;
     process->running = 1;
     uint64_t* old_pml4 = mem_get_current_pml4_table();
-    mem_set_current_pml4_table(process->pml4); 
-    set_kernel_stack(process->kernel_stack_top);
     load_registers(process->main_thread);
-    mem_set_current_pml4_table(old_pml4);
 }
 
 
@@ -305,13 +302,14 @@ int kill_user_process(uint32_t pid){
             break;
         }
     }
+    process->running = 0;
 
     for (uint32_t i = 0; i < MAX_FDS;i++){
         if(!process->fd_table[i]) break;
 
         sys_close(process,i);
     }
-
+    
     virt_mem_area_t* vma = process->vm_areas;
     virt_mem_area_t* prev_vma;
     while(vma){
@@ -339,17 +337,37 @@ int kill_user_process(uint32_t pid){
         vma = vma->next;
         kfree(prev_vma);
     }
-
-
-    while(process->main_thread) remove_thread(process->main_thread); // moves the main thread along by itself
-
+    // Threads are already dead since we should be coming from remove_thread
     free_user_pml4_table(process->pml4);
-    kfree(process->process_name);
     kfree((void*)(process->kernel_stack_top - MEMORY_PAGE_SIZE));
+    logf("Killed '%s'",process->process_name);
+    kfree(process->process_name);
     kfree(process);
     free_pid(pid);
 
     return 0;
+}
+
+__attribute__((noreturn))
+void enter_user_mode(struct thread* thread){
+
+    asm volatile(
+        "push %0\n\t"
+        "push %1\n\t"
+        "push %2\n\t"
+        "push %3\n\t"
+        "push %4\n\t"
+        "iretq\n\t"
+        :
+        : "r"(thread->init_user_ss),
+          "r"(thread->init_user_rsp),
+          "r"(thread->regs.rflags),
+          "r"(thread->regs.cs),
+          "r"(thread->regs.rip)
+        : "memory"
+    );
+
+    __builtin_unreachable();
 }
 
 int run(char* filepath,unsigned char* argv[],process_fds_init_t* start_fds,uint8_t priv_lvl){
