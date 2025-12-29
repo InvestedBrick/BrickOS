@@ -147,9 +147,8 @@ void free_user_pml4_table(uint64_t* user_pml4) {
         free_table_entry(user_pml4,pml4_idx);
     }
 
-
     mem_unmap_page((uint64_t)user_pml4);
-    uint64_t pml4_phys = virt_to_phys((uint64_t)user_pml4);
+    uint64_t pml4_phys = linear_virt_to_phys((uint64_t)user_pml4);
     pmm_free_page_frame(pml4_phys);
 }
 
