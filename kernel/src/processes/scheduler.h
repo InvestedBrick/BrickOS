@@ -10,6 +10,7 @@
 #define EXEC_STATE_RUNNING 0x2
 #define EXEC_STATE_SLEEPING 0x3
 #define EXEC_STATE_DEAD 0x4
+#define EXEC_STATE_FINALIZED 0x5
 
 typedef struct thread{
     uint32_t tid;
@@ -18,6 +19,9 @@ typedef struct thread{
     interrupt_stack_frame_t regs;
 
     struct user_process* owner_proc; 
+    uint64_t kernel_rsp; 
+    uint64_t init_user_rsp;
+    uint64_t init_user_ss;
     
     struct thread* next;
     struct thread* next_proc_thread;
