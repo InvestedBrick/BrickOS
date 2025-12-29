@@ -5,52 +5,9 @@ load_idt:
     lidt [rax]
     ret
 
-insert_mode_regs:
-    push rax
-    ; stack state:
-    ; [rsp + 40] rflags
-    ; [rsp + 32] cs
-    ; [rsp + 24] rip
-    ; [rsp + 16] error code
-    ; [rsp + 8 ] return address
-    ; [rsp     ] rax
-
-    mov rax, qword [rsp + 32] ; cs
-    and rax, 0x3
-    cmp rax, 0 ; check for priv level 0
-    jne .return ; if priv level not equal to kernel priv -> ss and esp are already pushed
-
-    sub rsp, 16 ; create the data for two dummy values, will be discarded anyways, just used to align data
-
-    ; realign important values
-    ; rax
-    mov rax, qword [rsp + 16]
-    mov qword [rsp], rax
-
-    ; return address
-    mov rax, qword [rsp + 24]
-    mov qword [rsp + 8], rax
-.return:
-    pop rax
-    ret
-
-clear_IOPL:
-    push rax
-    ; Clear IOPL in EFLAGS (set to 0)
-    pushfq
-    pop rax
-    and rax, 0xFFFFFFFFFFFFCFFF   ; Clear bits 12 and 13 (IOPL)
-    push rax
-    popfq
-    pop rax
-    ret
-
-
 %macro no_error_code_interrupt_handler 1
 interrupt_handler_%+%1:
-    call clear_IOPL
     push qword 0    ; push 0 as error code
-    call insert_mode_regs
     push qword %1    ; push the interrupt number
     jmp common_interrupt_handler
 %endmacro
@@ -58,13 +15,11 @@ interrupt_handler_%+%1:
 %macro error_code_interrupt_handler 1
 interrupt_handler_%+%1:
 break_%+%1:
-    call clear_IOPL
-    call insert_mode_regs
     push qword %1        ; push interrupt number
     jmp common_interrupt_handler
 %endmacro
 extern interrupt_handler
-
+global return_from_interrupt
 common_interrupt_handler:
     push rax
     push rbx
@@ -95,6 +50,7 @@ common_interrupt_handler:
    
     call interrupt_handler
 
+return_from_interrupt:
     pop gs
     pop fs
 
