@@ -66,7 +66,7 @@ typedef struct {
     uint64_t gs,fs;
     uint64_t r15,r14,r13,r12,r11,r10,r9,r8;
     uint64_t rbp,rdi,rsi,rdx,rcx,rbx,rax;
-    uint64_t interrupt_number,error_code,rip,cs,eflags,rsp,ss;
+    uint64_t interrupt_number,error_code,rip,cs,rflags;
 }__attribute__((packed)) interrupt_stack_frame_t;
 
 extern uint64_t ticks;
@@ -130,4 +130,5 @@ void set_interrupt_status(uint8_t int_enable);
  * Forces the next timer interrupt to switch tasks
  */
 void setup_timer_switch();
+
 #endif
