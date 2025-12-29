@@ -63,7 +63,6 @@ void init_scheduler(){
     current_thread = 0;
 
     run("modules/loop.bin",nullptr,nullptr,PRIV_STD);
-    restore_kernel_pml4_table();
 
     // since the endless proc got attached to t_queue->next, we need to re-arrange this
     thread_t* old_t_queue = t_queue;
@@ -120,10 +119,15 @@ int add_thread(struct user_process* usr_proc){
 thread_t* find_schedule_candidate(){
     thread_t* candidate = current_thread;
     do {
+        thread_t* dead_thread = nullptr;
+        
+        // cannot kill current thread since then we might no longer have a valid address space
+        if (candidate->exec_state == EXEC_STATE_DEAD && candidate != current_thread) dead_thread = candidate; 
         if (candidate->next) candidate = candidate->next;
         else candidate = t_queue;
+        if (dead_thread) remove_thread(dead_thread);
     }
-    while(candidate->exec_state != EXEC_STATE_RUNNING);
+    while(candidate->exec_state != EXEC_STATE_RUNNING && candidate->exec_state != EXEC_STATE_FINALIZED);
 
     return candidate;
 }
@@ -135,15 +139,13 @@ void switch_task(interrupt_stack_frame_t* regs){
         // the loop process is the only one left
         shutdown();
     }
+
     thread_t* old_thread = current_thread;
-    uint32_t interrupt_code = regs->interrupt_number;
+    old_thread->kernel_rsp = (uint64_t)regs;
 
     if (!first_switch){
-        // first switch is from kernel -> shell, but we dont want our loop process to contain the kernels code
         memcpy(&current_thread->regs, regs,sizeof(interrupt_stack_frame_t));
-    }else{
-        first_switch = 0;
-    }
+    } else{first_switch = 0;} // dont copy kernel rip etc
 
     current_thread = find_schedule_candidate();
 
@@ -152,21 +154,34 @@ void switch_task(interrupt_stack_frame_t* regs){
         mem_set_current_pml4_table(current_thread->owner_proc->pml4);
     }
 
-    memcpy(regs,&current_thread->regs,sizeof(interrupt_stack_frame_t));
-    regs->interrupt_number = interrupt_code; 
+    if (current_thread->exec_state == EXEC_STATE_FINALIZED){
+        current_thread->exec_state = EXEC_STATE_RUNNING;
+        enter_user_mode(current_thread); // does not return
+    }
+    
+    asm volatile( "mov %0, %%rsp\n\t"
+                  "jmp return_from_interrupt\n\t"
+                  : : "r"(current_thread->kernel_rsp) 
+                  : "memory"
+                );
+    
+    __builtin_unreachable();
 }
 
 void remove_thread(thread_t* thread){
     if (!thread) return;
     thread_t* before_thread = t_queue;
     while(before_thread->next && before_thread->next != thread) before_thread = before_thread->next;
-
+        
     before_thread->next = thread->next;
 
     before_thread = thread->owner_proc->main_thread;
     if (before_thread == thread){
         // thread is main thread
         thread->owner_proc->main_thread = thread->next_proc_thread;
+        if (thread->next_proc_thread == 0) {// this was the last thread
+            if (kill_user_process(thread->owner_proc->process_id) < 0) warnf("Failed to kill user process '%s'", thread->owner_proc->process_name);           
+        }
         kfree(thread);
         return;
     }
