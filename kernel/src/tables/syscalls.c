@@ -7,7 +7,7 @@
 #include "../memory/memory.h"
 #include "../io/log.h"
 #include "../processes/scheduler.h"
-#include "../util.h"
+#include "../utilities/util.h"
 #include "../filesystem/fsutil.h"
 #include "../filesystem/filesystem.h"
 #include "../memory/kmalloc.h"

@@ -1,7 +1,7 @@
 #include "fsutil.h"
 #include "filesystem.h"
 #include "../memory/kmalloc.h"
-#include "../util.h"
+#include "../utilities/util.h"
 int get_full_active_path(unsigned char* path_buffer, uint32_t buf_len){
     string_array_t* str_arr = (string_array_t*)kmalloc(sizeof(string_array_t));
     inode_t* inode = active_dir;

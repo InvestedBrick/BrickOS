@@ -1,6 +1,6 @@
 #include "scheduler.h"
 #include "../memory/kmalloc.h"
-#include "../util.h"
+#include "../utilities/util.h"
 #include "../memory/memory.h"
 #include "../io/log.h"
 #include "user_process.h"
@@ -9,7 +9,7 @@
 #include "../tables/syscalls.h"
 #include "../filesystem/filesystem.h"
 #include "../kernel_header.h"
-#include "../vector.h"
+#include "../utilities/vector.h"
 
 thread_t* t_queue;
 thread_t* current_thread;

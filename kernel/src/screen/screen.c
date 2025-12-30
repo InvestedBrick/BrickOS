@@ -3,9 +3,8 @@
 #include "../io/log.h"
 #include "../filesystem/vfs/vfs.h"
 #include "../filesystem/devices/devs.h"
-#include "../util.h"
+#include "../utilities/util.h"
 #include "../memory/memory.h"
-#include "../multiboot.h"
 #include "font_bitmaps.h"
 #include <stdint.h>
 #include <stddef.h>

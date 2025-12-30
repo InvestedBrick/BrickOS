@@ -1,6 +1,6 @@
 #include "gdt.h"
 #include "tss.h"
-#include "../util.h"
+#include "../utilities/util.h"
 tss_entry_t tss_entry;
 
 gdt_entry_t gdt_entries[N_GDT_ENTRIES];

@@ -2,7 +2,7 @@
 #ifndef INCLUDE_FSUTIL_H
 #define INCLUDE_FSUTIL_H
 
-#include "../util.h"
+#include "../utilities/util.h"
 
 /**
  * get_full_active_path:

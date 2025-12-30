@@ -1,6 +1,6 @@
 #include "module_handler.h"
 #include "../memory/kmalloc.h"
-#include "../util.h"
+#include "../utilities/util.h"
 #include "../filesystem/filesystem.h"
 #include "../filesystem/file_operations.h"
 #include "../tables/syscalls.h"

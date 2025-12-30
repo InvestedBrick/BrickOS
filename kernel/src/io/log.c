@@ -2,7 +2,7 @@
 #include <stdarg.h>
 #include <stddef.h>
 #include <stdint.h>
-#include "../util.h"
+#include "../utilities/util.h"
 void serial_write_with_prefix(const unsigned char* prefix, const unsigned char* msg,uint16_t com){
     serial_write(prefix,com);
     serial_write(msg,com);

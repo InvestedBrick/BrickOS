@@ -1,6 +1,6 @@
 #include "pipes.h"
-#include "../../util.h"
-#include "../../vector.h"
+#include "../../utilities/util.h"
+#include "../../utilities/vector.h"
 #include "../../processes/user_process.h"
 #include "../filesystem.h"
 #include "../fs_defines.h"
