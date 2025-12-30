@@ -191,7 +191,6 @@ void page_fault_handler(user_process_t* p,uint64_t fault_addr,interrupt_stack_fr
 }
 
 void interrupt_handler(interrupt_stack_frame_t* stack_frame) {
-    interrupts_enabled = 0; // to stop other functions from copying a wrong value
 
     switch (stack_frame->interrupt_number) {
         case INT_KEYBOARD:
@@ -222,6 +221,11 @@ void interrupt_handler(interrupt_stack_frame_t* stack_frame) {
             ;
             uint64_t cr2;
             asm volatile ("mov %%cr2, %0" : "=r"(cr2));
+            thread_t* curr_thread = get_current_thread();
+            if (cr2 == MAGIC_SCHED_FAULT_ADDR && curr_thread->expect_sched_fault){
+                curr_thread->expect_sched_fault = false;
+                switch_task(stack_frame); // does not return
+            }
             page_fault_handler(get_current_user_process(),cr2,stack_frame);
             break;
         default:
@@ -229,7 +233,6 @@ void interrupt_handler(interrupt_stack_frame_t* stack_frame) {
             break;
     }
 
-    interrupts_enabled = 1; // the interrupts only actually get enabled in the iret
 }
 
 void remap_PIC(uint32_t offset1, uint32_t offset2){
