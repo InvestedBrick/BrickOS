@@ -2,7 +2,6 @@
 #ifndef MODULE_HANDLER_H
 #define MODULE_HANDLER_H
 
-#include "../multiboot.h"
 #include "../../limine-protocol/include/limine.h"
 typedef struct {
     uint32_t size;

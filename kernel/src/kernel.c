@@ -1,6 +1,5 @@
 #include "io/io.h"
 #include "io/log.h"
-#include "multiboot.h"
 #include "tables/gdt.h"
 #include "kernel_header.h"
 #include "memory/memory.h"

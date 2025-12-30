@@ -2,7 +2,7 @@
 #ifndef INCLUDE_FILESYSTEM_H
 #define INCLUDE_FILESYSTEM_H
 
-#include "../util.h"
+#include "../utilities/util.h"
 #include <stdint.h>
 // must be set so that the inode struct is exactly 64 bytes wide
 #define NUM_DATA_SECTORS_PER_FILE 12

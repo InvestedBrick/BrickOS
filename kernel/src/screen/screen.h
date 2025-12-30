@@ -35,9 +35,7 @@
 #define CURSOR_MAX (SCREEN_PIXELS - 1)
 #define INVALID_ARGUMENT -1
 #include "../filesystem/vfs/vfs.h"
-#include "../multiboot.h"
 #include <stdint.h>
-
 
 /**
  * init_framebuffer:

@@ -1,6 +1,6 @@
 #include "util.h"
-#include "memory/kmalloc.h"
-#include "io/log.h"
+#include "../memory/kmalloc.h"
+#include "../io/log.h"
 
 void* memmove(void* dest, void* src, uint32_t n) {
     if (n == 0) return dest;

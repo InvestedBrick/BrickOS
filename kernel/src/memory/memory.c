@@ -1,7 +1,7 @@
 #include "memory.h"
-#include "../util.h"
+#include "../utilities/util.h"
 #include "../io/log.h"
-#include "../vector.h"
+#include "../utilities/vector.h"
 #include "../kernel_header.h"
 #include "../../limine-protocol/include/limine.h"
 

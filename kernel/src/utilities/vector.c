@@ -1,6 +1,6 @@
 #include "vector.h"
 #include "util.h"
-#include "memory/kmalloc.h"
+#include "../memory/kmalloc.h"
 #include <stdint.h>
 void vector_resize(vector_t* vec,uint32_t new_capacity){
     vector_data_t* new_data = kmalloc(sizeof(vector_data_t) * new_capacity);

@@ -42,7 +42,7 @@
 
 #define INVALID_PHYS_ADDR (uint64_t)-1
 
-#include "../vector.h"
+#include "../utilities/vector.h"
 
 typedef struct {
     uint64_t phys_addr;
