@@ -51,6 +51,7 @@ common_interrupt_handler:
     call interrupt_handler
 
 return_from_interrupt:
+    cli
     pop gs
     pop fs
 
