@@ -6,7 +6,7 @@ plan:
     [X] process commandline args
     [X] window manager (needs to be optimized)
     [X] 64 bit kernel && switch to limine
-    [ ] improve scheduler + spinlocks/mutexes/semaphores
+    [X] implement spinlocks/mutexes/semaphores
     [ ] PCI stuff
     [ ] ACPI table parsing with uACPI
     [ ] implement IOAPIC
