@@ -10,13 +10,22 @@
 #include "../filesystem/filesystem.h"
 #include "../kernel_header.h"
 #include "../utilities/vector.h"
+#include <stdbool.h>
 
 thread_t* t_queue;
 thread_t* current_thread;
-uint8_t locked = 0;
+bool sched_init = false;
 uint8_t first_switch = 1;
 vector_t sleeping_threads;
 extern uint32_t stack_top;
+
+void invoke_scheduler(){
+    if (!sched_init) return;
+    if (!get_interrupt_status()) return;
+
+    volatile uint8_t _drop = *(uint8_t *)(MAGIC_SCHED_FAULT_ADDR);
+    (void)(_drop);
+}
 
 void add_sleeping_thread(thread_t* thread,uint32_t sleep_ticks){
     sleeping_thread_t* sleepy_thread = (sleeping_thread_t*)kmalloc(sizeof(sleeping_thread_t));
@@ -69,7 +78,7 @@ void init_scheduler(){
     t_queue = t_queue->next;
     kfree(old_t_queue);
     current_thread = t_queue;
-    locked = 1;
+    sched_init = true;
     log("Set up endless process");
 }
 
@@ -89,6 +98,7 @@ int add_thread(struct user_process* usr_proc){
     }
     thread_t* thread = (thread_t*)kmalloc(sizeof(thread_t));
     memset(thread,0x0,sizeof(thread_t));
+    thread->expect_sched_fault = false;
     thread->next = 0;
     int tid = get_pid(); // need to put it here so that compiler does not generate weird opcode for some reason
     thread->next_proc_thread = 0;
@@ -134,7 +144,7 @@ thread_t* find_schedule_candidate(){
 
 void switch_task(interrupt_stack_frame_t* regs){
     // only switch when the scheduler was set up 
-    if (!locked) return;
+    if (!sched_init) return;
     if (!t_queue->next){
         // the loop process is the only one left
         shutdown();
