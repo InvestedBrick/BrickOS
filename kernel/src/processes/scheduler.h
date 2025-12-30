@@ -5,6 +5,7 @@
 #include "../tables/interrupts.h"
 #include "../drivers/timer/pit.h"
 #include "user_process.h"
+#include <stdbool.h>
 
 #define EXEC_STATE_INIT 0x1
 #define EXEC_STATE_RUNNING 0x2
@@ -15,14 +16,15 @@
 typedef struct thread{
     uint32_t tid;
     uint8_t exec_state;
-    
+    bool expect_sched_fault;
+
     interrupt_stack_frame_t regs;
 
     struct user_process* owner_proc; 
     uint64_t kernel_rsp; 
     uint64_t init_user_rsp;
     uint64_t init_user_ss;
-    
+
     struct thread* next;
     struct thread* next_proc_thread;
 } thread_t;
@@ -84,4 +86,10 @@ void manage_sleeping_threads();
  * @param sleep_ticks The number of ticks to make the thread sleep
  */
 void add_sleeping_thread(thread_t* thread,uint32_t sleep_ticks);
+
+/**
+ * invoke_scheduler:
+ * invokes the scheduler to try and switch to another thread than the current one
+ */
+void invoke_scheduler();
 #endif
