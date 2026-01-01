@@ -69,7 +69,8 @@ void init_scheduler(){
 
     t_queue = (thread_t*)kmalloc(sizeof(thread_t));
     t_queue->next = 0;
-    current_thread = 0;
+    t_queue->active_dir = get_inode_by_id(FS_ROOT_DIR_ID);
+    current_thread = t_queue;
 
     run("modules/loop.bin",nullptr,nullptr,PRIV_STD);
 
@@ -107,7 +108,7 @@ int add_thread(struct user_process* usr_proc){
     thread->tid = tid;
     thread->owner_proc = usr_proc;
     thread->exec_state = EXEC_STATE_INIT;
-
+    thread->active_dir = current_thread->active_dir;
     // add to main thread queue
     thread_t* last = t_queue;
 

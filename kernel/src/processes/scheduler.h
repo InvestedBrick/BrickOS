@@ -5,6 +5,7 @@
 #include "../tables/interrupts.h"
 #include "../drivers/timer/pit.h"
 #include "user_process.h"
+#include "../filesystem/filesystem.h"
 #include <stdbool.h>
 
 #define EXEC_STATE_INIT 0x1
@@ -24,6 +25,7 @@ typedef struct thread{
     uint64_t kernel_rsp; 
     uint64_t init_user_rsp;
     uint64_t init_user_ss;
+    inode_t* active_dir;
 
     struct thread* next;
     struct thread* next_proc_thread;
