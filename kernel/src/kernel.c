@@ -120,6 +120,7 @@ void create_kernel_process(uint64_t stack_top){
 void shutdown(){
 
     restore_kernel_pml4_table();
+    dispatched_user_mode = 0;
 
     cleanup_tmp();
     log("Cleaned up /tmp");
@@ -215,10 +216,11 @@ void kmain()
     log("Initialized the filesystem");
 
     if (first_time_fs_init){
-        create_file(active_dir,"modules",strlen("modules"),FS_TYPE_DIR, FS_FILE_PERM_NONE,PRIV_STD);
-        create_file(active_dir,"home",strlen("home"),FS_TYPE_DIR, FS_FILE_PERM_NONE,PRIV_STD);
-        create_file(active_dir,"dev",strlen("dev"),FS_TYPE_DIR,FS_FILE_PERM_NONE,PRIV_STD);
-        create_file(active_dir,"tmp",strlen("tmp"),FS_TYPE_DIR,FS_FILE_PERM_NONE,PRIV_STD);
+        inode_t* current_dir = get_active_dir();
+        create_file(current_dir,"modules",strlen("modules"),FS_TYPE_DIR, FS_FILE_PERM_NONE,PRIV_STD);
+        create_file(current_dir,"home",strlen("home"),FS_TYPE_DIR, FS_FILE_PERM_NONE,PRIV_STD);
+        create_file(current_dir,"dev",strlen("dev"),FS_TYPE_DIR,FS_FILE_PERM_NONE,PRIV_STD);
+        create_file(current_dir,"tmp",strlen("tmp"),FS_TYPE_DIR,FS_FILE_PERM_NONE,PRIV_STD);
         log("Initialized /modules, /home, /dev and /tmp directories");
     }
 
