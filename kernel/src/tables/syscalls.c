@@ -200,7 +200,8 @@ uint64_t sys_chdir(unsigned char* dir_name){
     if (!new_dir) return SYSCALL_FAIL;
     if (new_dir->type != FS_TYPE_DIR) return SYSCALL_FAIL;
 
-    active_dir = new_dir;
+    thread_t* curr_thread = get_current_thread();
+    curr_thread->active_dir = new_dir;
 
     return SYSCALL_SUCCESS;
 }
@@ -223,7 +224,7 @@ uint64_t sys_mknod(unsigned char* filename,mknod_params_t* params){
     
     if (get_inode_by_path(filename)) return SYSCALL_FAIL;
 
-    inode_t* creation_dir = active_dir;
+    inode_t* creation_dir = get_active_dir();
     
     string_array_t* str_arr = split_filepath(filename);
 
@@ -293,4 +294,9 @@ uint64_t sys_settimeofday(user_process_t* p,uint64_t timestamp){
     if (p->priv_lvl > PRIV_SPECIAL) return SYSCALL_FAIL;
     current_timestamp = timestamp;
     return SYSCALL_SUCCESS;
+}
+
+uint64_t sys_clone(user_process_t* p,int (*fn)(void*),void* stack,int flags, void* arg){
+    // TODO:
+    return (uint64_t)0;
 }
