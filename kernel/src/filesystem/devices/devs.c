@@ -63,8 +63,8 @@ void create_device(unsigned char* name,vfs_handles_t* handles, void* gen_data,vo
 
     inode_t* old_dir = change_active_dir(dev_dir);
 
-    if (!dir_contains_name(active_dir,name)){
-        if (create_file(active_dir,name,strlen(name),FS_TYPE_DEV,FS_FILE_PERM_NONE,priv_lvl) < 0)
+    if (!dir_contains_name(get_active_dir(),name)){
+        if (create_file(get_active_dir(),name,strlen(name),FS_TYPE_DEV,FS_FILE_PERM_NONE,priv_lvl) < 0)
         error("Failed to create device");
     }
     

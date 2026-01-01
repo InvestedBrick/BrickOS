@@ -4,7 +4,7 @@
 #include "../utilities/util.h"
 int get_full_active_path(unsigned char* path_buffer, uint32_t buf_len){
     string_array_t* str_arr = (string_array_t*)kmalloc(sizeof(string_array_t));
-    inode_t* inode = active_dir;
+    inode_t* inode = get_active_dir();
 
     uint32_t str_counter = 0;
 
@@ -17,7 +17,7 @@ int get_full_active_path(unsigned char* path_buffer, uint32_t buf_len){
 
     str_arr->strings = (string_t*)kmalloc(str_counter * sizeof(string_t));
     str_arr->n_strings = str_counter;
-    inode = active_dir;
+    inode = get_active_dir();
 
     uint32_t str_arr_idx = 0;
     while (1){

@@ -3,6 +3,7 @@
 #define INCLUDE_FILESYSTEM_H
 
 #include "../utilities/util.h"
+#include "../drivers/ATA_PIO/ata.h"
 #include <stdint.h>
 // must be set so that the inode struct is exactly 64 bytes wide
 #define NUM_DATA_SECTORS_PER_FILE 12
@@ -79,8 +80,6 @@ typedef struct {
 
 }__attribute__((packed)) inode_t;
 
-extern inode_t* active_dir;
-
 typedef struct {
     uint32_t parent_id;
     uint32_t id;
@@ -119,9 +118,9 @@ inode_t* get_inode_by_path(unsigned char* path);
 /**
  * change_active_dir: 
  * Changes the currently active directory
- * 
  * @param new_dir The new directory
  * @return The old active directory to save for restoring later
+ * @warning This is only valid for kernel setup, to change the active directory of a thread use sys_chdir
  */
 inode_t* change_active_dir(inode_t* new_dir);
 /**
@@ -148,12 +147,12 @@ uint32_t get_inode_id_by_name(uint32_t parent_id, unsigned char*);
  */
 inode_t* get_inode_by_id(uint32_t id);
 /**
- * get_active_dir: 
+ * get_active_dir_string: 
  * Returns the name of the current active directory
  * IMPORTANT: Do NOT free the char* associated with the returned string, it belongs to inode_name_pairs. This isn't Rust, get over it
  * @return The name of the directory
  */
-string_t get_active_dir();
+string_t get_active_dir_string();
 
 /**
  * read_bitmaps:
@@ -303,4 +302,10 @@ void change_file_priviledge_level(unsigned char* filename,uint8_t priv);
  * Tries to delete all files in /tmp, call upon shutdown
  */
 void cleanup_tmp();
+
+/**
+ * get_active_dir:
+ * Returns the currently active directory for kernel setup or the currently running thread
+ */
+inode_t* get_active_dir();
 #endif

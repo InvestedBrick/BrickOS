@@ -8,6 +8,7 @@
 #include "devices/devs.h"
 #include "IPC/pipes.h"
 #include "../processes/user_process.h"
+#include "../processes/scheduler.h"
 vfs_handles_t fs_ops = {
     .open = fs_open,
     .close = fs_close,
@@ -79,14 +80,15 @@ generic_file_t* fs_open(unsigned char* filepath,uint8_t flags){
     if (inode && flags & FILE_FLAG_CREATE) return nullptr;
     if (!inode) {
         if (flags & FILE_FLAG_CREATE){
+            inode_t* curr_dir = get_active_dir();
             if (flags & FILE_CREATE_DIR){
-                if (create_file(active_dir,filepath,strlen(filepath),FS_TYPE_DIR,FS_FILE_PERM_NONE,PRIV_STD) < 0)
+                if (create_file(curr_dir,filepath,strlen(filepath),FS_TYPE_DIR,FS_FILE_PERM_NONE,PRIV_STD) < 0)
                     return nullptr;
             }else {
-                if (create_file(active_dir,filepath,strlen(filepath),FS_TYPE_FILE,flags & (FILE_FLAG_EXEC | FILE_FLAG_READ | FILE_FLAG_WRITE),PRIV_STD) < 0)
+                if (create_file(curr_dir,filepath,strlen(filepath),FS_TYPE_FILE,flags & (FILE_FLAG_EXEC | FILE_FLAG_READ | FILE_FLAG_WRITE),PRIV_STD) < 0)
                     return nullptr;
             }
-            inode = get_inode_by_id(get_inode_id_by_name(active_dir->id,filepath));
+            inode = get_inode_by_id(get_inode_id_by_name(curr_dir->id,filepath));
         }else{
             return nullptr;
         }

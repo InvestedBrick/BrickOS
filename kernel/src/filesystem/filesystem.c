@@ -9,16 +9,27 @@
 #include "devices/devs.h"
 #include "IPC/pipes.h"
 #include "../processes/user_process.h"
+#include "../processes/scheduler.h"
 vector_t inodes;
 vector_t inode_name_pairs; // Note to self: do not free this with vector free, the names have to be freed too
 sectors_headerdata_t header_data; 
-inode_t* active_dir = 0;
 uint32_t active_partially_used_bitmaps;
+
+// this is only valid for kernel setup and shutdown.
+// when user processes are running, the active directories of the threads are correct
+inode_t* active_dir = 0;
 
 uint8_t first_time_fs_init = 0;
 
 unsigned char* last_read_sector;
 uint32_t last_read_sector_idx;
+
+inode_t* get_active_dir(){
+    if (!dispatched_user_mode) return active_dir;
+
+    thread_t* curr_thread = get_current_thread();
+    return curr_thread->active_dir;
+}
 
 inode_t* get_inode_by_path(unsigned char* path){
     inode_t* file;
@@ -30,7 +41,7 @@ inode_t* get_inode_by_path(unsigned char* path){
     memcpy(first_name,path,alloc_size);
     first_name[alloc_size] = '\0';
 
-    if (dir_contains_name(active_dir,first_name) || strneq(path,"..",2,2)){
+    if (dir_contains_name(get_active_dir(),first_name) || strneq(path,"..",2,2)){
         file = get_inode_by_relative_file_path(path);
     }else{
         file = get_inode_by_full_file_path(path);
@@ -40,6 +51,7 @@ inode_t* get_inode_by_path(unsigned char* path){
 
     return file;
 }
+
 
 inode_t* change_active_dir(inode_t* new_dir){
     inode_t* dir_save = active_dir;
@@ -92,8 +104,8 @@ inode_t* get_inode_by_id(uint32_t id){
 
     return 0;
 }
-string_t get_active_dir(){
-    inode_name_pair_t* pair = get_name_by_inode_id(active_dir->id);
+string_t get_active_dir_string(){
+    inode_name_pair_t* pair = get_name_by_inode_id(get_active_dir()->id);
     string_t str;
     str.str = pair->name;
     str.length = pair->length;
@@ -146,7 +158,7 @@ inode_t* get_inode_by_full_file_path(unsigned char* path) {
 }
 
 inode_t* get_inode_by_relative_file_path(unsigned char* path){
-    return get_inode_by_file_path(path,active_dir->id);
+    return get_inode_by_file_path(path,get_active_dir()->id);
 }
 
 uint32_t count_partially_used_big_sectors(uint32_t end){
