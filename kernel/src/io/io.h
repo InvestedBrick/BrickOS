@@ -40,9 +40,16 @@ void outb(uint16_t port, uint8_t data);
 /**
  * outw - sends a word to I/O port
  * @param port ID of port
- * @param data word (short) to be sent
+ * @param data word (uint16_t) to be sent
  */
 void outw(uint16_t port, uint16_t data);
+
+/**
+ * outl - sends a dword to I/O port
+ * @param port ID of port
+ * @param data dword (uint32_t) to be sent
+ */
+void outl(uint16_t port,uint32_t data);
 
 /**
  * 
@@ -54,9 +61,16 @@ uint8_t inb(uint16_t port);
 /**
  * inw - recieves a word from I/O port
  * @param port ID of port
- * @return recieved word (short)
+ * @return recieved word (uint16_t)
  */
 uint16_t inw(uint16_t port);
+
+/**
+ * inl - Recieves a dword from I/O port
+ * @param port ID of port
+ * @return recieved dword (uint32_t) 
+ */
+uint32_t inl(uint16_t port);
 
 /**
  * serial_configure_baud_rate:
