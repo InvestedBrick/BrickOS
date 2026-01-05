@@ -85,7 +85,7 @@ void check_bus(uint8_t bus){
     }
 }
 
-void check_all_busses(){
+void pci_check_all_busses(){
     uint8_t header_type = get_header_type(0,0,0);
     uint8_t bus; 
     uint8_t func;
