@@ -6,6 +6,7 @@
 #include "screen/screen.h"
 #include "memory/kmalloc.h"
 #include "tables/syscalls.h"
+#include "drivers/PCI/pci.h"
 #include "drivers/timer/pit.h"
 #include "tables/interrupts.h"
 #include "drivers/ATA_PIO/ata.h"
@@ -198,6 +199,9 @@ void kmain()
 
     init_kmalloc(MEMORY_PAGE_SIZE);
     log("Initialized kmalloc");
+
+    pci_check_all_busses();
+    log("Scanned PCI busses");
 
     save_module_binaries(module_request.response);
     log("Saved module binaries");
