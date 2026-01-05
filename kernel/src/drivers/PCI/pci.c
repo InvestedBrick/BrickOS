@@ -1,8 +1,10 @@
 #include "pci.h"
 #include "../../io/io.h"
+#include "../../io/log.h"
 
 static pci_device_t pci_devices[PCI_MAX_DEVICES];
 static uint32_t pci_dev_count = 0;
+void check_device(uint8_t bus, uint8_t dev);
 
 uint16_t pci_config_read_word(uint8_t bus, uint8_t dev, uint8_t func, uint8_t offset){
     uint32_t lbus  = (uint32_t)bus;
@@ -49,8 +51,15 @@ void add_pci_device(uint8_t bus, uint8_t dev, uint8_t func){
     device->class_code = get_class_code(bus,dev,func);
     device->subclass = get_subclass(bus,dev,func);
     device->vendor_id = get_vendor_id(bus,dev,func);
+    logf("Found PCI Device - Bus: %x, Dev: %x, Func: %x, Vendor ID: %x, Device ID: %x, Class: %x, Subclass: %x",
+        bus,dev,func,device->vendor_id,device->device_id,device->class_code,device->subclass);
 }
 
+void check_bus(uint8_t bus){
+    for (uint8_t dev = 0; dev < 32; dev++){
+        check_device(bus,dev);
+    }
+}
 
 void check_function(uint8_t bus, uint8_t dev, uint8_t func){
     uint8_t class = get_class_code(bus,dev,func);
@@ -76,12 +85,6 @@ void check_device(uint8_t bus, uint8_t dev){
                 add_pci_device(bus,dev,function);
             }
         }
-    }
-}
-
-void check_bus(uint8_t bus){
-    for (uint8_t dev = 0; dev < 32; dev++){
-        check_device(bus,dev);
     }
 }
 
