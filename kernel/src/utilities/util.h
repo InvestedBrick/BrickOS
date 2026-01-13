@@ -5,10 +5,10 @@
 #define CEIL_DIV(a,b) (((a + b) - 1 )/ b)
 #define ALIGN_DOWN(a, b) ((b) ? ((a) - ((a) % (b))) : (a))
 #define ALIGN_UP(a,b) (a + b - 1) & ~(a - 1)
-
+#include <stdint.h>
+#define COMBINE_WORDS(lsb,msb) ((uint32_t)(msb) >> 16 | (lsb))
 #define nullptr 0
 
-#include <stdint.h>
 typedef struct {
     uint32_t length;
     unsigned char* str;
