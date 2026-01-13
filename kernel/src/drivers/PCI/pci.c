@@ -3,7 +3,7 @@
 #include "../../io/log.h"
 #include "../../utilities/util.h"
 #include "../../memory/kmalloc.h"
-pci_device_t* head = nullptr;
+pci_device_t* pci_head = nullptr;
 void check_device(uint8_t bus, uint8_t dev);
 
 uint16_t pci_config_read_word(uint8_t bus, uint8_t dev, uint8_t func, uint8_t offset){
@@ -64,9 +64,9 @@ void add_pci_device(uint8_t bus, uint8_t dev, uint8_t func){
     logf("Found PCI Device - Bus: %x, Dev: %x, Func: %x, Vendor ID: %x, Device ID: %x, Class: %x, Subclass: %x",
         bus,dev,func,device->vendor_id,device->device_id,device->class_code,device->subclass);
 
-    if (!head) head = device;
+    if (!pci_head) pci_head = device;
     else {
-        pci_device_t* it = head;
+        pci_device_t* it = pci_head;
         while(it->next) it = it->next;
         it->next = device;
     }
