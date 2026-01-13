@@ -2,15 +2,16 @@
 #define INCLUDE_PCI_H
 
 #define PCI_CONFIG_ADDRESS 0xcf8
-#define PCI_DATA 0xcfc
+#define PCI_CONFIG_DATA 0xcfc 
 #define PCI_DEV_DOESNT_EXIST_VENDOR_ID 0xffff
 #define PCI_HEADER_FLAG_MF (1 << 0x7)
 #define PCI_CLASS_BRIDGE 0x6
 #define PCI_SUBCLASS_PCI_TO_PCI_BRIDGE 0x4 
-#define PCI_MAX_DEVICES 256
 #include <stdint.h>
 
 typedef struct pci_device {
+    struct pci_device* next;
+
     uint8_t bus;
     uint8_t dev;
     uint8_t func;
