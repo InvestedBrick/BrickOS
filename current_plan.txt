@@ -7,7 +7,7 @@ plan:
     [X] window manager (needs to be optimized)
     [X] 64 bit kernel && switch to limine
     [X] implement spinlocks/mutexes/semaphores
-    [ ] PCI stuff
+    [X] PCI stuff
     [ ] ACPI table parsing with uACPI
     [ ] implement IOAPIC
     [ ] fix mouse driver
