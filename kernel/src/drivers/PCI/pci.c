@@ -1,9 +1,9 @@
 #include "pci.h"
 #include "../../io/io.h"
 #include "../../io/log.h"
-
-static pci_device_t pci_devices[PCI_MAX_DEVICES];
-static uint32_t pci_dev_count = 0;
+#include "../../utilities/util.h"
+#include "../../memory/kmalloc.h"
+pci_device_t* head = nullptr;
 void check_device(uint8_t bus, uint8_t dev);
 
 uint16_t pci_config_read_word(uint8_t bus, uint8_t dev, uint8_t func, uint8_t offset){
@@ -16,10 +16,19 @@ uint16_t pci_config_read_word(uint8_t bus, uint8_t dev, uint8_t func, uint8_t of
                                       (uint32_t)(1 << 31) );
     outl(PCI_CONFIG_ADDRESS,config_addr);
 
-    uint16_t data = (uint16_t)((inl(PCI_DATA) >> ((offset & 0x2) ? 16 : 0)) & 0xffff);
+    uint16_t data = (uint16_t)((inl(PCI_CONFIG_DATA) >> ((offset & 0x2) ? 16 : 0)) & 0xffff);
 
     return data;
 }
+
+void pci_config_write_dword(uint8_t bus, uint8_t dev, uint8_t func, uint8_t offset,uint32_t config){
+    uint32_t config_addr = (uint32_t)((bus << 16) | (dev << 11)  |
+                                      (func << 8) | (offset & 0xfc) |
+                                      (uint32_t)(1 << 31) );
+    outl(PCI_CONFIG_ADDRESS,config_addr);
+    outl(PCI_CONFIG_DATA,config);
+}
+
 
 uint16_t get_vendor_id(uint8_t bus, uint8_t dev, uint8_t func){
     return pci_config_read_word(bus,dev,func,0x0);
@@ -41,8 +50,9 @@ uint8_t get_secondary_bus(uint8_t bus, uint8_t dev, uint8_t func){
 }
 
 void add_pci_device(uint8_t bus, uint8_t dev, uint8_t func){
-    if (pci_dev_count == PCI_MAX_DEVICES) return;
-    pci_device_t* device = &pci_devices[pci_dev_count++];
+    
+    pci_device_t* device = kmalloc(sizeof(pci_device_t));
+    device->next = nullptr;
     device->bus = bus;
     device->dev = dev;
     device->func = func;
@@ -53,6 +63,13 @@ void add_pci_device(uint8_t bus, uint8_t dev, uint8_t func){
     device->vendor_id = get_vendor_id(bus,dev,func);
     logf("Found PCI Device - Bus: %x, Dev: %x, Func: %x, Vendor ID: %x, Device ID: %x, Class: %x, Subclass: %x",
         bus,dev,func,device->vendor_id,device->device_id,device->class_code,device->subclass);
+
+    if (!head) head = device;
+    else {
+        pci_device_t* it = head;
+        while(it->next) it = it->next;
+        it->next = device;
+    }
 }
 
 void check_bus(uint8_t bus){
