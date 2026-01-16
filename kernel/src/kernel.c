@@ -25,19 +25,6 @@
 #include <stdbool.h>
 #include "../limine-protocol/include/limine.h"
 
-typedef struct XSDP {
- char Signature[8];
- uint8_t Checksum;
- char OEMID[6];
- uint8_t Revision;
- uint32_t RsdtAddress;      // deprecated since version 2.0
-
- uint32_t Length;
- uint64_t XsdtAddress;
- uint8_t ExtendedChecksum;
- uint8_t reserved[3];
-}__attribute__ ((packed)) XSDP_t ;
-
 limine_data_t limine_data;
 
 __attribute__((used, section(".limine_requests")))
@@ -149,9 +136,7 @@ void kmain()
     if (!rsdp_request.response) warn("No XSDP table given");
     else {
         uint64_t rsdp = (uint64_t)rsdp_request.response->address;
-        logf("RSDP: %x",rsdp);
-        XSDP_t* xsdp = (XSDP_t*)rsdp;
-        logf("Physical XSDT addr: %x",xsdp->XsdtAddress);
+        limine_data.rsdp = rsdp;
     }
     if (!hhdm_request.response) panic("No HHDM request response");
 
