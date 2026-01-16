@@ -8,6 +8,7 @@ kernel/cc-runtime
 kernel/freestnd-c-hdrs
 kernel/limine-protocol
 kernel/.deps-obtained
+kernel/acpi
 linecounter.py
 limine.conf
 hdd.img
