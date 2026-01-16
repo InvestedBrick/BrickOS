@@ -1,6 +1,7 @@
 
 ASM_SOURCES = $(shell find kernel/src/ -type f -name '*.asm')
 C_SOURCES   = $(shell find kernel/src/ -type f -name '*.c')
+C_SOURCES  += $(shell find kernel/acpi/ -type f -name '*.c')
 
 LD_SCRIPT = link.ld
 
@@ -23,6 +24,7 @@ CFLAGS = -target x86_64-elf -ffreestanding -m64 -nostdlib \
          -fno-builtin -fno-stack-protector -fno-exceptions -g \
          -Wno-pointer-sign -fno-pic -fno-pie -mcmodel=kernel -O1
           # idgaf about casting const char* to char*
+CFLAGS += -Ikernel/acpi/uacpi/include -DUACPI_ARCH_X86_64
 LDFLAGS = \
     -nostdlib \
 	-static \
