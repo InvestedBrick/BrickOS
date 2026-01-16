@@ -58,7 +58,7 @@ limine/limine:
 		LIBS="$(HOST_LIBS)"
 
 kernel/.deps-obtained:
-	./kernel/get-deps
+	bash kernel/get-deps.sh
 
 $(ISO): always_run kernel/.deps-obtained $(TARGET) 
 	rm -rf iso_root
