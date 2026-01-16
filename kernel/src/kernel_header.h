@@ -12,6 +12,7 @@ typedef struct  {
 
 typedef struct {
     struct limine_framebuffer* framebuffer;
+    struct limine_module_response* modules;
     uint64_t hhdm;
     uint64_t rsdp;
     limine_mmap_data_t mmap_data; 
@@ -23,5 +24,6 @@ extern limine_data_t limine_data;
 extern struct user_process global_kernel_process;
 extern uint8_t dispatched_user_mode;
 void shutdown();
+void parse_bootloader_data();
 
 #endif
