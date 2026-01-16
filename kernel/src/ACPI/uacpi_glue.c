@@ -60,9 +60,14 @@ void uacpi_kernel_log(uacpi_log_level lvl , const uacpi_char* str){
     break;
   default:
     lvl_str = "invalid";
+    break;
   }
 
-  logf("[uacpi::%s] %s", lvl_str, str);
+  // all this to just not have to print another newline
+  serial_write("[uacpi::",SERIAL_COM1_BASE);
+  serial_write(lvl_str,SERIAL_COM1_BASE);
+  serial_write("] ",SERIAL_COM1_BASE);
+  serial_write(str,SERIAL_COM1_BASE);
     
 }
 
@@ -116,23 +121,24 @@ uacpi_status uacpi_kernel_pci_read32( uacpi_handle device, uacpi_size offset, ua
 
 uacpi_status uacpi_kernel_pci_write(uacpi_handle handle, uacpi_size offset, uacpi_u8 width, uacpi_u64 value){
     uacpi_pci_address* addr = (uacpi_pci_address*)handle;
+    uint32_t dword,shift;
     switch (width)
     {
-    case sizeof(uint8_t):
-        uint32_t dword = pci_config_read_word(addr->bus,addr->device,addr->function,offset & ~0x3);
-        uint32_t shift = (offset & 0x3) * 8;
+    case sizeof(uint8_t):;
+        dword = pci_config_read_word(addr->bus,addr->device,addr->function,offset & ~0x3);
+         shift = (offset & 0x3) * 8;
         dword &= ~(0xff << shift);
         dword |= (value & 0xff) << shift; // only overwrite the byte we want to change
         pci_config_write_dword(addr->bus, addr->device,addr->function,offset & ~0x3,dword);
         break;
-    case sizeof(uint16_t):
-        uint32_t dword = pci_config_read_word(addr->bus,addr->device,addr->function,offset & ~0x3);
-        uint32_t shift = (offset & 0x2) * 8;
+    case sizeof(uint16_t):;
+        dword = pci_config_read_word(addr->bus,addr->device,addr->function,offset & ~0x3);
+        shift = (offset & 0x2) * 8;
         dword &= ~(0xffff << shift);
         dword |= (value & 0xffff) << shift;
         pci_config_write_dword(addr->bus, addr->device,addr->function,offset & ~0x3,dword);
         break;
-    case sizeof(uint32_t):
+    case sizeof(uint32_t):;
         pci_config_write_dword(addr->bus, addr->device,addr->function,offset,value);
         break;
     default:
@@ -159,28 +165,34 @@ uacpi_status uacpi_kernel_io_map( uacpi_io_addr base, uacpi_size len, uacpi_hand
 void uacpi_kernel_io_unmap(uacpi_handle handle){ (void)0; }
 
 uacpi_status uacpi_kernel_io_read8(uacpi_handle handle, uacpi_size offset, uacpi_u8 *out_value){
-    *out_value = inb((uint16_t)handle + offset);
+    uint16_t port = (uint16_t)((uintptr_t)handle + (uintptr_t)offset);
+    *out_value = inb(port);
     return UACPI_STATUS_OK;
 }
 uacpi_status uacpi_kernel_io_read16(uacpi_handle handle, uacpi_size offset, uacpi_u16 *out_value){
-    *out_value = inw((uint16_t)handle + offset);
+    uint16_t port = (uint16_t)((uintptr_t)handle + (uintptr_t)offset);
+    *out_value = inw(port);
     return UACPI_STATUS_OK;
 }
 uacpi_status uacpi_kernel_io_read32(uacpi_handle handle, uacpi_size offset, uacpi_u32 *out_value){
-    *out_value = inl((uint16_t)handle + offset);
+    uint16_t port = (uint16_t)((uintptr_t)handle + (uintptr_t)offset);
+    *out_value = inl(port);
     return UACPI_STATUS_OK;
 }
-
+// ...existing code...
 uacpi_status uacpi_kernel_io_write8(uacpi_handle handle, uacpi_size offset, uacpi_u8 in_value){
-    outb((uint16_t)handle + offset, in_value);
+    uint16_t port = (uint16_t)((uintptr_t)handle + (uintptr_t)offset);
+    outb(port, in_value);
     return UACPI_STATUS_OK;
 }
 uacpi_status uacpi_kernel_io_write16(uacpi_handle handle, uacpi_size offset, uacpi_u16 in_value){
-    outw((uint16_t)handle + offset, in_value);
+    uint16_t port = (uint16_t)((uintptr_t)handle + (uintptr_t)offset);
+    outw(port, in_value);
     return UACPI_STATUS_OK;
 }
 uacpi_status uacpi_kernel_io_write32(uacpi_handle handle, uacpi_size offset, uacpi_u32 in_value){
-    outl((uint16_t)handle + offset, in_value);
+    uint16_t port = (uint16_t)((uintptr_t)handle + (uintptr_t)offset);
+    outl(port, in_value);
     return UACPI_STATUS_OK;
 }
 
@@ -225,7 +237,7 @@ void uacpi_kernel_free_event(uacpi_handle handle){ kfree(handle); }
 
 uacpi_thread_id uacpi_kernel_get_thread_id(void){
     thread_t* curr_thread = get_current_thread();
-    return (uacpi_thread_id)curr_thread->tid;
+    return (uacpi_thread_id)((uintptr_t)curr_thread->tid);
 }
 
 uacpi_status uacpi_kernel_acquire_mutex(uacpi_handle handle, uacpi_u16 timeout){
@@ -244,7 +256,7 @@ void uacpi_kernel_release_mutex(uacpi_handle handle){
 uacpi_bool uacpi_kernel_wait_for_event(uacpi_handle handle, uacpi_u16 timeout){
     semaphore_t* sem = (semaphore_t*)handle;
     uint32_t adj_timeout = timeout;
-    if (timeout = 0xffff) adj_timeout = (uint32_t)-1;
+    if (timeout == 0xffff) adj_timeout = (uint32_t)-1;
     if (!semaphore_wait(sem,adj_timeout)) return UACPI_FALSE;
 
     return UACPI_TRUE;
@@ -280,18 +292,19 @@ uacpi_status uacpi_kernel_handle_firmware_request(uacpi_firmware_request* req){
  * 'out_irq_handle' is set to a kernel-implemented value that can be used to
  * refer to this handler from other API.
  */
-uacpi_status uacpi_kernel_install_interrupt_handler(
-    uacpi_u32 irq, uacpi_interrupt_handler, uacpi_handle ctx,
-    uacpi_handle *out_irq_handle
-);
+uacpi_status uacpi_kernel_install_interrupt_handler(uacpi_u32 irq, uacpi_interrupt_handler handler, uacpi_handle ctx,uacpi_handle *out_irq_handle){
+    panic("TODO: installing interrupt handlers for uacpi");
+    return UACPI_STATUS_OK;
+}
 
 /*
  * Uninstall an interrupt handler. 'irq_handle' is the value returned via
  * 'out_irq_handle' during installation.
  */
-uacpi_status uacpi_kernel_uninstall_interrupt_handler(
-    uacpi_interrupt_handler, uacpi_handle irq_handle
-);
+uacpi_status uacpi_kernel_uninstall_interrupt_handler(uacpi_interrupt_handler handler, uacpi_handle irq_handle){
+    panic("TODO: uninstalling interrupt handlers for uacpi");
+    return UACPI_STATUS_OK;
+}
 
 uacpi_handle uacpi_kernel_create_spinlock(void){
     Spinlock* lock = (Spinlock*)kmalloc(sizeof(Spinlock));
@@ -321,7 +334,7 @@ void uacpi_kernel_unlock_spinlock(uacpi_handle handle, uacpi_cpu_flags flags){
  * Schedules deferred work for execution.
  * Might be invoked from an interrupt context.
  */
-uacpi_status uacpi_kernel_schedule_work( uacpi_work_type, uacpi_work_handler, uacpi_handle ctx){
+uacpi_status uacpi_kernel_schedule_work( uacpi_work_type type, uacpi_work_handler handler, uacpi_handle ctx){
     panic("schedule work !TODO!");
     return UACPI_STATUS_OK;
 }
