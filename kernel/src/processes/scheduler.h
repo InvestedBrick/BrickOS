@@ -69,7 +69,7 @@ void remove_thread(thread_t* thread);
 /**
  * get_thread_by_tid:
  * Returns a thread with a given tid
- * @param tid The thread id of the process
+ * @param tid The thread id of the thread
  */
 thread_t* get_thread_by_tid(uint32_t tid);
 
@@ -84,7 +84,7 @@ void manage_sleeping_threads();
 /**
  * add_sleeping_thread:
  * Add a thread to the sleeping queue
- * @param th The process to send to sleep
+ * @param th The thread to send to sleep
  * @param sleep_ticks The number of ticks to make the thread sleep
  */
 void add_sleeping_thread(thread_t* thread,uint32_t sleep_ticks);
