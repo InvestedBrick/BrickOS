@@ -15,17 +15,17 @@ void spinlock_release(Spinlock* lock){
     atomic_flag_clear_explicit(lock,memory_order_release);
 }
 
-void mutex_init(Mutex_t* mutex){
+void mutex_init(mutex_t* mutex){
     spinlock_init(&mutex->lock);
     mutex->free = true;
 }
 
-bool mutex_wait(Mutex_t* mutex,uint32_t timeout){
+bool mutex_wait(mutex_t* mutex,uint32_t timeout){
     bool ret = false;
     uint64_t timer_start = ticks;
     while(true){
         if (timeout > 0 && ticks > (timer_start + timeout)) 
-            goto just_return;
+            goto mutex_just_return;
     
         spinlock_aquire(&mutex->lock);
         if (mutex->free){
@@ -34,30 +34,31 @@ bool mutex_wait(Mutex_t* mutex,uint32_t timeout){
             break;
         }
         spinlock_release(&mutex->lock);
+        if (timeout == 0) goto mutex_just_return; // try_lock failed
         invoke_scheduler();
     }
 
     spinlock_release(&mutex->lock);
-just_return:
+mutex_just_return:
     return ret;
 }
-void mutex_signal(Mutex_t* mutex){
+void mutex_signal(mutex_t* mutex){
     spinlock_aquire(&mutex->lock);
     mutex->free = true;
     spinlock_release(&mutex->lock);
 }
 
-void semaphore_init(Semaphore_t* sem, int32_t n){
+void semaphore_init(semaphore_t* sem, int32_t n){
     spinlock_init(&sem->lock);
     sem->cnt = n;
 }
 
-bool semaphore_wait(Semaphore_t* sem, uint32_t timeout){
+bool semaphore_wait(semaphore_t* sem, uint32_t timeout){
     bool ret = false;
     uint64_t timer_start = ticks;
     while(true){
         if (timeout > 0 && ticks > (timer_start + timeout)) 
-            goto just_return;
+            goto semaphore_just_return;
         spinlock_aquire(&sem->lock);
         if (sem->cnt > 0){
             sem->cnt--;
@@ -65,14 +66,14 @@ bool semaphore_wait(Semaphore_t* sem, uint32_t timeout){
             break;
         }
         spinlock_release(&sem->lock);
+        if (timeout == 0) goto semaphore_just_return; // try_lock failed
         invoke_scheduler();
     }
-release_lock:
     spinlock_release(&sem->lock);
-just_return:
+semaphore_just_return:
     return ret;
 }
-void semaphore_signal(Semaphore_t* sem){
+void semaphore_signal(semaphore_t* sem){
     spinlock_aquire(&sem->lock);
     sem->cnt++;
     spinlock_release(&sem->lock);

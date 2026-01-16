@@ -10,12 +10,12 @@ typedef atomic_flag Spinlock;
 typedef struct {
     Spinlock lock;
     int32_t cnt;
-} Semaphore_t;
+} semaphore_t;
 
 typedef struct {
     Spinlock lock;
     bool free;
-}Mutex_t;
+}mutex_t;
 
 /**
  * spinlock_aquire:
@@ -44,21 +44,21 @@ void spinlock_init(Spinlock* lock);
  * @param timeout The timeout in milliseconds
  * @return true if the mutex was acquired, false if timed out
  */
-bool mutex_wait(Mutex_t* mutex,uint32_t timeout);
+bool mutex_wait(mutex_t* mutex,uint32_t timeout);
 
 /**
  * mutex_signal:
  * Frees a mutex
  * @param mutex The mutex to signal
  */
-void mutex_signal(Mutex_t* mutex);
+void mutex_signal(mutex_t* mutex);
 
 /**
  * mutex_init:
  * Initializes a mutex
  * @param mutex The mutex to initialize
  */
-void mutex_init(Mutex_t* mutex);
+void mutex_init(mutex_t* mutex);
 
 
 /**
@@ -68,14 +68,14 @@ void mutex_init(Mutex_t* mutex);
  * @param timeout The timeout in milliseconds
  * @return true if the semaphore was acquired, false if timed out
  */
-bool semaphore_wait(Semaphore_t* sem, uint32_t timeout);
+bool semaphore_wait(semaphore_t* sem, uint32_t timeout);
 
 /**
  * semaphore_signal:
  * Signals a semaphore
  * @param sem The semaphore to signal
  */
-void semaphore_signal(Semaphore_t* sem);
+void semaphore_signal(semaphore_t* sem);
 
 /**
  * semaphore_init:
@@ -83,5 +83,5 @@ void semaphore_signal(Semaphore_t* sem);
  * @param sem The semaphore to initialize
  * @param n The initial count of the semaphore
  */
-void semaphore_init(Semaphore_t* sem, int32_t n);
+void semaphore_init(semaphore_t* sem, int32_t n);
 #endif
