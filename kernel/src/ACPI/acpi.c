@@ -2,9 +2,13 @@
 #include <uacpi/event.h>
 #include <uacpi/utilities.h>
 #include "../io/log.h"
+#include "../utilities/vector.h"
+
+extern vector_t shared_pages_vec; // dont't want to create a header just for this
 
 void init_acpi(){
-    log("here");
+    init_vector(&shared_pages_vec); // needed for uacpi memory mapping stuff
+    
     uacpi_status ret = uacpi_initialize(0);
     if (uacpi_unlikely_error(ret)){
         errorf("uacpi_initialize: %s",uacpi_status_to_string(ret));
