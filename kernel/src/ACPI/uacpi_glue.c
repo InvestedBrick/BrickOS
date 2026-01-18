@@ -10,6 +10,8 @@
 #include "../processes/scheduler.h"
 #include "../processes/spinlocks.h"
 
+vector_t shared_pages_vec;
+
 uacpi_status uacpi_kernel_get_rsdp(uacpi_phys_addr *out_rsdp_address){
     *out_rsdp_address = limine_data.rsdp;
     return UACPI_STATUS_OK;
@@ -22,7 +24,10 @@ void *uacpi_kernel_map(uacpi_phys_addr addr, uacpi_size len){
     uint64_t virt_addr = limine_data.hhdm + aligned_addr;
     
     for (uint32_t i = 0; i < n_pages; i++){
-        mem_map_page(virt_addr + i * MEMORY_PAGE_SIZE, aligned_addr + i * MEMORY_PAGE_SIZE, PAGE_FLAG_WRITE);
+        uint64_t virt_page_addr = virt_addr + i * MEMORY_PAGE_SIZE;
+        if (shared_address_add(&shared_pages_vec,(void*)virt_page_addr)){
+            mem_map_page(virt_page_addr, aligned_addr + i * MEMORY_PAGE_SIZE, PAGE_FLAG_WRITE);
+        }
     }
     
     return (void *)(virt_addr + (addr - aligned_addr));
@@ -35,7 +40,10 @@ void uacpi_kernel_unmap(void *addr, uacpi_size len){
     uint64_t n_pages = CEIL_DIV(real_len,MEMORY_PAGE_SIZE);
 
     for (uint32_t i = 0; i < n_pages; i++){
-        mem_unmap_page(virt_addr + i * MEMORY_PAGE_SIZE);
+        uint64_t virt_page_addr = virt_addr + i * MEMORY_PAGE_SIZE;
+        if (shared_address_remove(&shared_pages_vec,(void*)virt_page_addr)){
+            mem_unmap_page(virt_page_addr);
+        }
     }
 }
 
