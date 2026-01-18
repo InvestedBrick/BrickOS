@@ -1,4 +1,5 @@
 #include "util.h"
+#include "vector.h"
 #include "../memory/kmalloc.h"
 #include "../io/log.h"
 #include <stddef.h>
@@ -77,4 +78,42 @@ int memcmp(const void* ptr1, const void* ptr2, size_t num) {
         }
     }
     return 0;
+}
+
+shared_addr_t* shared_address_find(vector_t* vec, void* addr){
+    for (uint32_t i = 0; i < vec->size; i++){
+        shared_addr_t* shrd_addr = (shared_addr_t*)vec->data[i];
+        if (shrd_addr->addr == addr){
+            return shrd_addr;
+        }
+    }
+    return nullptr;
+}
+
+bool shared_address_add(vector_t* vec,void* addr){
+
+    shared_addr_t* shrd_addr = shared_address_find(vec,addr);
+    if (!shrd_addr){
+        shrd_addr = (shared_addr_t*)kmalloc(sizeof(shared_addr_t));
+        shrd_addr->addr = addr;
+        shrd_addr->cntr = 1;
+        vector_append(vec,(vector_data_t)shrd_addr);
+        return true;
+    }
+    shrd_addr->cntr++;
+    return false;
+}
+
+bool shared_address_remove(vector_t* vec, void* addr){
+    shared_addr_t* shrd_addr = shared_address_find(vec,addr);
+    if (!shrd_addr) return false;
+
+    shrd_addr->cntr--;
+    if (shrd_addr->cntr == 0){
+        // last address holder
+        vector_erase_item(vec,(vector_data_t)shrd_addr);
+        kfree(shrd_addr);
+        return true;
+    }
+    return false;
 }
