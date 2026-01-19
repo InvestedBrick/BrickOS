@@ -116,14 +116,6 @@ void init_filesystem();
 inode_t* get_inode_by_path(unsigned char* path);
 
 /**
- * change_active_dir: 
- * Changes the currently active directory
- * @param new_dir The new directory
- * @return The old active directory to save for restoring later
- * @warning This is only valid for kernel setup, to change the active directory of a thread use sys_chdir
- */
-inode_t* change_active_dir(inode_t* new_dir);
-/**
  * get_name_by_inode_id:
  *  
  * @param id The id of the inode
