@@ -10,6 +10,7 @@
 #include "IPC/pipes.h"
 #include "../processes/user_process.h"
 #include "../processes/scheduler.h"
+#include "../kernel_header.h"
 vector_t inodes;
 vector_t inode_name_pairs; // Note to self: do not free this with vector free, the names have to be freed too
 sectors_headerdata_t header_data; 
@@ -17,7 +18,6 @@ uint32_t active_partially_used_bitmaps;
 
 // this is only valid for kernel setup and shutdown.
 // when user processes are running, the active directories of the threads are correct
-inode_t* active_dir = 0;
 
 uint8_t first_time_fs_init = 0;
 
@@ -25,7 +25,6 @@ unsigned char* last_read_sector;
 uint32_t last_read_sector_idx;
 
 inode_t* get_active_dir(){
-    if (!dispatched_user_mode) return active_dir;
 
     thread_t* curr_thread = get_current_thread();
     return curr_thread->active_dir;
@@ -50,13 +49,6 @@ inode_t* get_inode_by_path(unsigned char* path){
     kfree(first_name);
 
     return file;
-}
-
-
-inode_t* change_active_dir(inode_t* new_dir){
-    inode_t* dir_save = active_dir;
-    active_dir = new_dir;
-    return dir_save;
 }
 
 inode_name_pair_t* get_name_by_inode_id(uint32_t id){
@@ -537,15 +529,16 @@ void init_filesystem(){
         read_bitmaps_from_disk();
     }
     
-    active_dir = root_node;
-    
     inode_name_pair_t* name_pair = (inode_name_pair_t*)kmalloc(sizeof(inode_name_pair_t));
     name_pair->length = 4;
     name_pair->id = FS_ROOT_DIR_ID;
     name_pair->parent_id = FS_ROOT_DIR_ID;
     name_pair->name = kmalloc(sizeof(unsigned char) * 5);
     memcpy(name_pair->name,"root",sizeof(unsigned char) * 5);
+
     vector_append(&inode_name_pairs,(vector_data_t)name_pair);
+
+    global_kernel_process.main_thread->active_dir = root_node;
     
     vector_append(&inodes,(vector_data_t)root_node);
     
@@ -937,8 +930,9 @@ void write_to_disk(){
 }
 
 void cleanup_tmp(){
-    active_dir = get_inode_by_full_file_path("tmp/");
-
+    
+    global_kernel_process.main_thread->active_dir = get_inode_by_full_file_path("tmp/");
+    inode_t* active_dir = global_kernel_process.main_thread->active_dir;
     string_array_t* names = get_all_names_in_dir(active_dir);
 
     for (uint32_t i = 0; i < names->n_strings;i++){
