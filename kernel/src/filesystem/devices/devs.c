@@ -61,7 +61,7 @@ void create_device(unsigned char* name,vfs_handles_t* handles, void* gen_data,vo
     inode_t* dev_dir = get_inode_by_full_file_path("dev/");
     if (!dev_dir) {error("/dev was not initialized"); return;}
 
-    inode_t* old_dir = change_active_dir(dev_dir);
+    sys_chdir("dev");
 
     if (!dir_contains_name(get_active_dir(),name)){
         if (create_file(get_active_dir(),name,strlen(name),FS_TYPE_DEV,FS_FILE_PERM_NONE,priv_lvl) < 0)
@@ -83,7 +83,8 @@ void create_device(unsigned char* name,vfs_handles_t* handles, void* gen_data,vo
     }
     
     vector_append(&dev_vec,(vector_data_t)dev);
-    change_active_dir(old_dir);
+
+    sys_chdir("root");
 }
 
 int dev_null_read(generic_file_t* file,unsigned char* buffer,uint32_t size){
