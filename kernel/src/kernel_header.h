@@ -22,7 +22,6 @@ typedef struct {
 
 extern limine_data_t limine_data;
 extern struct user_process global_kernel_process;
-extern uint8_t dispatched_user_mode;
 void shutdown();
 void parse_bootloader_data();
 
