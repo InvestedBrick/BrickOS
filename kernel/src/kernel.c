@@ -24,16 +24,18 @@
 #include <stdint.h>
 
 struct user_process global_kernel_process;
-uint8_t dispatched_user_mode = 0;
 extern uint8_t check_SSE();
 extern void enable_SSE();
 
-void setup_kernel_fds(){
+void finish_up_kernel_proc(){
     global_kernel_process.fd_table[FD_STDIN] = fs_open("dev/kb0",FILE_FLAG_NONE);
     global_kernel_process.fd_table[FD_STDOUT] = fs_open("dev/null",FILE_FLAG_NONE);
+
 }
 
 void create_kernel_process(uint64_t stack_top){
+    init_user_process_vector();
+
     memset(global_kernel_process.fd_table,0,MAX_FDS);
 
     global_kernel_process.kernel_stack_top = stack_top;
@@ -46,6 +48,11 @@ void create_kernel_process(uint64_t stack_top){
     memcpy(global_kernel_process.process_name,"root",sizeof("root"));
     global_kernel_process.running = 1;
     
+    global_kernel_process.main_thread = (thread_t*)kmalloc(sizeof(thread_t));
+    memset(global_kernel_process.main_thread,0x0,sizeof(thread_t));
+    global_kernel_process.main_thread->tid = get_pid();
+    global_kernel_process.main_thread->owner_proc = &global_kernel_process;
+
     vector_append(&user_process_vector,(vector_data_t)&global_kernel_process);
 
 }
@@ -53,7 +60,6 @@ void create_kernel_process(uint64_t stack_top){
 void shutdown(){
 
     restore_kernel_pml4_table();
-    dispatched_user_mode = 0;
 
     cleanup_tmp();
     log("Cleaned up /tmp");
@@ -78,6 +84,7 @@ void kmain()
     log("Set up serial port");
     
     parse_bootloader_data();
+
     // Set up global descriptor table
     init_gdt();
     log("Initialized the GDT");
@@ -102,8 +109,14 @@ void kmain()
     init_kmalloc(MEMORY_PAGE_SIZE);
     log("Initialized kmalloc");
 
-    init_acpi();
-    log("Initialized ACPI");
+    create_kernel_process(stack_top);
+    log("Set up kernel process");
+
+    init_scheduler();
+    log("Initialized the scheduler");
+
+    //init_acpi();
+    //log("Initialized ACPI");
 
     pci_check_all_busses();
     log("Scanned PCI busses");
@@ -113,9 +126,6 @@ void kmain()
     
     init_shm_obj_vector();
     log("Initialized shared memory objects vector");
-
-    init_user_process_vector();
-    log("Initialized user process vector");
 
     init_disk_driver();
     log("Initialized disk driver");
@@ -133,20 +143,14 @@ void kmain()
         log("Initialized /modules, /home, /dev and /tmp directories");
     }
 
-    create_kernel_process(stack_top);
-    log("Set up kernel process");
-
     initialize_devices(); // needs the global kernel process
     log("Initialized devices");
 
-    setup_kernel_fds(); // needs devices
+    finish_up_kernel_proc(); // needs devices
 
     // save the modules binaries to "modules/"
     write_module_binaries_to_file();
     log("Wrote module binaries to files in the modules directory");
-
-    init_scheduler();
-    log("Initialized the scheduler");
     
     // Everything is now set up
     run("modules/terminal.bin",nullptr,nullptr,PRIV_STD);
@@ -158,7 +162,6 @@ void kmain()
     setup_timer_switch();
     // need to manually enable since run just restores whatever was before that
     log("Shell setup complete");
-    dispatched_user_mode = 1;
     enable_interrupts();
     
     panic("Not set up beyond here");
