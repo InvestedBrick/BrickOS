@@ -45,7 +45,7 @@ void write_module_binaries_to_file(){
         if (!module_dir) 
             {error("Modules directory was not initialized"); return; }
         
-        inode_t* dir_save = change_active_dir(module_dir);
+        sys_chdir("modules");
         
         unsigned char* name = (unsigned char*)module_binary_structs[i].cmdline;
         uint32_t len = strlen(name);
@@ -71,8 +71,7 @@ void write_module_binaries_to_file(){
 
         change_file_permissions(name, FS_FILE_PERM_EXECUTABLE | FS_FILE_PERM_READABLE);
 
-        change_active_dir(dir_save);
-
+        sys_chdir("root");
         kfree((void*) name);
     }
 
