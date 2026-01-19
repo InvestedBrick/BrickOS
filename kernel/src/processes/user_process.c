@@ -32,7 +32,6 @@ user_process_t* get_user_process_by_pid(uint32_t pid){
 }
 
 user_process_t* get_current_user_process(){
-    if (!dispatched_user_mode) return &global_kernel_process; // useful for when I want to use syscalls internally
 
     if (overwrite_proc) return overwrite_proc;
 
