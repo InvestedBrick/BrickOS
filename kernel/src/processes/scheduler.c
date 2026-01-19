@@ -14,13 +14,11 @@
 
 thread_t* t_queue;
 thread_t* current_thread;
-bool sched_init = false;
 uint8_t first_switch = 1;
 vector_t sleeping_threads;
 extern uint32_t stack_top;
 
 void invoke_scheduler(){
-    if (!sched_init) return;
     if (!get_interrupt_status()) return;
 
     volatile uint8_t _drop = *(uint8_t *)(MAGIC_SCHED_FAULT_ADDR);
@@ -66,21 +64,8 @@ thread_t* get_current_thread(){
 
 void init_scheduler(){
     init_vector(&sleeping_threads);
-
-    t_queue = (thread_t*)kmalloc(sizeof(thread_t));
-    t_queue->next = 0;
-    t_queue->active_dir = get_inode_by_id(FS_ROOT_DIR_ID);
+    t_queue = global_kernel_process.main_thread;
     current_thread = t_queue;
-
-    run("modules/loop.bin",nullptr,nullptr,PRIV_STD);
-
-    // since the endless proc got attached to t_queue->next, we need to re-arrange this
-    thread_t* old_t_queue = t_queue;
-    t_queue = t_queue->next;
-    kfree(old_t_queue);
-    current_thread = t_queue;
-    sched_init = true;
-    log("Set up endless process");
 }
 
 thread_t* get_thread_by_tid(uint32_t tid){
@@ -138,17 +123,15 @@ thread_t* find_schedule_candidate(){
         else candidate = t_queue;
         if (dead_thread) remove_thread(dead_thread);
     }
-    while(candidate->exec_state != EXEC_STATE_RUNNING && candidate->exec_state != EXEC_STATE_FINALIZED);
+    while(candidate->exec_state != EXEC_STATE_RUNNING && candidate->exec_state != EXEC_STATE_FINALIZED && candidate == t_queue);
 
     return candidate;
 }
 
 void switch_task(interrupt_stack_frame_t* regs){
     // only switch when the scheduler was set up 
-    if (!sched_init) return;
     if (!t_queue->next){
-        // the loop process is the only one left
-        shutdown();
+        return;
     }
 
     thread_t* old_thread = current_thread;
