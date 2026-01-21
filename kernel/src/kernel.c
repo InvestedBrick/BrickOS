@@ -117,8 +117,8 @@ void kmain()
     init_scheduler();
     log("Initialized the scheduler");
 
-    //init_acpi();
-    //log("Initialized ACPI");
+    init_acpi();
+    log("Initialized ACPI");
 
     pci_check_all_busses();
     log("Scanned PCI busses");
