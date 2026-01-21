@@ -292,25 +292,17 @@ uacpi_status uacpi_kernel_handle_firmware_request(uacpi_firmware_request* req){
     return UACPI_STATUS_OK;
 }
 
-//TODO:
-/*
- * Install an interrupt handler at 'irq', 'ctx' is passed to the provided
- * handler for every invocation.
- *
- * 'out_irq_handle' is set to a kernel-implemented value that can be used to
- * refer to this handler from other API.
- */
-uacpi_status uacpi_kernel_install_interrupt_handler(uacpi_u32 irq, uacpi_interrupt_handler handler, uacpi_handle ctx,uacpi_handle *out_irq_handle){
-    panic("TODO: installing interrupt handlers for uacpi");
+uacpi_status uacpi_kernel_install_interrupt_handler(uacpi_u32 irq, uacpi_interrupt_handler handler, uacpi_handle ctx,uacpi_handle* out_irq_handle){
+
+    interrupt_handler_t* ret_handler = register_irq(irq,(interrupt_function_ptr)handler);
+    ret_handler->special_arg = ctx;
+    *out_irq_handle = (uacpi_handle*)ret_handler;
     return UACPI_STATUS_OK;
 }
 
-/*
- * Uninstall an interrupt handler. 'irq_handle' is the value returned via
- * 'out_irq_handle' during installation.
- */
 uacpi_status uacpi_kernel_uninstall_interrupt_handler(uacpi_interrupt_handler handler, uacpi_handle irq_handle){
-    panic("TODO: uninstalling interrupt handlers for uacpi");
+    interrupt_handler_t* the_handler = (interrupt_handler_t*)irq_handle;
+    unregister_irq(the_handler->int_num);
     return UACPI_STATUS_OK;
 }
 
