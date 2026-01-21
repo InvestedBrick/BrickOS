@@ -69,6 +69,15 @@ typedef struct {
     uint64_t interrupt_number,error_code,rip,cs,rflags;
 }__attribute__((packed)) interrupt_stack_frame_t;
 
+typedef void (*interrupt_function_ptr)(interrupt_stack_frame_t*); 
+
+typedef struct interrupt_handler{
+    uint32_t int_num;
+    interrupt_function_ptr handler; 
+    void* special_arg;
+    struct interrupt_handler* next;
+}interrupt_handler_t; 
+
 extern uint64_t ticks;
 extern uint64_t current_timestamp;
 /**
@@ -131,4 +140,10 @@ void set_interrupt_status(uint8_t int_enable);
  */
 void setup_timer_switch();
 
+/**
+ * register_basic_interrupts:
+ * Registers the IRQs for timer, mouse, keyboard, page faults and software interrupts
+ * @note Call after kmalloc has been initialized
+ */
+void register_basic_interrupts();
 #endif
