@@ -109,6 +109,8 @@ void kmain()
     init_kmalloc(MEMORY_PAGE_SIZE);
     log("Initialized kmalloc");
 
+    register_basic_interrupts();
+
     create_kernel_process(stack_top);
     log("Set up kernel process");
 
