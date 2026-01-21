@@ -10,6 +10,10 @@
 #include "../filesystem/file_operations.h"
 #include "../filesystem/filesystem.h"
 #include "../memory/kmalloc.h"
+
+void page_fault_handler(user_process_t* p,uint64_t fault_addr,interrupt_stack_frame_t* stack_frame);
+
+interrupt_handler_t* int_head;
 static idt_entry_t idt_entries[IDT_MAX_ENTRIES] __attribute__((aligned(0x10)));
 static int enabled_idt[IDT_MAX_ENTRIES] = {0};
 
@@ -47,6 +51,62 @@ void set_interrupt_status(uint8_t int_enable){
         disable_interrupts();
     }
 }
+
+interrupt_handler_t* register_irq(uint32_t int_num, interrupt_function_ptr int_handler){
+    interrupt_handler_t* head = int_head;
+    interrupt_handler_t* handler = (interrupt_handler_t*)kmalloc(sizeof(interrupt_handler_t));
+    
+    handler->next = nullptr;
+    handler->int_num = int_num;
+    handler->handler = int_handler;
+    handler->special_arg = nullptr;
+
+    if (!head) int_head = handler;
+    else{
+        while(head->next) head = head->next;
+        head->next = handler;
+    }
+
+    return handler;
+
+}
+
+void unregister_irq(uint32_t int_num){
+    if (!int_head) return;
+
+    interrupt_handler_t* head = int_head;
+    while(head->next && head->next->int_num != int_num) head = head->next;
+
+    if (!head->next) return; // irq does not exist
+
+    interrupt_handler_t* to_delete = head->next;
+    head->next = head->next->next;
+    kfree(to_delete);
+}
+
+void timer_stub(interrupt_stack_frame_t* stack_frame){
+    ticks++;
+    if (ticks % DESIRED_STANDARD_FREQ == 0){
+        current_timestamp++; // tick once a second here
+    }
+    manage_sleeping_threads();
+    if (ticks % TASK_SWITCH_TICKS == 0 || force_switch) {
+        if (force_switch) force_switch = 0;
+        switch_task(stack_frame);
+    }
+}
+
+void page_fault_stub(interrupt_stack_frame_t* stack_frame){
+    uint64_t cr2;
+    asm volatile ("mov %%cr2, %0" : "=r"(cr2));
+    thread_t* curr_thread = get_current_thread();
+    if (cr2 == MAGIC_SCHED_FAULT_ADDR && curr_thread->expect_sched_fault){
+        curr_thread->expect_sched_fault = false;
+        switch_task(stack_frame); // does not return
+    }
+    page_fault_handler(get_current_user_process(),cr2,stack_frame);
+}
+
 void set_idt_entry(uint8_t num,uint64_t offset,uint8_t attributes){
     idt_entries[num].offset_low = (offset & 0xffff);
     idt_entries[num].segment_selector = 0x08; // Kernel code segment from the gdt
@@ -57,74 +117,77 @@ void set_idt_entry(uint8_t num,uint64_t offset,uint8_t attributes){
     idt_entries[num].offset_high = (offset >> 32) & 0xffffffff;
 }
 
-void init_idt(){
-    idt.base = (uint64_t)&idt_entries[0];
-    idt.limit = sizeof(idt_entry_t) * IDT_MAX_ENTRIES - 1;
-    for(uint8_t v = 0; v < 49;v++){
-        if(v == INT_SOFTWARE){
-            set_idt_entry(v,(uint64_t)idt_code_table[v],STANDARD_USER_ATTRIBUTES); // user software interrupt call (syscall)
-        }else{
-            set_idt_entry(v,(uint64_t)idt_code_table[v],STANDARD_KERNEL_ATTRIBUTES);
-        }
-        enabled_idt[v] = 1;
-    }
-    load_idt(&idt);
 
-    remap_PIC(PIC1_START_INTERRUPT,PIC2_START_INTERRUPT); // [32; 39] and [40;47]
-
-}
-
-uint64_t handle_software_interrupt(interrupt_stack_frame_t* stack_frame){
+void handle_software_interrupt(interrupt_stack_frame_t* stack_frame){
+    uint64_t rax = 0;
     switch (stack_frame->rax)
     {
     case SYS_DEBUG:
-        {
-            //temporary
-            log((unsigned char*)stack_frame->rbx);
-            return 0;
-        }
+        //temporary
+        log((unsigned char*)stack_frame->rbx);
+        break;
     case SYS_EXIT: 
-        return sys_exit(get_current_user_process(),stack_frame);
+        rax =  sys_exit(get_current_user_process(),stack_frame);
+        break;
     case SYS_OPEN:
-        return sys_open(get_current_user_process(),(unsigned char*)stack_frame->rbx,(uint8_t)stack_frame->rcx);
+        rax =  sys_open(get_current_user_process(),(unsigned char*)stack_frame->rbx,(uint8_t)stack_frame->rcx);
+        break;
     case SYS_CLOSE:
-        return sys_close(get_current_user_process(),stack_frame->rbx);
+        rax =  sys_close(get_current_user_process(),stack_frame->rbx);
+        break;
     case SYS_READ:
-        return sys_read(get_current_user_process(),stack_frame->rbx,(unsigned char*)stack_frame->rcx,stack_frame->rdx);
+        rax =  sys_read(get_current_user_process(),stack_frame->rbx,(unsigned char*)stack_frame->rcx,stack_frame->rdx);
+        break;
     case SYS_WRITE:
-        return sys_write(get_current_user_process(),stack_frame->rbx,(unsigned char*)stack_frame->rcx,stack_frame->rdx);
+        rax =  sys_write(get_current_user_process(),stack_frame->rbx,(unsigned char*)stack_frame->rcx,stack_frame->rdx);
+        break;
     case SYS_SEEK:
-        return sys_seek(get_current_user_process(),stack_frame->rbx,stack_frame->rcx);
+        rax =  sys_seek(get_current_user_process(),stack_frame->rbx,stack_frame->rcx);
+        break;
     case SYS_ALLOC_PAGE:
-        return sys_mmap(get_current_user_process(),0,stack_frame->rbx,stack_frame->rcx,stack_frame->rdx,stack_frame->rdi,stack_frame->rsi);
+        rax =  sys_mmap(get_current_user_process(),0,stack_frame->rbx,stack_frame->rcx,stack_frame->rdx,stack_frame->rdi,stack_frame->rsi);
+        break;
     case SYS_GETCWD:
-        return sys_getcwd((unsigned char*)stack_frame->rbx, stack_frame->rcx);
+        rax =  sys_getcwd((unsigned char*)stack_frame->rbx, stack_frame->rcx);
+        break;
     case SYS_GETDENTS:
-        return sys_getdents(get_current_user_process(),stack_frame->rbx,(dirent_t*)stack_frame->rcx,stack_frame->rdx);
+        rax =  sys_getdents(get_current_user_process(),stack_frame->rbx,(dirent_t*)stack_frame->rcx,stack_frame->rdx);
+        break;
     case SYS_CHDIR:
-        return sys_chdir((unsigned char*)stack_frame->rbx);
+        rax =  sys_chdir((unsigned char*)stack_frame->rbx);
+        break;
     case SYS_RMFILE:
-        return sys_rmfile((unsigned char*)stack_frame->rbx);
+        rax =  sys_rmfile((unsigned char*)stack_frame->rbx);
+        break;
     case SYS_MKNOD:
-        return sys_mknod((unsigned char*)stack_frame->rbx,(mknod_params_t*)stack_frame->rcx);
+        rax =  sys_mknod((unsigned char*)stack_frame->rbx,(mknod_params_t*)stack_frame->rcx);
+        break;
     case SYS_IOCTL:
-        return sys_ioctl(get_current_user_process(),stack_frame->rbx,stack_frame->rcx,(void*)stack_frame->rdx);
+        rax =  sys_ioctl(get_current_user_process(),stack_frame->rbx,stack_frame->rcx,(void*)stack_frame->rdx);
+        break;
     case SYS_MSSLEEP:
-        return sys_mssleep(stack_frame,stack_frame->rbx);
+        rax =  sys_mssleep(stack_frame,stack_frame->rbx);
+        break;
     case SYS_SPAWN:
-        return sys_spawn((unsigned char*)stack_frame->rbx,(unsigned char**)stack_frame->rcx,(process_fds_init_t*)stack_frame->rdx);
+        rax =  sys_spawn((unsigned char*)stack_frame->rbx,(unsigned char**)stack_frame->rcx,(process_fds_init_t*)stack_frame->rdx);
+        break;
     case SYS_GETPID:
-        return sys_getpid(get_current_user_process());    
+        rax =  sys_getpid(get_current_user_process()); 
+        break;   
     case SYS_GETTIMEOFDAY:
-        return sys_gettimeofday();
+        rax =  sys_gettimeofday();
+        break;
     case SYS_SETTIMEOFDAY:
-        return sys_settimeofday(get_current_user_process(),stack_frame->rbx);
+        rax =  sys_settimeofday(get_current_user_process(),stack_frame->rbx);
+        break;
     default:
-        return SYSCALL_FAIL;
+        rax = (uint64_t)SYSCALL_FAIL;
+        break;
     }
 
-    return 0;
+    stack_frame->rax = rax;
 }
+
 
 uint64_t init_new_page(virt_mem_area_t* vma,user_process_t* p,uint64_t aligned_fault_addr){
     uint64_t frame = pmm_alloc_page_frame();        
@@ -191,48 +254,44 @@ void page_fault_handler(user_process_t* p,uint64_t fault_addr,interrupt_stack_fr
 }
 
 void interrupt_handler(interrupt_stack_frame_t* stack_frame) {
-
-    switch (stack_frame->interrupt_number) {
-        case INT_KEYBOARD:
-            handle_keyboard_interrupt();
-            acknowledge_PIC(stack_frame->interrupt_number);
-            break;
-            case INT_MOUSE:
-            log("Mouse interrupt");
-            handle_mouse_interrupt();
-            acknowledge_PIC(stack_frame->interrupt_number);
-            break;
-        case INT_TIMER:
-            ticks++;
-            if (ticks % DESIRED_STANDARD_FREQ == 0){
-                current_timestamp++; // tick once a second here
-            }
-            manage_sleeping_threads();
-            acknowledge_PIC(stack_frame->interrupt_number);
-            if (ticks % TASK_SWITCH_TICKS == 0 || force_switch) {
-                if (force_switch) force_switch = 0;
-                switch_task(stack_frame);
-            }
-            break;
-        case INT_SOFTWARE: 
-            stack_frame->rax = handle_software_interrupt(stack_frame);
-            break;
-        case INT_PAGE_FAULT:
-            ;
-            uint64_t cr2;
-            asm volatile ("mov %%cr2, %0" : "=r"(cr2));
-            thread_t* curr_thread = get_current_thread();
-            if (cr2 == MAGIC_SCHED_FAULT_ADDR && curr_thread->expect_sched_fault){
-                curr_thread->expect_sched_fault = false;
-                switch_task(stack_frame); // does not return
-            }
-            page_fault_handler(get_current_user_process(),cr2,stack_frame);
-            break;
-        default:
-            if (stack_frame->interrupt_number < 0x20 && stack_frame->interrupt_number != 0xd)logf("Fault occured: %x",stack_frame->interrupt_number);
-            break;
+    
+    if (stack_frame->interrupt_number >= PIC1_START_INTERRUPT && stack_frame->interrupt_number <= PIC2_START_INTERRUPT + 7){
+        acknowledge_PIC(stack_frame->interrupt_number);
     }
+    
+    interrupt_handler_t* head = int_head;
+    while (head && head->int_num != stack_frame->interrupt_number) head = head->next;
+    if (!head) {
+        if (stack_frame->interrupt_number < 0x20)logf("Fault occured: %x",stack_frame->interrupt_number);
+        return;
+    }
+    head->handler(head->special_arg ? head->special_arg : stack_frame);
 
+}
+
+void init_idt(){
+    idt.base = (uint64_t)&idt_entries[0];
+    idt.limit = sizeof(idt_entry_t) * IDT_MAX_ENTRIES - 1;
+    for(uint8_t v = 0; v < 49;v++){
+        if(v == INT_SOFTWARE){
+            set_idt_entry(v,(uint64_t)idt_code_table[v],STANDARD_USER_ATTRIBUTES); // user software interrupt call (syscall)
+        }else{
+            set_idt_entry(v,(uint64_t)idt_code_table[v],STANDARD_KERNEL_ATTRIBUTES);
+        }
+        enabled_idt[v] = 1;
+    }
+    load_idt(&idt);
+
+    remap_PIC(PIC1_START_INTERRUPT,PIC2_START_INTERRUPT); // [32; 39] and [40;47]
+
+}
+
+void register_basic_interrupts(){
+    register_irq(INT_SOFTWARE,handle_software_interrupt);
+    register_irq(INT_MOUSE,handle_mouse_interrupt);
+    register_irq(INT_KEYBOARD,handle_keyboard_interrupt);
+    register_irq(INT_PAGE_FAULT,page_fault_stub);
+    register_irq(INT_TIMER,timer_stub);
 }
 
 void remap_PIC(uint32_t offset1, uint32_t offset2){
