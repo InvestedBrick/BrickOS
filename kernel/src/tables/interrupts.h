@@ -140,6 +140,24 @@ void set_interrupt_status(uint8_t int_enable);
  */
 void setup_timer_switch();
 
+
+/**
+ * register_irq:
+ * Registers an IRQ and returns the handler
+ * @param int_num The interrupt number
+ * @param int_handler A pointer to a handler function
+ * @return A pointer to the handler struct, special_arg is changeable to overwrite the standard passed argument (the stack frame)
+ */
+interrupt_handler_t* register_irq(uint32_t int_num, interrupt_function_ptr int_handler);
+
+/**
+ * unregister_irq:
+ * Unregisters an IRQ
+ * @param int_num The interrupt number
+ */
+void unregister_irq(uint32_t int_num);
+
+
 /**
  * register_basic_interrupts:
  * Registers the IRQs for timer, mouse, keyboard, page faults and software interrupts
