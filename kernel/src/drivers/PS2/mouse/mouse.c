@@ -2,6 +2,7 @@
 #include "../ps2_controller.h"
 #include "../../../io/io.h"
 #include "../../../io/log.h"
+#include "../../../tables/interrupts.h"
 #include <stdint.h>
 
 static uint8_t mouse_cycle = 0;
@@ -19,7 +20,7 @@ void init_mouse(ps2_ports_t port){
     log("Initialized the PS/2 mouse");
 }
 
-void handle_mouse_interrupt(){
+void handle_mouse_interrupt(interrupt_stack_frame_t* frame){
     uint8_t data = ps2_port_read(0);
 
     // packet looks like:

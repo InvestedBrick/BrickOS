@@ -3,6 +3,7 @@
 #include "../../../io/log.h"
 #include "../../../filesystem/vfs/vfs.h"
 #include "../ps2_controller.h"
+#include "../../../tables/interrupts.h"
 uint8_t read_scan_code(){
     return ps2_port_read(1); 
 }
@@ -177,7 +178,7 @@ unsigned char decode_scan_code(uint8_t scan_code){
     return keyboard_map_lower[scan_code];
 }
 
-void handle_keyboard_interrupt(){
+void handle_keyboard_interrupt(interrupt_stack_frame_t* frame){
   uint8_t scan_code = read_scan_code();
   if (!scan_code) return;
   unsigned char key = decode_scan_code(scan_code);

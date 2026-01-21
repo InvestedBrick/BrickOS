@@ -14,9 +14,10 @@
 
 #define MOUSE_SAMPLE_RATE 100
 #include "../ps2_controller.h"
+#include "../../../tables/interrupts.h"
 
 void init_mouse(ps2_ports_t port);
 
-void handle_mouse_interrupt();
+void handle_mouse_interrupt(interrupt_stack_frame_t* frame);
 
 #endif

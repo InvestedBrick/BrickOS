@@ -20,6 +20,7 @@
 #define KB_BUFFER_SIZE 256
 #include "../../../filesystem/vfs/vfs.h"
 #include "../ps2_controller.h"
+#include "../../../tables/interrupts.h"
 extern vfs_handles_t kb_ops;
 /**
  * read_scan_code:
@@ -48,7 +49,7 @@ void init_keyboard(ps2_ports_t port);
  * handle_keyboard_interrupt:
  * Handles a keyboard interrupt
  */
-void handle_keyboard_interrupt();
+void handle_keyboard_interrupt(interrupt_stack_frame_t* frame);
 
 /**
  * kb_buffer_pop: 
