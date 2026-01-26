@@ -241,13 +241,15 @@ void handle_process_shudown(uint32_t pid){
     close(win->kb_pipe_fd);
     //rmfile("kb_pipe"); pipe closes automatically when the user proc closes the pipe
     chdir("..");
-
+    
     rmfile(pid_str);
-
+    
     //TODO: munmap
-
+    
     window_t* prev = get_prev_window(win);
-    prev->next = win->next;
+    if (prev)
+        prev->next = win->next;
+    
     free(win);
     free(pid_str);
 
