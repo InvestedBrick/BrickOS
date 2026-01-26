@@ -123,7 +123,7 @@ thread_t* find_schedule_candidate(){
         else candidate = t_queue;
         if (dead_thread) remove_thread(dead_thread);
     }
-    while(candidate->exec_state != EXEC_STATE_RUNNING && candidate->exec_state != EXEC_STATE_FINALIZED && candidate == t_queue);
+    while((candidate->exec_state != EXEC_STATE_RUNNING && candidate->exec_state != EXEC_STATE_FINALIZED) || (candidate == t_queue));
 
     return candidate;
 }
