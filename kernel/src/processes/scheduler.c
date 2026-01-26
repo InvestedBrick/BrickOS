@@ -115,6 +115,7 @@ int add_thread(struct user_process* usr_proc){
 thread_t* find_schedule_candidate(){
     thread_t* candidate = current_thread;
     do {
+        
         thread_t* dead_thread = nullptr;
         
         // cannot kill current thread since then we might no longer have a valid address space
@@ -122,6 +123,11 @@ thread_t* find_schedule_candidate(){
         if (candidate->next) candidate = candidate->next;
         else candidate = t_queue;
         if (dead_thread) remove_thread(dead_thread);
+
+        if (!t_queue->next->next) {
+            current_thread = global_kernel_process.main_thread;
+            shutdown();
+        }
     }
     while((candidate->exec_state != EXEC_STATE_RUNNING && candidate->exec_state != EXEC_STATE_FINALIZED) || (candidate == t_queue));
 
