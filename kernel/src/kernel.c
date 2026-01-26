@@ -21,6 +21,7 @@
 #include "filesystem/file_operations.h"
 #include "drivers/PS2/ps2_controller.h"
 #include "drivers/PS2/keyboard/keyboard.h"
+#include <uacpi/sleep.h>
 #include <stdint.h>
 
 struct user_process global_kernel_process;
@@ -58,13 +59,29 @@ void create_kernel_process(uint64_t stack_top){
 }
 
 void shutdown(){
-
+    
     restore_kernel_pml4_table();
-
+    log("SHUTTING DOWN...");
+    
     cleanup_tmp();
     log("Cleaned up /tmp");
-
+    
     write_to_disk();
+    
+    
+    uacpi_status ret = uacpi_prepare_for_sleep_state(UACPI_SLEEP_STATE_S5);
+    if (uacpi_unlikely_error(ret)){
+        logf("Failed to prepare sleep: %s",uacpi_status_to_string(ret));
+        panic("");
+    }
+    disable_interrupts();
+
+    ret = uacpi_enter_sleep_state(UACPI_SLEEP_STATE_S5);
+    if (uacpi_unlikely_error(ret)){
+        logf("Failed to prepare sleep: %s",uacpi_status_to_string(ret));
+        panic("");
+    }
+    // should be unreachable
 
     panic("This is the end of the world");
 }
