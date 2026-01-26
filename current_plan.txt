@@ -8,7 +8,7 @@ plan:
     [X] 64 bit kernel && switch to limine
     [X] implement spinlocks/mutexes/semaphores
     [X] PCI stuff
-    [ ] ACPI table parsing with uACPI
+    [X] ACPI table parsing with uACPI
     [ ] implement IOAPIC
     [ ] fix mouse driver
     [ ] dynamic linked code
