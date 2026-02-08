@@ -10,6 +10,7 @@
 #include "../filesystem/file_operations.h"
 #include "../filesystem/filesystem.h"
 #include "../memory/kmalloc.h"
+#include "../ACPI/acpi.h"
 
 void page_fault_handler(user_process_t* p,uint64_t fault_addr,interrupt_stack_frame_t* stack_frame);
 
@@ -255,14 +256,12 @@ void page_fault_handler(user_process_t* p,uint64_t fault_addr,interrupt_stack_fr
 
 void interrupt_handler(interrupt_stack_frame_t* stack_frame) {
     
-    if (stack_frame->interrupt_number >= PIC1_START_INTERRUPT && stack_frame->interrupt_number <= PIC2_START_INTERRUPT + 7){
-        acknowledge_PIC(stack_frame->interrupt_number);
-    }
-    
+    write_apic_register(APIC_REG_EOI,0x0);
+
     interrupt_handler_t* head = int_head;
     while (head && head->int_num != stack_frame->interrupt_number) head = head->next;
     if (!head) {
-        if (stack_frame->interrupt_number < 0x20)logf("Fault occured: %x",stack_frame->interrupt_number);
+        if (stack_frame->interrupt_number < APIC_INTERRUPT_START)logf("Fault occured: %x",stack_frame->interrupt_number);
         return;
     }
     head->handler(head->special_arg ? head->special_arg : stack_frame);
@@ -288,10 +287,11 @@ void init_idt(){
 
 void register_basic_interrupts(){
     register_irq(INT_SOFTWARE,handle_software_interrupt);
-    register_irq(INT_MOUSE,handle_mouse_interrupt);
-    register_irq(INT_KEYBOARD,handle_keyboard_interrupt);
     register_irq(INT_PAGE_FAULT,page_fault_stub);
-    register_irq(INT_TIMER,timer_stub);
+
+    uint8_t timer_irq = ioapic_redirect_irq(0);
+    register_irq(timer_irq,timer_stub);
+    
 }
 
 void remap_PIC(uint32_t offset1, uint32_t offset2){
@@ -307,9 +307,9 @@ void remap_PIC(uint32_t offset1, uint32_t offset2){
     outb(PIC1_DATA,ICW4_8086); //use 8086 mode
     outb(PIC2_DATA,ICW4_8086);
 
-    //unmask
-    outb(PIC1_DATA,0x0);
-    outb(PIC2_DATA,0x0);
+    //mask everything since we are using APIC now
+    outb(PIC1_DATA,0xff); 
+    outb(PIC2_DATA,0xff);
 
 }
 
