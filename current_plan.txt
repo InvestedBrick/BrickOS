@@ -9,8 +9,8 @@ plan:
     [X] implement spinlocks/mutexes/semaphores
     [X] PCI stuff
     [X] ACPI table parsing with uACPI
-    [ ] implement IOAPIC
-    [ ] fix mouse driver
+    [X] implement IOAPIC
+    [X] fix mouse driver
     [ ] dynamic linked code
     [ ] running more UI processes
     [ ] text editor
