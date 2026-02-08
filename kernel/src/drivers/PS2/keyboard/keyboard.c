@@ -4,6 +4,7 @@
 #include "../../../filesystem/vfs/vfs.h"
 #include "../ps2_controller.h"
 #include "../../../tables/interrupts.h"
+#include "../../../ACPI/acpi.h"
 uint8_t read_scan_code(){
     return ps2_port_read(1); 
 }
@@ -124,8 +125,10 @@ void init_keyboard(ps2_ports_t port){
     keyboard_map_ALT_GR[57] = ' ';
 
     ps2_port_enable(port);
-    log("Initialized the PS/2 keyboard");
+    uint8_t irq = ioapic_redirect_irq(1);
+    register_irq(irq,handle_keyboard_interrupt);
 
+    log("Initialized the PS/2 keyboard");
 }
 
 int is_special_code(uint8_t scan_code){
