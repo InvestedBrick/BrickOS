@@ -24,3 +24,20 @@ enable_SSE:
     or ax, 3 << 9		;set CR4.OSFXSR and CR4.OSXMMEXCPT at the same time
     mov cr4, rax
     ret
+
+global write_msr
+write_msr:
+    ; rdi = MSR, rsi = low, rdx = high
+    mov ecx, edi
+    mov eax, esi
+    wrmsr
+    ret
+
+global read_msr
+read_msr:
+    ; rdi = MSR, rsi = &low, rdx = &high
+    mov ecx, edi
+    rdmsr
+    mov dword [rsi], eax
+    mov dword [rdx], edx
+    ret
