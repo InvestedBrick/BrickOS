@@ -3,6 +3,7 @@
 #include "../../../io/io.h"
 #include "../../../io/log.h"
 #include "../../../tables/interrupts.h"
+#include "../../../ACPI/acpi.h"
 #include <stdint.h>
 
 static uint8_t mouse_cycle = 0;
@@ -17,6 +18,9 @@ void init_mouse(ps2_ports_t port){
     if (!(ps2_port_write(port,PORT_SET_SAMPLE_RATE) && ps2_port_read(1) == ACK)) error("Failed to request mouse sample rate");
     if (!(ps2_port_write(port,MOUSE_SAMPLE_RATE) && ps2_port_read(1) == ACK)) error("Failed to set mouse sample rate");
     if (!(ps2_port_write(port,PORT_ENABLE_DATA_REPORT) && ps2_port_read(1) == ACK)) error("Failed to enable mouse data reporting");
+
+    uint8_t irq = ioapic_redirect_irq(12);
+    register_irq(irq,handle_mouse_interrupt);
     log("Initialized the PS/2 mouse");
 }
 
@@ -58,5 +62,4 @@ void handle_mouse_interrupt(interrupt_stack_frame_t* frame){
     
     int16_t rel_x = mouse_x - ((mouse_status << 0x4) & 0x100);
     int16_t rel_y = mouse_y - ((mouse_status << 0x3) & 0x100);
-        
 }
