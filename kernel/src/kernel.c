@@ -21,7 +21,6 @@
 #include "filesystem/file_operations.h"
 #include "drivers/PS2/ps2_controller.h"
 #include "drivers/PS2/keyboard/keyboard.h"
-#include "ACPI/io_apic.h"
 #include <uacpi/sleep.h>
 #include <stdint.h>
 
@@ -115,9 +114,6 @@ void kmain()
     init_idt();
     log("Initialized the IDT");
     
-    init_and_test_I8042_controller();
-    log("Initialized the I8042 PS/2 controller");
-    
     init_memory();
     log("Initialized paged memory");
 
@@ -126,20 +122,21 @@ void kmain()
 
     init_kmalloc(MEMORY_PAGE_SIZE);
     log("Initialized kmalloc");
-
-    register_basic_interrupts();
-
+    
     create_kernel_process(stack_top);
     log("Set up kernel process");
-
+    
     init_scheduler();
     log("Initialized the scheduler");
-
+    
     init_acpi();
     log("Initialized ACPI");
+    
+    init_and_test_I8042_controller();
+    log("Initialized the I8042 PS/2 controller");
 
-    discover_ioapics();
-
+    register_basic_interrupts();
+    
     pci_check_all_busses();
     log("Scanned PCI busses");
 
