@@ -4,6 +4,8 @@
 #include "../../../io/log.h"
 #include "../../../tables/interrupts.h"
 #include "../../../ACPI/acpi.h"
+#include "../../../filesystem/vfs/vfs.h"
+#include "../../../filesystem/devices/device_defines.h"
 #include <stdint.h>
 
 static uint8_t mouse_cycle = 0;
@@ -11,6 +13,27 @@ static uint8_t mouse_status;
 
 static int16_t mouse_x;
 static int16_t mouse_y;
+
+
+mouse_packet_t packets[MOUSE_BUFFER_SIZE] = {0};
+uint32_t mouse_head = 0;
+uint32_t mouse_tail = 0;
+
+void mouse_buffer_push(mouse_packet_t packet){
+    uint32_t next = (mouse_head + 1) % MOUSE_BUFFER_SIZE;
+    if (next != mouse_tail){
+        packets[mouse_head] = packet;
+        mouse_head = next;
+    }
+}
+
+int mouse_buffer_pop(mouse_packet_t* packet){
+    if (mouse_head == mouse_tail) return 0;
+    *packet = packets[mouse_tail];
+    mouse_tail = (mouse_tail + 1) % MOUSE_BUFFER_SIZE;
+    return 1;
+}
+
 
 void init_mouse(ps2_ports_t port){
     ps2_port_enable(port);
@@ -23,6 +46,30 @@ void init_mouse(ps2_ports_t port){
     register_irq(irq,handle_mouse_interrupt);
     log("Initialized the PS/2 mouse");
 }
+
+int mouse_read(generic_file_t* f, unsigned char* buffer, uint32_t size){
+    if (size > MOUSE_BUFFER_SIZE * sizeof(mouse_packet_t)) size = MOUSE_BUFFER_SIZE * sizeof(mouse_packet_t);
+    
+    size = (size / sizeof(mouse_packet_t)) * sizeof(mouse_packet_t); // align down to mouse packet size
+    
+    int bytes_read = 0;
+    while (bytes_read < size){
+        if(!mouse_buffer_pop((mouse_packet_t*)&buffer[bytes_read])){
+            break;
+        }
+        bytes_read += sizeof(mouse_packet_t);
+    }
+    return bytes_read;
+}
+
+vfs_handles_t mouse_ops = {
+    .open = 0,
+    .close = 0,
+    .read = mouse_read,
+    .write = 0,
+    .seek = 0,
+    .ioctl = 0,
+};
 
 void handle_mouse_interrupt(interrupt_stack_frame_t* frame){
     uint8_t data = ps2_port_read(0);
@@ -60,6 +107,21 @@ void handle_mouse_interrupt(interrupt_stack_frame_t* frame){
     if (right_clicked) log("Rightclick");
     if (middle_clicked) log("Middleclick");
     
-    int16_t rel_x = mouse_x - ((mouse_status << 0x4) & 0x100);
-    int16_t rel_y = mouse_y - ((mouse_status << 0x3) & 0x100);
+    int16_t rel_x = mouse_x;
+    if (mouse_status & 0x10) {  // X sign bit
+        rel_x |= 0xFF00;  // sign extend to negative
+    }
+
+    int16_t rel_y = mouse_y;
+    if (mouse_status & 0x20) {  // Y sign bit
+        rel_y |= 0xFF00;  // sign extend to negative
+    }
+
+    mouse_packet_t packet;
+    packet.relx = rel_x;
+    packet.relx |= (left_clicked ? 1 : 0 ) << 15;
+    packet.relx |= (right_clicked ? 1 : 0 ) << 14;
+    packet.relx |= (middle_clicked ? 1 : 0 ) << 13;
+    packet.rely = rel_y;
+    mouse_buffer_push(packet);
 }
