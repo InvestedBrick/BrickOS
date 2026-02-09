@@ -12,11 +12,16 @@
 #define MOUSE_SET_WRAP 0xee
 #define MOUSE_SET_REMOTE_MODE 0xf0
 
-#define MOUSE_SAMPLE_RATE 100
+#define MOUSE_SAMPLE_RATE 80 
+
+#define MOUSE_BUFFER_SIZE 256
 #include "../ps2_controller.h"
 #include "../../../tables/interrupts.h"
+#include "../../../filesystem/vfs/vfs.h"
 
 void init_mouse(ps2_ports_t port);
+
+extern vfs_handles_t mouse_ops;
 
 void handle_mouse_interrupt(interrupt_stack_frame_t* frame);
 
