@@ -25,6 +25,22 @@ typedef struct window {
     struct window* next;
 }window_t;
 
+typedef struct {
+    uint32_t posx;
+    uint32_t posy;
+
+    uint32_t old_posx;
+    uint32_t old_posy;
+
+    const char icon[3][3];
+
+    unsigned char overriden_data[3][3][4]; // for when the mouse is over a window, so that we can restore the pixels when the mouse moves away
+    
+    uint8_t left_clicked;
+    uint8_t right_clicked;
+    uint8_t middle_clicked;
+}mouse_t;
+
 window_t* head = 0; 
 window_t* focused_window = 0;
 
@@ -87,6 +103,21 @@ uint32_t screen_bytespp = 0;
 int wm_to_k_fd = 0;
 int k_to_wm_fd = 0;
 uint8_t window_dirty = 0;
+mouse_t mouse = {
+    .posx = 0,
+    .posy = 0,
+    .old_posx = 0,
+    .old_posy = 0,
+    .icon = {
+        {0xff,0xff,0xff},
+        {0xff,0xff,0xff},
+        {0xff,0xff,0xff}
+    },
+    .overriden_data = {0},
+    .left_clicked = 0,
+    .right_clicked = 0,
+    .middle_clicked = 0
+};
 void add_window_to_list(window_t* new_win){
     window_t* curr = head;
     if (!curr) head = new_win;
@@ -255,10 +286,73 @@ void handle_process_shudown(uint32_t pid){
 
 }
 
+// draw a 3x3 square for the mouse pointer
+void draw_mouse(framebuffer_t* fb_metadata){
+    unsigned char* mouse_start = (unsigned char*)((uint64_t)fb0 + mouse.posy * fb_metadata->bytes_per_row + mouse.posx * screen_bytespp);
+    
+    // draw mouse icon and save the pixels that are being overriddenq
+    for (uint16_t x = 0; x < sizeof(mouse.icon[0]); x++){
+        for (uint16_t y = 0; y < sizeof(mouse.icon) / sizeof(mouse.icon[0]); y++){
+            unsigned char* pixel = mouse_start + y * fb_metadata->bytes_per_row + x * screen_bytespp;
+            if (pixel < fb0 || pixel >= fb0 + fb_metadata->size) continue; // sanity check to avoid writing out of bounds
+            
+            memcpy(mouse.overriden_data[y][x],pixel,screen_bytespp);
+            
+            memset(pixel,mouse.icon[y][x],screen_bytespp);
+        }
+    }
+}
+
+void restore_mouse_underlying_pixels(framebuffer_t* fb_metadata){
+    unsigned char* mouse_start = (unsigned char*)((uint64_t)fb0 + mouse.old_posy * fb_metadata->bytes_per_row + mouse.old_posx * screen_bytespp);
+    
+    for (uint16_t x = 0; x < sizeof(mouse.icon[0]); x++){
+        for (uint16_t y = 0; y < sizeof(mouse.icon) / sizeof(mouse.icon[0]); y++){
+            unsigned char* pixel = mouse_start + y * fb_metadata->bytes_per_row + x * screen_bytespp;
+            if (pixel < fb0 || pixel >= fb0 + fb_metadata->size) continue; 
+            
+            memcpy(pixel,mouse.overriden_data[y][x],screen_bytespp);
+        }
+    }
+}
+
+void update_mouse(framebuffer_t* fb_metadata,int mouse_fd){
+    mouse_packet_t buffer[256];
+    int bytes_read = read(mouse_fd,(const char*)buffer,sizeof(buffer));
+    uint32_t n_packets = bytes_read / sizeof(mouse_packet_t);
+    for (uint32_t i = 0; i < n_packets;i++){
+        int16_t rel_x = buffer[i].relx & 0x1ff;  
+        if (rel_x & 0x100) rel_x |= 0xfe00;      // sign extend if bit 9 set
+        
+        int16_t rel_y = buffer[i].rely & 0x1ff;  
+        if (rel_y & 0x100) rel_y |= 0xfe00;    
+        
+        int32_t new_x = (int32_t)mouse.posx + rel_x;
+        int32_t new_y = (int32_t)mouse.posy - rel_y;
+        
+        // Clamp to screen bounds
+        if (new_x < 0) new_x = 0;
+        if (new_x >= (int32_t)fb_metadata->width) new_x = fb_metadata->width - 1;
+        if (new_y < 0) new_y = 0;
+        if (new_y >= (int32_t)fb_metadata->height) new_y = fb_metadata->height - 1;
+        
+        mouse.old_posx = mouse.posx;
+        mouse.old_posy = mouse.posy;
+
+        mouse.posx = (uint32_t)new_x;
+        mouse.posy = (uint32_t)new_y;
+        restore_mouse_underlying_pixels(fb_metadata);
+        draw_mouse(fb_metadata);
+        
+    }
+
+}
+
 __attribute__((section(".text.start")))
 void main(){
     int fb0_fd = open("dev/fb0",FILE_FLAG_NONE);
     int kb0_fd = open("dev/kb0",FILE_FLAG_NONE);
+    int mouse_fd = open("dev/mouse",FILE_FLAG_NONE);
     wm_to_k_fd = open("tmp/wm_to_k.tmp",FILE_FLAG_WRITE);
     k_to_wm_fd = open("tmp/k_to_wm.tmp",FILE_FLAG_READ);
 
@@ -270,6 +364,7 @@ void main(){
 
     if (fb0_fd < 0) exit(2);
     if (kb0_fd < 0) exit(2);
+    if (mouse_fd < 0) exit(2);
     if (wm_to_k_fd < 0) exit(2);
     if (k_to_wm_fd < 0) exit(2);
     framebuffer_t fb_metadata;
@@ -318,6 +413,7 @@ void main(){
             }
         }
         composite_windows(&fb_metadata);
+        update_mouse(&fb_metadata,mouse_fd);
 
     }
 
