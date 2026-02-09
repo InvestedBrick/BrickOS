@@ -12,6 +12,13 @@
 #define DEV_WM_PROC_SHUTDOWN 0x04
 
 #define DEV_WM_ANS_TYPE_WIN_CREATION 0x04
+
+typedef struct {
+    int16_t relx; // contains: 15 14 13 | 12 - 10  | 9  -  0
+                  //         L  R  M    |    0     |   relx  (L = left click, R = right click, M = middle click)
+    int16_t rely;
+}mouse_packet_t;
+
 typedef struct {
     uint32_t phys_addr;
     uint32_t width;
