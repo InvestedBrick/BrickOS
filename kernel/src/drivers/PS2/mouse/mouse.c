@@ -103,10 +103,6 @@ void handle_mouse_interrupt(interrupt_stack_frame_t* frame){
     uint8_t right_clicked = mouse_status & 0x2;
     uint8_t middle_clicked = mouse_status & 0x4;
     
-    if (left_clicked) log("Leftclick");
-    if (right_clicked) log("Rightclick");
-    if (middle_clicked) log("Middleclick");
-    
     int16_t rel_x = mouse_x;
     if (mouse_status & 0x10) {  // X sign bit
         rel_x |= 0xFF00;  // sign extend to negative
@@ -119,9 +115,10 @@ void handle_mouse_interrupt(interrupt_stack_frame_t* frame){
 
     mouse_packet_t packet;
     packet.relx = rel_x;
-    packet.relx |= (left_clicked ? 1 : 0 ) << 15;
-    packet.relx |= (right_clicked ? 1 : 0 ) << 14;
-    packet.relx |= (middle_clicked ? 1 : 0 ) << 13;
     packet.rely = rel_y;
+    packet.btns = 0;
+    if (left_clicked) packet.btns |= (1 << 0);
+    if (middle_clicked) packet.btns |= (1 << 1);
+    if (right_clicked) packet.btns |= (1 << 2);
     mouse_buffer_push(packet);
 }
