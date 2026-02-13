@@ -9,6 +9,7 @@
 typedef struct {
     uint32_t cmd;
     uint32_t pid;
+    uint32_t size;
     unsigned char data[];    
 }win_man_msg_t;
 
@@ -115,6 +116,7 @@ uint32_t screen_bytes_per_row = 0;
 uint32_t screen_bytespp = 0;
 int wm_to_k_fd = 0;
 int k_to_wm_fd = 0;
+uint32_t n_windows;
 
 
 uint8_t window_dirty = 0;
@@ -180,8 +182,9 @@ void handle_window_request(framebuffer_t* fb_metadata,win_man_msg_t* msg){
     new_win->buffer_size = new_win->width * new_win->height * sizeof(uint32_t);
     new_win->next = 0;
     new_win->z = find_largest_z() + 1;
-    new_win->origin_x = (fb_metadata->width / 5);
-    new_win->origin_y = (fb_metadata->height / 5);
+    new_win->origin_x = n_windows * 50;
+    new_win->origin_y = n_windows * 50;
+    n_windows++;
     uint32_t filename_len = sizeof("win.tmp");
     unsigned char* backing_filename = (unsigned char*)malloc(filename_len);
     memcpy(backing_filename,"win.tmp",sizeof("win.tmp"));
@@ -529,9 +532,10 @@ void main(){
         memset(buffer,0,sizeof(buffer));
 
         n_kmsg = read(k_to_wm_fd,buffer,sizeof(buffer));
-        if (n_kmsg > 0){
+        uint32_t bytes_read = 0;
+        while (bytes_read < n_kmsg){
 
-            win_man_msg_t* msg = (win_man_msg_t*)buffer;
+            win_man_msg_t* msg = (win_man_msg_t*)&buffer[bytes_read];
             switch (msg->cmd)
             {
                 case DEV_WM_REQUEST_WINDOW:{
@@ -549,6 +553,7 @@ void main(){
                 default: 
                     break;
             }
+            bytes_read += msg->size;
         }
 
         update_mouse(&fb_metadata,mouse_fd);
