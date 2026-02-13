@@ -206,7 +206,7 @@ int dev_wm_ioctl(generic_file_t* file, uint32_t cmd,void* arg){
     {
     case DEV_WM_REQUEST_WINDOW: {
         window_req_t* data = (window_req_t*)arg;
-        uint32_t cmd_hdr[2] = {DEV_WM_REQUEST_WINDOW,curr_proc->process_id};
+        uint32_t cmd_hdr[3] = {DEV_WM_REQUEST_WINDOW,curr_proc->process_id,sizeof(uint32_t) * 3 + sizeof(window_req_t)}; // cmd, pid, size
         overwrite_current_proc(&global_kernel_process);
         sys_write(&global_kernel_process,wm_pipes.k_to_wm_fd,(unsigned char*)cmd_hdr,sizeof(cmd_hdr));
         sys_write(&global_kernel_process,wm_pipes.k_to_wm_fd,(unsigned char*)data,sizeof(window_req_t));
@@ -239,14 +239,14 @@ int dev_wm_ioctl(generic_file_t* file, uint32_t cmd,void* arg){
     }
     case DEV_WM_COMMIT_WINDOW: {
 
-        uint32_t cmd_hdr[2] = {DEV_WM_COMMIT_WINDOW,curr_proc->process_id};
+        uint32_t cmd_hdr[3] = {DEV_WM_COMMIT_WINDOW,curr_proc->process_id,sizeof(uint32_t) * 3};
         overwrite_current_proc(&global_kernel_process);
         sys_write(&global_kernel_process,wm_pipes.k_to_wm_fd,(unsigned char*)cmd_hdr,sizeof(cmd_hdr));
         restore_active_proc();
         return 0;
     }
     case DEV_WM_PROC_SHUTDOWN: {
-        uint32_t cmd_hdr[2] = {DEV_WM_PROC_SHUTDOWN,curr_proc->process_id};
+        uint32_t cmd_hdr[3] = {DEV_WM_PROC_SHUTDOWN,curr_proc->process_id,sizeof(uint32_t) * 3};
         overwrite_current_proc(&global_kernel_process);
         sys_write(&global_kernel_process,wm_pipes.k_to_wm_fd,(unsigned char*)cmd_hdr,sizeof(cmd_hdr));
         restore_active_proc();
