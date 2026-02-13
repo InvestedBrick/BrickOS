@@ -173,8 +173,11 @@ void kmain()
     
     // Everything is now set up
     run("modules/terminal.bin",nullptr,nullptr,PRIV_STD);
-
+    run("modules/terminal.bin",nullptr,nullptr,PRIV_STD);
+    
     run("modules/win_man.bin",nullptr,nullptr,PRIV_SPECIAL); // window manager should open dev/kb0
+    
+
 
     sys_settimeofday(&global_kernel_process,sys_gettimeofday() + 3600); // add 1h for UTC+1 timezone (mine)
 
