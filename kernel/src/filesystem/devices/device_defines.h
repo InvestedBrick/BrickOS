@@ -13,10 +13,14 @@
 
 #define DEV_WM_ANS_TYPE_WIN_CREATION 0x04
 
+#define MOUSE_BTN_LEFT_MASK 0x1
+#define MOUSE_BTN_MID_MASK 0x2
+#define MOUSE_BTN_RIGHT_MASK 0x4
 typedef struct {
-    int16_t relx; // contains: 15 14 13 | 12 - 10  | 9  -  0
-                  //         L  R  M    |    0     |   relx  (L = left click, R = right click, M = middle click)
+    int16_t relx; 
     int16_t rely;
+                 // bits: 0   1   2
+    uint8_t btns;//       L   M   R
 }mouse_packet_t;
 
 typedef struct {
