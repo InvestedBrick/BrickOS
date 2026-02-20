@@ -372,6 +372,12 @@ void composite_windows(framebuffer_t* fb_metadata){
         blit_section(screen_moved_sec,fb_metadata);
     }
     for (uint32_t i = 0; i < dirty_cluster_index;i++){
+        if (dirty_cluster[i].x > 0) dirty_cluster[i].x--;
+        if (dirty_cluster[i].y > 0) dirty_cluster[i].y--;
+
+        dirty_cluster[i].width  += 2;
+        dirty_cluster[i].height += 2;
+
         blit_section(dirty_cluster[i],fb_metadata);
     }
 
