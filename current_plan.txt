@@ -11,7 +11,7 @@ plan:
     [X] ACPI table parsing with uACPI
     [X] implement IOAPIC
     [X] fix mouse driver
+    [X] running more UI processes
     [ ] dynamic linked code
-    [ ] running more UI processes
     [ ] text editor
     [?] better fileystem
