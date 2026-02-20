@@ -13,21 +13,26 @@ typedef struct {
     unsigned char data[];    
 }win_man_msg_t;
 
+typedef struct {
+    uint32_t x,y;
+    uint32_t width,height;
+}section_t;
+
 typedef struct window {
-    uint32_t origin_x;
-    uint32_t origin_y;
-    uint32_t width;
-    uint32_t height;
+    struct window* next;
+    section_t section;
     uint32_t flags;
-    uint32_t z;
     uint32_t owner_pid;
     uint32_t kb_pipe_fd;
     int backing_fd;
     uint32_t buffer_size;
     unsigned char* live_buffer;
     unsigned char* comitted_buffer;
-    struct window* next;
+    uint32_t visit_id;
+    uint8_t dirty;
 }window_t;
+
+uint32_t current_visit_id = 1;
 
 typedef struct {
     uint32_t posx;
@@ -48,68 +53,23 @@ typedef struct {
 window_t* head = 0; 
 window_t* focused_window = 0;
 
-
-typedef struct {
-    uint32_t x,y;
-    uint32_t width,height;
-}section_t;
-
 section_t dirty_sections[MAX_MOUSE_PACKETS];
 uint32_t dirty_section_idx = 0;
 
-window_t* find_window_by_z(uint32_t z){
-    window_t* current = head;
-    while(current){
-        if (current->z == z) return current;
-        current = current->next;
-    }   
-    return 0;
-}
+section_t dirty_cluster[64]; 
+uint32_t dirty_cluster_index = 0;
 
 window_t* get_prev_window(window_t* win){
-    window_t* current = head;
-    if (current == win) return 0; 
+    window_t* iter = head;
+    if (iter == win) return 0; 
 
-    while(current){
-        if (current->next == win) return current;
-        current = current->next;
+    while(iter){
+        if (iter->next == win) return iter;
+        iter = iter->next;
     }   
     return 0;
 }
 
-uint32_t find_largest_z(){
-    window_t* current = head;
-    uint32_t largest_z = 0;
-    while (current) {
-        if (current->z > largest_z) largest_z = current->z;
-        current = current->next; 
-    }
-
-    return largest_z;
-}
-
-uint32_t find_lowest_z(){
-    window_t* current = head;
-    uint32_t lowest_z = (uint32_t)-1;
-    while (current) {
-        if (current->z < lowest_z) lowest_z = current->z;
-        current = current->next; 
-    }
-
-    return lowest_z;
-}
-
-window_t* find_window_with_next_larger_z(uint32_t current_z){
-    uint32_t best_z = (uint32_t)-1;
-    window_t* current = head;
-
-    while (current){
-        if (current->z > current_z && current->z < best_z) best_z = current->z;
-        current = current->next;
-    }
-
-    return find_window_by_z(best_z);
-}
 unsigned char* back_buffer = 0;
 unsigned char* fb0 = 0;
 uint32_t screen_bytes_per_row = 0;
@@ -119,7 +79,6 @@ int k_to_wm_fd = 0;
 uint32_t n_windows;
 
 
-uint8_t window_dirty = 0;
 mouse_t mouse = {
     .posx = 0,
     .posy = 0,
@@ -135,34 +94,52 @@ mouse_t mouse = {
     .right_clicked = 0,
     .middle_clicked = 0
 };
+
+section_t screen_moved_sec = {0};
+
 void add_window_to_list(window_t* new_win){
-    window_t* curr = head;
-    if (!curr) head = new_win;
+    window_t* iter = head;
+    if (!iter) head = new_win;
     else {
-        while(curr->next) curr = curr->next;
-        curr->next = new_win;
+        while(iter->next) iter = iter->next;
+        iter->next = new_win;
     }
 }
 
 window_t* find_window_by_pid(uint32_t pid){
-    window_t* curr = head;
-    while(curr){
-        if (curr->owner_pid == pid) return curr;
-        curr = curr->next;
+    window_t* iter = head;
+    while(iter){
+        if (iter->owner_pid == pid) return iter;
+        iter = iter->next;
     }
 
     return 0;
 }   
+
+window_t* find_prev_window(window_t* win){
+    window_t* iter = head;
+    if (iter == win) return 0;
+    while(iter->next && iter->next != win) iter = iter->next;
+
+    return (iter->next == win) ? iter : 0;
+}
+
+uint8_t sections_intersecting(section_t* sec_a, section_t* sec_b){
+    return (sec_a->x < sec_b->x +      sec_b->width &&
+       sec_a->x + sec_a->width >  sec_b->x &&
+       sec_a->y < sec_b->y +      sec_b->height &&
+       sec_a->y + sec_a->height > sec_b->y);
+}
 
 void handle_window_request(framebuffer_t* fb_metadata,win_man_msg_t* msg){
     window_req_t* req = (window_req_t*)msg->data;
     if (req->height > fb_metadata->height) req->height = fb_metadata->height;
     if (req->width > fb_metadata->width) req->width = fb_metadata->width;
     window_t* new_win = (window_t*)malloc(sizeof(window_t));
-    
+    new_win->dirty = 1;
     new_win->flags = req->flags;
-    new_win->width = req->width;
-    new_win->height = req->height;
+    new_win->section.width = req->width;
+    new_win->section.height = req->height;
     new_win->owner_pid = msg->pid;
 
     unsigned char* pid_str = uint32_to_ascii(msg->pid);
@@ -179,11 +156,11 @@ void handle_window_request(framebuffer_t* fb_metadata,win_man_msg_t* msg){
     mknod("kb_pipe",&params); // replaces read and write pids with the opened fds
     new_win->kb_pipe_fd = params.write_pid;
 
-    new_win->buffer_size = new_win->width * new_win->height * sizeof(uint32_t);
+    new_win->buffer_size = new_win->section.width * new_win->section.height * sizeof(uint32_t);
     new_win->next = 0;
-    new_win->z = find_largest_z() + 1;
-    new_win->origin_x = n_windows * 50;
-    new_win->origin_y = n_windows * 50;
+    new_win->section.x = n_windows * 50;
+    new_win->section.y = n_windows * 50;
+    dirty_cluster[dirty_cluster_index++] = new_win->section;
     n_windows++;
     uint32_t filename_len = sizeof("win.tmp");
     unsigned char* backing_filename = (unsigned char*)malloc(filename_len);
@@ -202,8 +179,8 @@ void handle_window_request(framebuffer_t* fb_metadata,win_man_msg_t* msg){
     window_creation_ans_t creation_ans = {
         .answer_type = DEV_WM_ANS_TYPE_WIN_CREATION,
         .pid = new_win->owner_pid,
-        .width = new_win->width,
-        .height = new_win->height, 
+        .width = new_win->section.width,
+        .height = new_win->section.height, 
         .filename_len = filename_len,
         .kb_fd = params.read_pid,
         };
@@ -217,69 +194,32 @@ void handle_window_request(framebuffer_t* fb_metadata,win_man_msg_t* msg){
     chdir("..");
 }
 
-void handle_window_commit(framebuffer_t* fb_metadata,win_man_msg_t* msg){
-    window_t* win = find_window_by_pid(msg->pid);
-    if (!win) return;
+void enlarge_section(section_t* sec,uint32_t x, uint32_t y,uint32_t width, uint32_t height){
+    if (sec->width == 0 && sec->height == 0){
+        // initialize
+        sec->x = x;
+        sec->y = y;
+        sec->width = width;
+        sec->height = height;
+        return;
+    }
 
-    memcpy(win->comitted_buffer,win->live_buffer,win->buffer_size);
-    window_dirty = 1;
+    if (x + width > sec->x + sec->width) sec->width = (x + width) - sec->x;
+    if (y + height > sec->y + sec->height) sec->height = (y + height) - sec->y;
+    if (x < sec->x) sec->x = x;
+    if (y < sec->y) sec->y = y;
 }
 
-void write_window_to_fb(framebuffer_t* fb_metadata, window_t* win) {
-    unsigned char* win_start = (unsigned char*)((uint64_t)back_buffer + win->origin_y * fb_metadata->bytes_per_row + win->origin_x * screen_bytespp);
+section_t create_composite_section(section_t secs[],uint32_t n_sections){
+    if (n_sections == 0) return (section_t){0};
 
-    uint32_t width_copy_size = ((win->origin_x + win->width > fb_metadata->width) ? (fb_metadata->width - win->origin_x) : win->width) * screen_bytespp;
-    uint32_t rows_to_copy = (win->origin_y + win->height > fb_metadata->height) ? (fb_metadata->height - win->origin_y) : win->height;
+    uint32_t lowest_x  = secs[0].x;
+    uint32_t lowest_y  = secs[0].y;
+    uint32_t highest_x = secs[0].x + secs[0].width;
+    uint32_t highest_y = secs[0].y + secs[0].height;
 
-    if (!win_start || width_copy_size == 0 || rows_to_copy == 0) return;
-
-    if (win->origin_y > 0) {
-        unsigned char* top_border = win_start - fb_metadata->bytes_per_row;
-        memset(top_border, 0xAA, width_copy_size);
-    }
-
-    uint32_t buffer_cpy_off = 0;
-    for (uint32_t i = 0; i < rows_to_copy; i++) {
-        if (win->origin_x > 0) {
-            memset(win_start - screen_bytespp, 0xAA, screen_bytespp);
-        }
-
-        memcpy(win_start, &win->comitted_buffer[buffer_cpy_off], width_copy_size);
-
-        if (win->origin_x + win->width < fb_metadata->width) {
-            memset(win_start + width_copy_size, 0xAA, screen_bytespp);
-        }
-
-        win_start += fb_metadata->bytes_per_row;
-        buffer_cpy_off += win->width * screen_bytespp;
-    }
-
-    if (win->origin_y + rows_to_copy < fb_metadata->height) {
-        memset(win_start, 0xAA, width_copy_size);
-    }
-}
-
-void clear_section(uint32_t x, uint32_t y, uint32_t width, uint32_t height, framebuffer_t* fb_metadata){
-    if (x >= fb_metadata->width || y >= fb_metadata->height) return;
-    
-    if (x + width > fb_metadata->width) width = fb_metadata->width - x;
-    if (y + height > fb_metadata->height) height = fb_metadata->height - y;
-
-    for (uint32_t j = 0; j < height; j++){
-        unsigned char* row_start = back_buffer + (y + j) * fb_metadata->bytes_per_row + x * screen_bytespp;
-        memset(row_start, 0, width * screen_bytespp);
-    }
-}
-
-section_t create_composite_dirty_section(){
-    uint32_t lowest_x;
-    uint32_t lowest_y;
-
-    uint32_t highest_x;
-    uint32_t highest_y;
-
-    for (uint32_t i = 0; i < dirty_section_idx;i++){
-        section_t sec = dirty_sections[i];
+    for (uint32_t i = 0; i < n_sections;i++){
+        section_t sec = secs[i];
         if (i == 0 || sec.x < lowest_x) lowest_x = sec.x;
         if (i == 0 || sec.y < lowest_y) lowest_y = sec.y;
         if (i == 0 || sec.x + sec.width > highest_x) highest_x = sec.x + sec.width;
@@ -296,31 +236,149 @@ section_t create_composite_dirty_section(){
     return sec;
 }
 
-void composite_windows(framebuffer_t* fb_metadata){
-    if (!head && window_dirty == 0) return;
+void mark_intersecting_window_dirty_rec(window_t* start, window_t* target,uint8_t record)
+{
+    if (target->visit_id == current_visit_id) return; // already visited
     
-    if (dirty_section_idx > 0){
-        section_t sec = create_composite_dirty_section(); // doing this instead of clearing each section individually is about an order of magnitude more efficient
-        dirty_section_idx = 0;
-        if (sec.x > 0) sec.x--;
-        if (sec.y > 0) sec.y--;
-        
-        clear_section(sec.x,sec.y,sec.width + 2,sec.height + 2,fb_metadata);
-    }
-    if (window_dirty){
+    target->visit_id = current_visit_id;
 
-        uint32_t current_z = 0; // 0 is guaranteed to not be a Z-layer
-        while(1){
-            window_t* win = find_window_with_next_larger_z(current_z);
-            if (!win) break;
+    window_t* iter = start;
+    while (iter) {
+        if (sections_intersecting(&iter->section, &target->section))
+        {   
+            iter->dirty = 1;
             
-            write_window_to_fb(fb_metadata,win);
-            current_z = win->z;
+            if (record && dirty_section_idx < MAX_MOUSE_PACKETS)
+                dirty_sections[dirty_section_idx++] = iter->section;
+
+            // propagate upwards
+            mark_intersecting_window_dirty_rec(iter->next, iter,record);
         }
+
+        iter = iter->next;
+    }
+}
+
+
+void mark_higher_intersecting_windows_dirty(window_t* win,uint8_t record)
+{
+    current_visit_id++;
+    mark_intersecting_window_dirty_rec(win->next, win,record);
+}
+
+void mark_intersecting_windows_dirty(window_t* win,uint8_t record)
+{
+    current_visit_id++;
+    mark_intersecting_window_dirty_rec(head, win,record);
+}
+
+
+void handle_window_commit(framebuffer_t* fb_metadata,win_man_msg_t* msg){
+    window_t* win = find_window_by_pid(msg->pid);
+    if (!win) return;
+
+    memcpy(win->comitted_buffer,win->live_buffer,win->buffer_size);
+    win->dirty = 1;
+    dirty_section_idx = 0;
+    dirty_sections[dirty_section_idx++] = win->section;
+    mark_higher_intersecting_windows_dirty(win,1);
+    section_t cluster = create_composite_section(dirty_sections,dirty_section_idx);
+    dirty_section_idx = 0;
+    dirty_cluster[dirty_cluster_index++] = cluster;
+}
+
+void write_window_to_fb(framebuffer_t* fb_metadata, window_t* win) {
+    unsigned char* win_start = (unsigned char*)((uint64_t)back_buffer + win->section.y * fb_metadata->bytes_per_row + win->section.x * screen_bytespp);
+
+    uint32_t width_copy_size = ((win->section.x + win->section.width > fb_metadata->width) ? (fb_metadata->width - win->section.x) : win->section.width) * screen_bytespp;
+    uint32_t rows_to_copy = (win->section.y + win->section.height > fb_metadata->height) ? (fb_metadata->height - win->section.y) : win->section.height;
+
+    if (!win_start || width_copy_size == 0 || rows_to_copy == 0) return;
+
+    if (win->section.y > 0) {
+        unsigned char* top_border = win_start - fb_metadata->bytes_per_row;
+        memset(top_border, 0xAA, width_copy_size);
     }
 
-    memcpy(fb0,back_buffer,fb_metadata->size);
-    window_dirty = 0;
+    uint32_t buffer_cpy_off = 0;
+    for (uint32_t i = 0; i < rows_to_copy; i++) {
+        if (win->section.x > 0) {
+            memset(win_start - screen_bytespp, 0xAA, screen_bytespp);
+        }
+
+        memcpy(win_start, &win->comitted_buffer[buffer_cpy_off], width_copy_size);
+
+        if (win->section.x + win->section.width < fb_metadata->width) {
+            memset(win_start + width_copy_size, 0xAA, screen_bytespp);
+        }
+
+        win_start += fb_metadata->bytes_per_row;
+        buffer_cpy_off += win->section.width * screen_bytespp;
+    }
+
+    if (win->section.y + rows_to_copy < fb_metadata->height) {
+        memset(win_start, 0xAA, width_copy_size);
+    }
+}
+
+void clear_section(section_t sec, framebuffer_t* fb_metadata){
+    if (sec.x >= fb_metadata->width || sec.y >= fb_metadata->height) return;
+    
+    if (sec.x + sec.width > fb_metadata->width)   sec.width  = fb_metadata->width  - sec.x;
+    if (sec.y + sec.height > fb_metadata->height) sec.height = fb_metadata->height - sec.y;
+
+    for (uint32_t j = 0; j < sec.height; j++){
+        unsigned char* row_start = back_buffer + (sec.y + j) * fb_metadata->bytes_per_row + sec.x * screen_bytespp;
+        memset(row_start, 0, sec.width * screen_bytespp);
+    }
+}
+
+
+void blit_section(section_t sec, framebuffer_t* fb_metadata) {
+    for (uint32_t y = 0;y < sec.height;y++) {
+        memcpy(
+            fb0 + (sec.y+y)*fb_metadata->bytes_per_row + sec.x*screen_bytespp,
+            back_buffer + (sec.y+y)*fb_metadata->bytes_per_row + sec.x*screen_bytespp,
+            sec.width * screen_bytespp
+        );
+    }
+}
+
+
+
+void composite_windows(framebuffer_t* fb_metadata){
+    if (!head) return;
+    uint8_t moved = 0;
+    if (screen_moved_sec.width != 0 || screen_moved_sec.height != 0){
+        moved = 1;
+        if (screen_moved_sec.x > 0) screen_moved_sec.x--;
+        if (screen_moved_sec.y > 0) screen_moved_sec.y--;
+        screen_moved_sec.width += 2;
+        screen_moved_sec.height += 2;
+        clear_section(screen_moved_sec,fb_metadata);
+    }
+    
+    window_t* iter = head;
+    while(iter){
+        
+        if (iter->dirty){
+            write_window_to_fb(fb_metadata,iter);
+            iter->dirty = 0;
+        }
+        iter = iter->next;
+    }
+    
+    if (moved){
+        blit_section(screen_moved_sec,fb_metadata);
+    }
+    for (uint32_t i = 0; i < dirty_cluster_index;i++){
+        blit_section(dirty_cluster[i],fb_metadata);
+    }
+
+    dirty_cluster_index = 0;
+    dirty_section_idx = 0;
+    memset(&screen_moved_sec,0x0,sizeof(screen_moved_sec));
+    
 }
 
 void handle_process_shudown(uint32_t pid){
@@ -343,21 +401,23 @@ void handle_process_shudown(uint32_t pid){
     window_t* prev = get_prev_window(win);
     if (prev)
         prev->next = win->next;
-    
+    if (win == focused_window){
+        prev = focused_window;
+    }
     free(win);
+    win = 0;
     free(pid_str);
 
 }
 
 // draw a 3x3 square for the mouse pointer
 void draw_mouse(framebuffer_t* fb_metadata){
-    unsigned char* mouse_start = (unsigned char*)((uint64_t)back_buffer + mouse.posy * fb_metadata->bytes_per_row + mouse.posx * screen_bytespp);
-    
-    // draw mouse icon and save the pixels that are being overriddenq
+    unsigned char* mouse_start = (unsigned char*)((uint64_t)fb0 + mouse.posy * fb_metadata->bytes_per_row + mouse.posx * screen_bytespp);
+    // draw mouse icon and save the pixels that are being overridden
     for (uint16_t x = 0; x < sizeof(mouse.icon[0]); x++){
         for (uint16_t y = 0; y < sizeof(mouse.icon) / sizeof(mouse.icon[0]); y++){
             unsigned char* pixel = mouse_start + y * fb_metadata->bytes_per_row + x * screen_bytespp;
-            if (pixel < back_buffer || pixel >= back_buffer + fb_metadata->size) continue; // sanity check to avoid writing out of bounds
+            if (pixel < fb0 || pixel >= fb0 + fb_metadata->size) continue; // sanity check to avoid writing out of bounds
             
             memcpy(mouse.overriden_data[y][x],pixel,screen_bytespp);
             
@@ -367,12 +427,12 @@ void draw_mouse(framebuffer_t* fb_metadata){
 }
 
 void restore_mouse_underlying_pixels(framebuffer_t* fb_metadata){
-    unsigned char* mouse_start = (unsigned char*)((uint64_t)back_buffer + mouse.old_posy * fb_metadata->bytes_per_row + mouse.old_posx * screen_bytespp);
+    unsigned char* mouse_start = (unsigned char*)((uint64_t)fb0 + mouse.old_posy * fb_metadata->bytes_per_row + mouse.old_posx * screen_bytespp);
     
     for (uint16_t x = 0; x < sizeof(mouse.icon[0]); x++){
         for (uint16_t y = 0; y < sizeof(mouse.icon) / sizeof(mouse.icon[0]); y++){
             unsigned char* pixel = mouse_start + y * fb_metadata->bytes_per_row + x * screen_bytespp;
-            if (pixel < back_buffer || pixel >= back_buffer + fb_metadata->size) continue; 
+            if (pixel < fb0 || pixel >= fb0 + fb_metadata->size) continue; 
             
             memcpy(pixel,mouse.overriden_data[y][x],screen_bytespp);
         }
@@ -382,60 +442,67 @@ void restore_mouse_underlying_pixels(framebuffer_t* fb_metadata){
 window_t* get_mouse_top_window(){
     window_t* iter = head;
     window_t* win = 0;
-    uint32_t max_z = 0;
     while(iter){
-        if (mouse.posx >= iter->origin_x &&
-            mouse.posx <= iter->origin_x + iter->width &&
-            mouse.posy >= iter->origin_y &&
-            mouse.posy <= iter->origin_y + iter->height &&
-            iter->z > max_z
-           )
+        if (mouse.posx >= iter->section.x &&
+            mouse.posx <= iter->section.x + iter->section.width &&
+            mouse.posy >= iter->section.y &&
+            mouse.posy <= iter->section.y + iter->section.height 
+        )
         {
-            max_z = iter->z;
-            win = iter;
+            win = iter; // is guaranteed to be higher because we iterate from lowest -> highest
         }
         iter = iter->next;
     }
 
-    return win;
+    return win; 
 }
 
-void adjust_window_zs(){
-    window_t* iter = head;
-    uint32_t max_z = find_largest_z();
-    uint32_t focused_z = focused_window->z;
-    while(iter){
-        if (iter->z > focused_z && iter != focused_window) iter->z--;
-        iter = iter->next;
+void adjust_focused_window()
+{
+    if (!focused_window || !head)
+        return;
+
+    if (head->next == 0)
+        return;
+
+    if (focused_window->next == 0)
+        return;
+
+    window_t *prev = find_prev_window(focused_window);
+
+    if (prev) {
+        prev->next = focused_window->next;
+    } else {
+        head = focused_window->next;
     }
-    focused_window->z = max_z;
 
+    window_t *tail = head;
+    while (tail->next)
+        tail = tail->next;
+
+    tail->next = focused_window;
+    focused_window->next = 0;
 }
+
 
 void move_window(window_t* win,framebuffer_t* fb_metadata,int16_t relx, int16_t rely){
-    int32_t new_x = (int32_t)win->origin_x + relx;
-    int32_t new_y = (int32_t)win->origin_y - rely;
+    int32_t new_x = (int32_t)win->section.x + relx;
+    int32_t new_y = (int32_t)win->section.y - rely;
 
     if (new_x < 0) new_x = 0;
     if (new_x >= (int32_t)fb_metadata->width) new_x = fb_metadata->width - 1;
     if (new_y < 0) new_y = 0;
     if (new_y >= (int32_t)fb_metadata->height) new_y = fb_metadata->height - 1;
 
-    if (relx != 0 || rely != 0){
-        section_t section = {
-            .x = win->origin_x,
-            .y = win->origin_y,
-            .width = win->width,
-            .height = win->height
-        };
-        dirty_sections[dirty_section_idx++] = section; 
 
+    if (relx != 0 || rely != 0){
+        mark_intersecting_windows_dirty(win,0); 
+        //save the old section to be deleted
+        enlarge_section(&screen_moved_sec,win->section.x,win->section.y,win->section.width,win->section.height);
     }
 
-    win->origin_x = (uint32_t)new_x;
-    win->origin_y = (uint32_t)new_y;
-    
-    window_dirty = 1;
+    win->section.x = (uint32_t)new_x;
+    win->section.y = (uint32_t)new_y;
 }
 
 void update_mouse(framebuffer_t* fb_metadata,int mouse_fd){
@@ -451,7 +518,16 @@ void update_mouse(framebuffer_t* fb_metadata,int mouse_fd){
             window_t* win = get_mouse_top_window();
             if (win) {
                 focused_window = win;
-                adjust_window_zs();
+                adjust_focused_window();
+                if (!win->dirty){
+                    win->dirty = 1;
+                    dirty_section_idx = 0;
+                    dirty_sections[dirty_section_idx++] = win->section;
+                    mark_higher_intersecting_windows_dirty(win,1);
+                    section_t cluster = create_composite_section(dirty_sections,dirty_section_idx);
+                    dirty_section_idx = 0;
+                    dirty_cluster[dirty_cluster_index++] = cluster;
+                }
                 if (mouse.left_clicked) {
                     move_window(win, fb_metadata, rel_x, rel_y);
             
@@ -480,7 +556,6 @@ void update_mouse(framebuffer_t* fb_metadata,int mouse_fd){
         draw_mouse(fb_metadata);
         
     }
-
 }
 
 __attribute__((section(".text.start")))
@@ -488,7 +563,10 @@ void main(){
     int fb0_fd = open("dev/fb0",FILE_FLAG_NONE);
     int kb0_fd = open("dev/kb0",FILE_FLAG_NONE);
     int mouse_fd = open("dev/mouse",FILE_FLAG_NONE);
+    debug("BER");
+    debug(uint32_to_ascii((uint32_t)&wm_to_k_fd)); // TODO: magic hotfix, need to investigate
     wm_to_k_fd = open("tmp/wm_to_k.tmp",FILE_FLAG_WRITE);
+    debug("AFTER");
     k_to_wm_fd = open("tmp/k_to_wm.tmp",FILE_FLAG_READ);
 
     chdir("tmp");
@@ -530,11 +608,12 @@ void main(){
         }
 
         memset(buffer,0,sizeof(buffer));
-
+        
         n_kmsg = read(k_to_wm_fd,buffer,sizeof(buffer));
         uint32_t bytes_read = 0;
+        
         while (bytes_read < n_kmsg){
-
+            
             win_man_msg_t* msg = (win_man_msg_t*)&buffer[bytes_read];
             switch (msg->cmd)
             {
@@ -556,9 +635,8 @@ void main(){
             bytes_read += msg->size;
         }
 
-        update_mouse(&fb_metadata,mouse_fd);
         composite_windows(&fb_metadata);
-
+        update_mouse(&fb_metadata,mouse_fd);
     }
 
     exit(EXIT_SUCCESS);
