@@ -194,6 +194,13 @@ void handle_window_request(framebuffer_t* fb_metadata,win_man_msg_t* msg){
     chdir("..");
 }
 
+uint32_t min(uint32_t a, uint32_t b) {
+    return (a < b) ? a : b;
+}
+uint32_t max(uint32_t a, uint32_t b) {
+    return (a > b) ? a : b;
+}
+
 void enlarge_section(section_t* sec,uint32_t x, uint32_t y,uint32_t width, uint32_t height){
     if (sec->width == 0 && sec->height == 0){
         // initialize
@@ -204,10 +211,15 @@ void enlarge_section(section_t* sec,uint32_t x, uint32_t y,uint32_t width, uint3
         return;
     }
 
-    if (x + width > sec->x + sec->width) sec->width = (x + width) - sec->x;
-    if (y + height > sec->y + sec->height) sec->height = (y + height) - sec->y;
-    if (x < sec->x) sec->x = x;
-    if (y < sec->y) sec->y = y;
+    uint32_t new_left   = min(sec->x,x);
+    uint32_t new_top    = min(sec->y,y);
+    uint32_t new_right  = max(sec->x + sec->width, x + width);
+    uint32_t new_bottom = max(sec->y + sec->height, y + height);
+
+    sec->x = new_left;
+    sec->y = new_top;
+    sec->width = new_right - new_left;
+    sec->height = new_bottom - new_top; 
 }
 
 section_t create_composite_section(section_t secs[],uint32_t n_sections){
@@ -353,7 +365,7 @@ void composite_windows(framebuffer_t* fb_metadata){
         moved = 1;
         if (screen_moved_sec.x > 0) screen_moved_sec.x--;
         if (screen_moved_sec.y > 0) screen_moved_sec.y--;
-        screen_moved_sec.width += 2;
+        screen_moved_sec.width  += 2;
         screen_moved_sec.height += 2;
         clear_section(screen_moved_sec,fb_metadata);
     }
@@ -410,6 +422,10 @@ void handle_process_shudown(uint32_t pid){
     if (win == focused_window){
         prev = focused_window;
     }
+
+    // clean it up
+    enlarge_section(&screen_moved_sec,win->section.x,win->section.y,win->section.width,win->section.height);
+    mark_intersecting_windows_dirty(win,0);
     free(win);
     win = 0;
     free(pid_str);
@@ -505,6 +521,9 @@ void move_window(window_t* win,framebuffer_t* fb_metadata,int16_t relx, int16_t 
         mark_intersecting_windows_dirty(win,0); 
         //save the old section to be deleted
         enlarge_section(&screen_moved_sec,win->section.x,win->section.y,win->section.width,win->section.height);
+
+        // also save new one so that borders all render
+        enlarge_section(&screen_moved_sec,new_x,new_y,win->section.width,win->section.height);
     }
 
     win->section.x = (uint32_t)new_x;
