@@ -36,7 +36,7 @@ int delete_dir_recursive(unsigned char* dir_name){
     uint32_t bpos = 0;
     for (int i = 0; i < n_entries;i++){
         dirent_t* ent = (dirent_t*)(buffer + bpos);
-        if (ent->type == TYPE_FILE){
+        if (ent->type == TYPE_FILE || ent->type == TYPE_PIPE){
             if (rmfile(ent->name) < 0) {
                 print("Failed to remove file '");
                 print(ent->name);
@@ -44,7 +44,7 @@ int delete_dir_recursive(unsigned char* dir_name){
             }
         }else{
             if (delete_dir_recursive(ent->name) < 0){
-                print("Failed to remote directory '");
+                print("Failed to remove directory '");
                 print(ent->name);
                 print("'\n");
             }
