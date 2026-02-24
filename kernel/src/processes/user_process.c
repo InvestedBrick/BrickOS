@@ -178,8 +178,7 @@ uint32_t create_user_process(unsigned char* binary, uint32_t size,unsigned char*
     generic_file_t* stdin;
     generic_file_t* stdout;
     generic_file_t* stderr;
-    log("SPAWNING PROC");
-    log(process_name);
+    logf("Spawning process: %s",process_name);
 
     uint32_t name_len = strlen(process_name);
     process->process_name = (unsigned char*)kmalloc(name_len + 1);
@@ -214,7 +213,8 @@ uint32_t create_user_process(unsigned char* binary, uint32_t size,unsigned char*
     process->kernel_stack_top = kernel_stack + MEMORY_PAGE_SIZE;
     
 
-    uint32_t code_data_pages = CEIL_DIV(size,MEMORY_PAGE_SIZE);
+    uint32_t code_data_pages = CEIL_DIV(size,MEMORY_PAGE_SIZE) + 1; // add one safety page
+    logf("Allocating %d pages for %s",code_data_pages,process->process_name);
     process->page_alloc_start = code_data_pages * MEMORY_PAGE_SIZE;
 
     vector_append(&user_process_vector,(vector_data_t)process); // too lazy to implement a vector for structs
