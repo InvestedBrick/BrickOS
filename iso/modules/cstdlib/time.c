@@ -27,8 +27,13 @@ void parse_unix_timestamp(uint64_t timestamp,date_t* date){
         curr_month++;
     }
 
-    date->month = curr_month + 1;
-    date->day = n_days + 1; // current day is off by one
+    date->month = (curr_month + 1) % 12;
+    if (n_days + 1 > month_days[curr_month]){
+        date->day = 1;
+        date->month = (date->month + 1) % 12;
+    }else{
+        date->day = n_days + 1; // current day is off by one
+    }
 
     uint64_t seconds_left = timestamp % (60 * 60 * 24);
     uint8_t current_hour = 0;
