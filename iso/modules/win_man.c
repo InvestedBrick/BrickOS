@@ -59,6 +59,12 @@ uint8_t valid_section(section_t* sec){
     return (!(sec->width == 0 || sec->height == 0));
 }
 
+uint8_t sections_overlapping(section_t* a, section_t* b){
+    return ((a->x <= b->x && a->x + a->width >= b->x && a->y <= b->y && a->y + a->height >= b->y)
+    ||
+    (b->x <= a->x && b->x + b->width >= a->x && b->y <= a->y && b->y + b->height >= a->y));
+}
+
 window_t* get_prev_window(window_t* win){
     window_t* iter = head;
     if (iter == win) return 0; 
@@ -301,25 +307,80 @@ void partial_window_copy(window_t* win, section_t* sec,framebuffer_t* fb){
     for (uint32_t y = 0; y < sec->height;y++){
         memcpy(
             back_buffer + (sec->y + y)*fb->bytes_per_row + sec->x*screen_bytespp,
-            win->comitted_buffer + (y_offset + y)*win->section.width*screen_bytespp + x_offset*screen_bytespp,
+            win->comitted_buffer + ((y_offset + y)*win->section.width + x_offset)*screen_bytespp,
             sec->width * screen_bytespp
         );
     }
 }
 section_t intersection(section_t* sec_a,section_t* sec_b){
-//TODO:
+    section_t ret_rec = {0};
+    if (!sections_overlapping(sec_a,sec_b)) return ret_rec;
+    ret_rec.x = max(sec_a->x,sec_b->x);
+    ret_rec.y = max(sec_a->y,sec_b->y);
+
+    uint32_t right = min(sec_a->x + sec_a->width,sec_b->x + sec_b->width);
+    uint32_t bottom = min(sec_a->y + sec_a->height,sec_b->y + sec_b->height);
+
+    ret_rec.width = right - ret_rec.x;
+    ret_rec.height = bottom - ret_rec.y;
+    return ret_rec;
 }
 
 
 section_split_t split_section(section_t* sec, section_t* center_sec){
-//TODO:
+    /*
+     * split sec into up to 5 subsections
+     * center_sec becomes subsection 0
+     * splitting vertically
+    */
+    section_split_t split_sec = {0};
+    split_sec.sections[0] = *center_sec;
+    if (sec->x < center_sec->x){
+        // empty space to the left
+        section_t left;
+        left.x = sec->x;
+        left.y = sec->y;
+        left.height = sec->height;
+        left.width = center_sec->x - sec->x;
+        split_sec.sections[1] = left;
+    }
+    if (sec->y < center_sec->y){
+        // empty space on the top
+        section_t top;
+        top.x = center_sec->x;
+        top.y = sec->y;
+        top.height = center_sec->y - sec->y;
+        top.width = center_sec->width;
+        split_sec.sections[2] = top;
+    }
+    if (sec->x + sec->width > center_sec->x + center_sec->width){
+        // empty space on the right
+        section_t right;
+        right.x = center_sec->x + center_sec->width;
+        right.y = sec->y;
+        right.height = sec->height;
+        right.width = (sec->x + sec->width) - (center_sec->x + center_sec->width);
+        split_sec.sections[3] = right;
+    }
+    if (sec->y + sec->y > center_sec->y + center_sec->height){
+        // empty space on the bottom
+        section_t bottom;
+        bottom.x = center_sec->x;
+        bottom.y = center_sec->y + center_sec->height;
+        bottom.width = center_sec->width;
+        bottom.height = (sec->y + sec->width) - (center_sec->y + center_sec->height);
+        split_sec.sections[4] = bottom;
+    }
+    return split_sec;
+
+
 }
 void update_rect(window_t* win,section_t* rect,framebuffer_t* fb){
     if (!win){
         clear_section(*rect,fb); // normally draw background here
         return;
     }
-
+    
     section_t visible_intersection = intersection(&win->section,rect);
     if (valid_section(&visible_intersection)){
         section_split_t split_sec = split_section(rect,&visible_intersection);
@@ -339,11 +400,11 @@ void merge_dirty_sections(){
     // only merges identical sections right now (are created when moving)
     for (uint32_t i = 0; i < dirty_section_idx;i++){
         section_t sec = dirty_sections[i];
-        if (valid_section(&sec)) continue;
+        if (!valid_section(&sec)) continue;
         for (uint32_t j = 0; j < dirty_section_idx;j++){
             if (i == j) continue;
             section_t test_sec = dirty_sections[j];
-            if (valid_section(&test_sec)) continue;
+            if (!valid_section(&test_sec)) continue;
             if (sections_identical(&sec,&test_sec)){
                 // make second section invalid
                 test_sec.width = 0;
@@ -352,6 +413,21 @@ void merge_dirty_sections(){
         }
     }
 }
+
+// draw a 3x3 square for the mouse pointer
+void draw_mouse(framebuffer_t* fb){
+    unsigned char* mouse_start = (unsigned char*)((uint64_t)back_buffer + mouse.posy * fb->bytes_per_row + mouse.posx * screen_bytespp);
+    // draw mouse icon and save the pixels that are being overridden
+    for (uint16_t x = 0; x < sizeof(mouse.icon[0]); x++){
+        for (uint16_t y = 0; y < sizeof(mouse.icon) / sizeof(mouse.icon[0]); y++){
+            unsigned char* pixel = mouse_start + y * fb->bytes_per_row + x * screen_bytespp;
+            if (pixel < back_buffer || pixel >= back_buffer + fb->size) continue; // sanity check to avoid writing out of bounds
+            
+            memset(pixel,mouse.icon[y][x],screen_bytespp);
+        }
+    }
+}
+
 void composite_windows(framebuffer_t* fb){
     if (!head) return;
     
@@ -365,12 +441,15 @@ void composite_windows(framebuffer_t* fb){
     }
 
     for (uint32_t i = 0;i < dirty_section_idx;i++){
-        // doint this in a seperate loop so that there is less screen tearing from the extra update time that update_rect takes
+        // doing this in a seperate loop so that there is less screen tearing from the extra update time that update_rect takes
         section_t* sec = &dirty_sections[i];
         if (!valid_section(sec)) continue;
         blit_section(sec,fb);
-
     }
+    draw_mouse(fb);
+    section_t mouse_sec = {mouse.posx,mouse.posy,3,3};
+    blit_section(&mouse_sec,fb);
+
     dirty_section_idx = 0;
     
 }
@@ -400,20 +479,6 @@ void handle_process_shudown(uint32_t pid){
     win = 0;
     free(pid_str);
 
-}
-
-// draw a 3x3 square for the mouse pointer
-void draw_mouse(framebuffer_t* fb){
-    unsigned char* mouse_start = (unsigned char*)((uint64_t)back_buffer + mouse.posy * fb->bytes_per_row + mouse.posx * screen_bytespp);
-    // draw mouse icon and save the pixels that are being overridden
-    for (uint16_t x = 0; x < sizeof(mouse.icon[0]); x++){
-        for (uint16_t y = 0; y < sizeof(mouse.icon) / sizeof(mouse.icon[0]); y++){
-            unsigned char* pixel = mouse_start + y * fb->bytes_per_row + x * screen_bytespp;
-            if (pixel < back_buffer || pixel >= back_buffer + fb->size) continue; // sanity check to avoid writing out of bounds
-            
-            memset(pixel,mouse.icon[y][x],screen_bytespp);
-        }
-    }
 }
 
 window_t* get_mouse_top_window(){
@@ -481,7 +546,7 @@ void update_mouse(framebuffer_t* fb,int mouse_fd){
 
         int32_t new_x = (int32_t)mouse.posx + rel_x;
         int32_t new_y = (int32_t)mouse.posy - rel_y;
-        section_t old_mouse = {mouse.posx, mouse.posy, mouse.posx + 3, mouse.posy + 3};
+        section_t old_mouse = {mouse.posx, mouse.posy, 3, 3};
         if (new_x < 0) new_x = 0;
         if (new_x >= (int32_t)fb->width) new_x = fb->width - 1;
         if (new_y < 0) new_y = 0;
@@ -489,9 +554,9 @@ void update_mouse(framebuffer_t* fb,int mouse_fd){
         
         mouse.posx = (uint32_t)new_x;
         mouse.posy = (uint32_t)new_y;
-        section_t new_mouse = {mouse.posx, mouse.posy, mouse.posx + 3, mouse.posy + 3};
+        section_t new_mouse = {mouse.posx, mouse.posy, 3, 3};
 
-        draw_mouse(fb);
+        
         add_dirty_section(old_mouse);
         add_dirty_section(new_mouse);
         
