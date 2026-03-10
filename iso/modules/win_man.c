@@ -21,7 +21,7 @@ typedef struct {
     section_t sections[5];
 }section_split_t;
 
-#define MAX_DIRTY_SECTIONS (0x1000 / sizeof(section_t))
+#define MAX_DIRTY_SECTIONS (0x4000 / sizeof(section_t))
 
 typedef struct window {
     struct window* next;
@@ -60,9 +60,11 @@ uint8_t valid_section(section_t* sec){
 }
 
 uint8_t sections_overlapping(section_t* a, section_t* b){
-    return ((a->x <= b->x && a->x + a->width >= b->x && a->y <= b->y && a->y + a->height >= b->y)
-    ||
-    (b->x <= a->x && b->x + b->width >= a->x && b->y <= a->y && b->y + b->height >= a->y));
+    if (a->x + a->width <= b->x) return 0;
+    if (b->x + b->width <= a->x) return 0;
+    if (a->y + a->height <= b->y) return 0;
+    if (b->y + b->height <= a->y) return 0;
+    return 1;
 }
 
 window_t* get_prev_window(window_t* win){
@@ -301,9 +303,17 @@ void blit_section(section_t* sec, framebuffer_t* fb) {
 
 
 void partial_window_copy(window_t* win, section_t* sec,framebuffer_t* fb){
-    // sec must be contained in win->section
+
+    if (sec->x < win->section.x ||
+        sec->y < win->section.y ||
+        sec->x + sec->width  > win->section.x + win->section.width ||
+        sec->y + sec->height > win->section.y + win->section.height)
+            return;
+
+
     uint32_t y_offset = sec->y - win->section.y;
-    uint32_t x_offset = sec->x - win->section.x; 
+    uint32_t x_offset = sec->x - win->section.x;
+    
     for (uint32_t y = 0; y < sec->height;y++){
         memcpy(
             back_buffer + (sec->y + y)*fb->bytes_per_row + sec->x*screen_bytespp,
@@ -362,20 +372,60 @@ section_split_t split_section(section_t* sec, section_t* center_sec){
         right.width = (sec->x + sec->width) - (center_sec->x + center_sec->width);
         split_sec.sections[3] = right;
     }
-    if (sec->y + sec->y > center_sec->y + center_sec->height){
+    if (sec->y + sec->height > center_sec->y + center_sec->height){
         // empty space on the bottom
         section_t bottom;
         bottom.x = center_sec->x;
         bottom.y = center_sec->y + center_sec->height;
         bottom.width = center_sec->width;
-        bottom.height = (sec->y + sec->width) - (center_sec->y + center_sec->height);
+        bottom.height = (sec->y + sec->height) - (center_sec->y + center_sec->height);
         split_sec.sections[4] = bottom;
     }
     return split_sec;
 
 
 }
+
+void draw_visible_window_decorations(window_t* win, section_t* visible_sec, section_t* rect, framebuffer_t* fb){
+    
+    if (visible_sec->y == win->section.y && win->section.y > 0){
+        // top border
+        unsigned char* top_border = back_buffer + (visible_sec->y - 1) * fb->bytes_per_row + visible_sec->x * screen_bytespp;
+        memset(top_border, 0xAA, visible_sec->width * screen_bytespp);
+        rect->y--;
+        rect->height++;
+
+    }
+    if (visible_sec->y + visible_sec->height == win->section.y + win->section.height && win->section.y + win->section.height < fb->height){
+        // bottom border
+        unsigned char* bottom_border = back_buffer + (visible_sec->y + visible_sec->height) * fb->bytes_per_row + visible_sec->x * screen_bytespp;
+        memset(bottom_border, 0xAA, visible_sec->width * screen_bytespp);
+        rect->height++;
+    
+    }
+    if (visible_sec->x == win->section.x && win->section.x > 0){
+        // left border
+        for (uint32_t y = 0; y < visible_sec->height;y++){
+            unsigned char* left_border = back_buffer + (visible_sec->y + y) * fb->bytes_per_row + (visible_sec->x - 1) * screen_bytespp;
+            memset(left_border, 0xAA, screen_bytespp);
+        }
+        rect->x--;
+        rect->width++;
+
+    }
+    if (visible_sec->x + visible_sec->width == win->section.x + win->section.width && win->section.x + win->section.width < fb->width){
+        // right border
+        for (uint32_t y = 0; y < visible_sec->height;y++){
+            unsigned char* right_border = back_buffer + (visible_sec->y + y) * fb->bytes_per_row + (visible_sec->x + visible_sec->width) * screen_bytespp;
+            memset(right_border, 0xAA, screen_bytespp);
+        }
+        rect->width++;
+
+    }
+}
+
 void update_rect(window_t* win,section_t* rect,framebuffer_t* fb){
+    
     if (!win){
         clear_section(*rect,fb); // normally draw background here
         return;
@@ -383,11 +433,12 @@ void update_rect(window_t* win,section_t* rect,framebuffer_t* fb){
     
     section_t visible_intersection = intersection(&win->section,rect);
     if (valid_section(&visible_intersection)){
+
         section_split_t split_sec = split_section(rect,&visible_intersection);
         partial_window_copy(win,&split_sec.sections[0],fb);
 
         for (uint32_t i = 1; i < 5;i++){
-            if (valid_section(&split_sec.sections[i])){
+            if (valid_section(&split_sec.sections[i]) ){
                 update_rect(win->next,&split_sec.sections[i],fb);
             }
         }
@@ -396,22 +447,52 @@ void update_rect(window_t* win,section_t* rect,framebuffer_t* fb){
     }
 }
 
+
+uint8_t sections_overlapping_large(section_t* a,section_t* b){
+    // checks if the sections overlap enough to merge them 
+    if (!sections_overlapping(a,b)) return 0;
+    section_t intersec = intersection(a,b);
+    uint32_t intersec_area = intersec.width * intersec.height;
+    section_t a_copy = *a;
+    enlarge_section(&a_copy,b->x,b->y,b->width,b->height);
+
+    // area which gets added by merging the two rects
+    uint32_t extra_area = (a_copy.width * a_copy.height) - (b->height * b->width) - (a->height * a->width) + intersec_area;
+
+    return intersec_area > extra_area;
+}
+
 void merge_dirty_sections(){
     // only merges identical sections right now (are created when moving)
     for (uint32_t i = 0; i < dirty_section_idx;i++){
-        section_t sec = dirty_sections[i];
-        if (!valid_section(&sec)) continue;
+        if (!valid_section(&dirty_sections[i])) continue;
         for (uint32_t j = 0; j < dirty_section_idx;j++){
             if (i == j) continue;
-            section_t test_sec = dirty_sections[j];
-            if (!valid_section(&test_sec)) continue;
-            if (sections_identical(&sec,&test_sec)){
-                // make second section invalid
-                test_sec.width = 0;
-                test_sec.height = 0;
+            if (!valid_section(&dirty_sections[j])) continue;
+            if (sections_overlapping_large(&dirty_sections[i],&dirty_sections[j])){
+                enlarge_section(
+                    &dirty_sections[i],
+                    dirty_sections[j].x,
+                    dirty_sections[j].y,
+                    dirty_sections[j].width,
+                    dirty_sections[j].height
+                );
+
+                dirty_sections[j].height = 0;
+                dirty_sections[j].width = 0;
             }
         }
     }
+
+    // remove invalid sections
+    uint32_t dst = 0;
+    for (uint32_t i = 0; i < dirty_section_idx;i++){
+        if (valid_section(&dirty_sections[i])){
+            if (dst != i) dirty_sections[dst] = dirty_sections[i];
+            dst++;
+        }
+    }
+    dirty_section_idx = dst;
 }
 
 // draw a 3x3 square for the mouse pointer
@@ -421,7 +502,11 @@ void draw_mouse(framebuffer_t* fb){
     for (uint16_t x = 0; x < sizeof(mouse.icon[0]); x++){
         for (uint16_t y = 0; y < sizeof(mouse.icon) / sizeof(mouse.icon[0]); y++){
             unsigned char* pixel = mouse_start + y * fb->bytes_per_row + x * screen_bytespp;
-            if (pixel < back_buffer || pixel >= back_buffer + fb->size) continue; // sanity check to avoid writing out of bounds
+            uint8_t* start = back_buffer;
+            uint8_t* end = back_buffer + fb->size;
+
+            if (pixel < start || pixel + screen_bytespp > end)
+                continue; // sanity check to avoid writing out of bounds
             
             memset(pixel,mouse.icon[y][x],screen_bytespp);
         }
@@ -430,7 +515,6 @@ void draw_mouse(framebuffer_t* fb){
 
 void composite_windows(framebuffer_t* fb){
     if (!head) return;
-    
     merge_dirty_sections();
 
     // for every dirty rect update and blit them
@@ -589,10 +673,11 @@ void main(){
     screen_bytes_per_row = fb.bytes_per_row;
     screen_bytespp = fb.bpp / 8;
     
-    dirty_sections = (section_t*)mmap(0x1000,PROT_READ | PROT_WRITE,MAP_ANON,0,0);
+    dirty_sections = (section_t*)mmap((MAX_DIRTY_SECTIONS * sizeof(section_t)),PROT_READ | PROT_WRITE,MAP_ANON,0,0);
+    memset(dirty_sections,0,MAX_DIRTY_SECTIONS * sizeof(section_t));
     fb0 = (unsigned char*)mmap(fb.size, PROT_READ | PROT_WRITE, MAP_SHARED, fb0_fd,0);
     back_buffer = (unsigned char*)mmap(fb.size,PROT_READ | PROT_WRITE,MAP_ANON,0,0);
-    
+    memset(back_buffer,0,fb.size);
     close(fb0_fd);
     if (!fb0) exit(4);
     if (!dirty_sections) exit(5);
