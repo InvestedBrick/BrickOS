@@ -386,7 +386,7 @@ section_split_t split_section(section_t* sec, section_t* center_sec){
 
 }
 
-void draw_visible_window_decorations(window_t* win, section_t* visible_sec, section_t* rect, framebuffer_t* fb){
+void draw_visible_window_decorations(window_t* win, const section_t* visible_sec, section_t* rect, framebuffer_t* fb){
     
     if (visible_sec->y == win->section.y && win->section.y > 0){
         // top border
@@ -502,10 +502,11 @@ void draw_mouse(framebuffer_t* fb){
     for (uint16_t x = 0; x < sizeof(mouse.icon[0]); x++){
         for (uint16_t y = 0; y < sizeof(mouse.icon) / sizeof(mouse.icon[0]); y++){
             unsigned char* pixel = mouse_start + y * fb->bytes_per_row + x * screen_bytespp;
+            uint32_t row = (pixel - back_buffer) / fb->bytes_per_row;
             uint8_t* start = back_buffer;
             uint8_t* end = back_buffer + fb->size;
 
-            if (pixel < start || pixel + screen_bytespp > end)
+            if (pixel < start || pixel + screen_bytespp > end || row != mouse.posy + y)
                 continue; // sanity check to avoid writing out of bounds
             
             memset(pixel,mouse.icon[y][x],screen_bytespp);
