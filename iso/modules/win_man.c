@@ -45,26 +45,48 @@ typedef struct {
     uint8_t left_clicked;
     uint8_t right_clicked;
     uint8_t middle_clicked;
+
+    uint8_t tried_window; // used to only try to click a window once per mouse down event
+    window_t* dragging_window; 
 }mouse_t;
 
 window_t* head = 0; 
 section_t* dirty_sections = 0;
+
+#define SECTION_EXPANDED_TOP 0x1
+#define SECTION_EXPANDED_LEFT 0x2
+#define SECTION_EXPANDED_BOTTOM 0x4
+#define SECTION_EXPANDED_RIGHT 0x8
+
+uint8_t dirty_section_expanded[MAX_DIRTY_SECTIONS] = {0};
 uint32_t dirty_section_idx = 0;
 
-uint8_t sections_identical(section_t* a, section_t* b){
+
+void set_section_expanded(uint32_t idx, uint8_t expanded){
+    if (idx >= MAX_DIRTY_SECTIONS) return;
+    dirty_section_expanded[idx] |= expanded;
+}
+uint8_t sections_identical(const section_t* a, const section_t* b){
     return (a->x == b->x && a->y == b->y && a->width == b->width && a->height == b->height);
 }
 
-uint8_t valid_section(section_t* sec){
+uint8_t valid_section(const section_t* sec){
     return (!(sec->width == 0 || sec->height == 0));
 }
 
-uint8_t sections_overlapping(section_t* a, section_t* b){
+uint8_t sections_overlapping(const section_t* a, const section_t* b){
     if (a->x + a->width <= b->x) return 0;
     if (b->x + b->width <= a->x) return 0;
     if (a->y + a->height <= b->y) return 0;
     if (b->y + b->height <= a->y) return 0;
     return 1;
+}
+
+uint8_t section_contains(const section_t* container, const section_t* containee){
+    return (container->x <= containee->x &&
+            container->y <= containee->y &&
+            container->x + container->width >= containee->x + containee->width &&
+            container->y + container->height >= containee->y + containee->height);
 }
 
 window_t* get_prev_window(window_t* win){
@@ -174,7 +196,6 @@ void handle_window_request(framebuffer_t* fb,win_man_msg_t* msg){
     new_win->next = 0;
     new_win->section.x = n_windows * 50;
     new_win->section.y = n_windows * 50;
-    add_dirty_section(new_win->section);
     n_windows++;
     uint32_t filename_len = sizeof("win.tmp");
     unsigned char* backing_filename = (unsigned char*)malloc(filename_len);
@@ -337,48 +358,48 @@ section_t intersection(section_t* sec_a,section_t* sec_b){
 }
 
 
-section_split_t split_section(section_t* sec, section_t* center_sec){
+section_split_t split_section(section_t* sec, section_t center_sec){
     /*
      * split sec into up to 5 subsections
      * center_sec becomes subsection 0
      * splitting vertically
     */
-    section_split_t split_sec = {0};
-    split_sec.sections[0] = *center_sec;
-    if (sec->x < center_sec->x){
+   section_split_t split_sec = {0};
+   split_sec.sections[0] = center_sec;
+    if (sec->x < center_sec.x){
         // empty space to the left
         section_t left;
         left.x = sec->x;
         left.y = sec->y;
         left.height = sec->height;
-        left.width = center_sec->x - sec->x;
+        left.width = center_sec.x - sec->x;
         split_sec.sections[1] = left;
     }
-    if (sec->y < center_sec->y){
+    if (sec->y < center_sec.y){
         // empty space on the top
         section_t top;
-        top.x = center_sec->x;
+        top.x = center_sec.x;
         top.y = sec->y;
-        top.height = center_sec->y - sec->y;
-        top.width = center_sec->width;
+        top.height = center_sec.y - sec->y;
+        top.width = center_sec.width;
         split_sec.sections[2] = top;
     }
-    if (sec->x + sec->width > center_sec->x + center_sec->width){
+    if (sec->x + sec->width > center_sec.x + center_sec.width){
         // empty space on the right
         section_t right;
-        right.x = center_sec->x + center_sec->width;
+        right.x = center_sec.x + center_sec.width;
         right.y = sec->y;
         right.height = sec->height;
-        right.width = (sec->x + sec->width) - (center_sec->x + center_sec->width);
+        right.width = (sec->x + sec->width) - (center_sec.x + center_sec.width);
         split_sec.sections[3] = right;
     }
-    if (sec->y + sec->height > center_sec->y + center_sec->height){
+    if (sec->y + sec->height > center_sec.y + center_sec.height){
         // empty space on the bottom
         section_t bottom;
-        bottom.x = center_sec->x;
-        bottom.y = center_sec->y + center_sec->height;
-        bottom.width = center_sec->width;
-        bottom.height = (sec->y + sec->height) - (center_sec->y + center_sec->height);
+        bottom.x = center_sec.x;
+        bottom.y = center_sec.y + center_sec.height;
+        bottom.width = center_sec.width;
+        bottom.height = (sec->y + sec->height) - (center_sec.y + center_sec.height);
         split_sec.sections[4] = bottom;
     }
     return split_sec;
@@ -386,42 +407,94 @@ section_split_t split_section(section_t* sec, section_t* center_sec){
 
 }
 
-void draw_visible_window_decorations(window_t* win, const section_t* visible_sec, section_t* rect, framebuffer_t* fb){
+uint32_t find_containing_dirty_section_idx(section_t* sec){
+    for (uint32_t i = 0; i < dirty_section_idx;i++){
+        if (section_contains(&dirty_sections[i],sec)){
+            return i;
+        }
+    }
+    return UINT32_MAX;
+}
+
+section_t draw_visible_window_decorations(window_t* win, section_t* visible_sec, framebuffer_t* fb){
+    uint32_t sec_idx = find_containing_dirty_section_idx(visible_sec);
+    if (sec_idx == UINT32_MAX || sec_idx >= dirty_section_idx) return *visible_sec;
     
+    section_t* dirty_sec = &dirty_sections[sec_idx];
+
+    if (!dirty_sec) return *visible_sec;
+    if (!valid_section(dirty_sec)) return *visible_sec;
+
+    section_t original_visible_sec = *visible_sec;
+
     if (visible_sec->y == win->section.y && win->section.y > 0){
         // top border
         unsigned char* top_border = back_buffer + (visible_sec->y - 1) * fb->bytes_per_row + visible_sec->x * screen_bytespp;
-        memset(top_border, 0xAA, visible_sec->width * screen_bytespp);
-        rect->y--;
-        rect->height++;
+        uint32_t clamped_width = min(visible_sec->width, fb->width - visible_sec->x);
+        memset(top_border, 0xAA, clamped_width * screen_bytespp);
 
+        // also enlarge so that splitting does not create subsections that overwrites the border again
+        visible_sec->y--;
+        visible_sec->height++;
+
+
+        if (dirty_sec->y == visible_sec->y && !(dirty_section_expanded[sec_idx] & SECTION_EXPANDED_TOP)){
+            dirty_sec->y--;
+            dirty_sec->height++;
+            set_section_expanded(sec_idx, SECTION_EXPANDED_TOP);
+        }
     }
     if (visible_sec->y + visible_sec->height == win->section.y + win->section.height && win->section.y + win->section.height < fb->height){
         // bottom border
         unsigned char* bottom_border = back_buffer + (visible_sec->y + visible_sec->height) * fb->bytes_per_row + visible_sec->x * screen_bytespp;
-        memset(bottom_border, 0xAA, visible_sec->width * screen_bytespp);
-        rect->height++;
+        uint32_t clamped_width = min(visible_sec->width, fb->width - visible_sec->x);
+        memset(bottom_border, 0xAA, clamped_width * screen_bytespp);
+
+        visible_sec->height++;
+
+        if (dirty_sec->y + dirty_sec->height == visible_sec->y + visible_sec->height && !(dirty_section_expanded[sec_idx] & SECTION_EXPANDED_BOTTOM)){
+            dirty_sec->height++;
+            set_section_expanded(sec_idx, SECTION_EXPANDED_BOTTOM);
+        }
     
     }
     if (visible_sec->x == win->section.x && win->section.x > 0){
         // left border
-        for (uint32_t y = 0; y < visible_sec->height;y++){
+        uint32_t clamped_height = min(visible_sec->height,fb->height - visible_sec->y);
+        for (uint32_t y = 0; y < clamped_height;y++){
             unsigned char* left_border = back_buffer + (visible_sec->y + y) * fb->bytes_per_row + (visible_sec->x - 1) * screen_bytespp;
             memset(left_border, 0xAA, screen_bytespp);
         }
-        rect->x--;
-        rect->width++;
+
+        visible_sec->x--;
+        visible_sec->width++;
+
+        if (dirty_sec->x == visible_sec->x && !(dirty_section_expanded[sec_idx] & SECTION_EXPANDED_LEFT)){
+            dirty_sec->x--;
+            dirty_sec->width++;
+            set_section_expanded(sec_idx, SECTION_EXPANDED_LEFT);
+        }
 
     }
     if (visible_sec->x + visible_sec->width == win->section.x + win->section.width && win->section.x + win->section.width < fb->width){
         // right border
-        for (uint32_t y = 0; y < visible_sec->height;y++){
+        uint32_t clamped_height = min(visible_sec->height,fb->height - visible_sec->y);
+        for (uint32_t y = 0; y < clamped_height;y++){
             unsigned char* right_border = back_buffer + (visible_sec->y + y) * fb->bytes_per_row + (visible_sec->x + visible_sec->width) * screen_bytespp;
             memset(right_border, 0xAA, screen_bytespp);
         }
-        rect->width++;
+
+        visible_sec->width++;
+
+        if (dirty_sec->x + dirty_sec->width == visible_sec->x + visible_sec->width && !(dirty_section_expanded[sec_idx] & SECTION_EXPANDED_RIGHT)){
+            dirty_sec->width++;
+            set_section_expanded(sec_idx, SECTION_EXPANDED_RIGHT);
+        }
 
     }
+
+    return original_visible_sec;
+
 }
 
 void update_rect(window_t* win,section_t* rect,framebuffer_t* fb){
@@ -433,9 +506,11 @@ void update_rect(window_t* win,section_t* rect,framebuffer_t* fb){
     
     section_t visible_intersection = intersection(&win->section,rect);
     if (valid_section(&visible_intersection)){
+        // original intersec needed for partial window copy bc visible_intersection may be modified for borders etc
+        section_t original_intersec = draw_visible_window_decorations(win, &visible_intersection, fb);
 
-        section_split_t split_sec = split_section(rect,&visible_intersection);
-        partial_window_copy(win,&split_sec.sections[0],fb);
+        section_split_t split_sec = split_section(rect,visible_intersection);
+        partial_window_copy(win,&original_intersec,fb);
 
         for (uint32_t i = 1; i < 5;i++){
             if (valid_section(&split_sec.sections[i]) ){
@@ -495,6 +570,18 @@ void merge_dirty_sections(){
     dirty_section_idx = dst;
 }
 
+void clamp_dirty_sections(framebuffer_t* fb){
+    for (uint32_t i = 0; i < dirty_section_idx;i++){
+        if (dirty_sections[i].x >= fb->width || dirty_sections[i].y >= fb->height){
+            dirty_sections[i].width = 0;
+            dirty_sections[i].height = 0;
+            continue;
+        }
+        dirty_sections[i].width = min(dirty_sections[i].width, fb->width - dirty_sections[i].x);
+        dirty_sections[i].height = min(dirty_sections[i].height, fb->height - dirty_sections[i].y);
+    }
+}
+
 // draw a 3x3 square for the mouse pointer
 void draw_mouse(framebuffer_t* fb){
     unsigned char* mouse_start = (unsigned char*)((uint64_t)back_buffer + mouse.posy * fb->bytes_per_row + mouse.posx * screen_bytespp);
@@ -517,14 +604,13 @@ void draw_mouse(framebuffer_t* fb){
 void composite_windows(framebuffer_t* fb){
     if (!head) return;
     merge_dirty_sections();
-
+    clamp_dirty_sections(fb);
     // for every dirty rect update and blit them
     for (uint32_t i = 0; i < dirty_section_idx;i++){
         section_t* sec = &dirty_sections[i];
         if (!valid_section(sec)) continue;
         update_rect(head,sec,fb);
     }
-
     for (uint32_t i = 0;i < dirty_section_idx;i++){
         // doing this in a seperate loop so that there is less screen tearing from the extra update time that update_rect takes
         section_t* sec = &dirty_sections[i];
@@ -534,7 +620,7 @@ void composite_windows(framebuffer_t* fb){
     draw_mouse(fb);
     section_t mouse_sec = {mouse.posx,mouse.posy,3,3};
     blit_section(&mouse_sec,fb);
-
+    memset(dirty_section_expanded,0,sizeof(dirty_section_expanded));
     dirty_section_idx = 0;
     
 }
@@ -600,9 +686,17 @@ void move_window(window_t* win,framebuffer_t* fb,int16_t relx, int16_t rely){
     if (new_y < 0) new_y = 0;
     if (new_y >= (int32_t)fb->height) new_y = fb->height - 1;
 
+    section_t dirty_sec = win->section;
+
     win->section.x = (uint32_t)new_x;
     win->section.y = (uint32_t)new_y;
-    add_dirty_section(win->section);
+
+    enlarge_section(&dirty_sec,win->section.x,win->section.y,win->section.width,win->section.height);
+    if (dirty_sec.x > 0) dirty_sec.x--; // add 1 pixel border to avoid artifacts from window decorations
+    if (dirty_sec.y > 0) dirty_sec.y--;
+    dirty_sec.width += 2;
+    dirty_sec.height += 2;
+    add_dirty_section(dirty_sec);
 }
 
 void update_mouse(framebuffer_t* fb,int mouse_fd){
@@ -615,11 +709,16 @@ void update_mouse(framebuffer_t* fb,int mouse_fd){
         int16_t rel_y = buffer[i].rely;  
         
         if (buffer[i].btns & MOUSE_BTN_LEFT_MASK) {
-            window_t* win = get_mouse_top_window();
-            if (win) {
-                adjust_window_order(win);
+            if (!mouse.tried_window){
+                // only tries once so that a clicked mouse moving over a window does not start to move that window
+                mouse.dragging_window = get_mouse_top_window();
+                mouse.tried_window = 1;
+            }
+
+            if (mouse.dragging_window) {
+                adjust_window_order(mouse.dragging_window);
                 if (mouse.left_clicked) {
-                    move_window(win, fb, rel_x, rel_y);
+                    move_window(mouse.dragging_window, fb, rel_x, rel_y);
             
                 } else {
                     mouse.left_clicked = 1;
@@ -627,6 +726,8 @@ void update_mouse(framebuffer_t* fb,int mouse_fd){
             }
         } else {
             mouse.left_clicked = 0;
+            mouse.tried_window = 0;
+            mouse.dragging_window = 0;
         }
 
         int32_t new_x = (int32_t)mouse.posx + rel_x;
