@@ -26,7 +26,9 @@
 
 struct user_process global_kernel_process;
 extern uint8_t check_SSE();
+extern uint8_t check_FPU();
 extern void enable_SSE();
+extern void setup_FPU();
 
 void finish_up_kernel_proc(){
     global_kernel_process.fd_table[FD_STDIN] = fs_open("dev/kb0",FILE_FLAG_NONE);
@@ -91,8 +93,6 @@ void kmain()
     uint64_t stack_top;
     asm volatile ("mov %%rsp, %0" : "=r"(stack_top));
     
-    if (check_SSE()) enable_SSE();
-
     // Serial port setup
     serial_configure_baud_rate(SERIAL_COM1_BASE,3);
     serial_configure_line(SERIAL_COM1_BASE);
@@ -100,6 +100,12 @@ void kmain()
     serial_configure_modem(SERIAL_COM1_BASE);
     log("Set up serial port");
     
+    if (!check_SSE()) panic("No SSE support detected");
+    enable_SSE();
+    if (!check_FPU()) panic("No FPU detected");
+    setup_FPU();
+    log("Enabled SSE and FPU support");
+
     parse_bootloader_data();
 
     // Set up global descriptor table
@@ -172,7 +178,7 @@ void kmain()
     log("Wrote module binaries to files in the modules directory");
     
     // Everything is now set up
-    run("modules/terminal.bin",nullptr,nullptr,PRIV_STD);
+    //run("modules/terminal.bin",nullptr,nullptr,PRIV_STD);
     run("modules/terminal.bin",nullptr,nullptr,PRIV_STD);
     
     run("modules/win_man.bin",nullptr,nullptr,PRIV_SPECIAL); // window manager should open dev/kb0
