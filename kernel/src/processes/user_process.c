@@ -137,7 +137,7 @@ void setup_arguments(user_process_t* proc,unsigned char* argv[]){
     *(uint64_t*)&page[write_ptr] = argc;
 
     sp &= ~0xfull;
-
+    sp -= sizeof(void*); // proper stack align
     
     main_thread->init_user_rsp = sp;
     main_thread->regs.rdi = argc;
@@ -214,7 +214,7 @@ uint32_t create_user_process(unsigned char* binary, uint32_t size,unsigned char*
     
 
     uint32_t code_data_pages = CEIL_DIV(size,MEMORY_PAGE_SIZE) + 1; // add one safety page
-    logf("Allocating %d pages for %s",code_data_pages,process->process_name);
+
     process->page_alloc_start = code_data_pages * MEMORY_PAGE_SIZE;
 
     vector_append(&user_process_vector,(vector_data_t)process); // too lazy to implement a vector for structs
