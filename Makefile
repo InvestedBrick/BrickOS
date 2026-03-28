@@ -93,7 +93,7 @@ run: $(ISO)
     -boot d \
     -cdrom $(ISO) \
     -m 512M \
-    -vga std 
+    -vga qxl 
 clean:
 	rm -f $(ASM_OBJS) $(C_OBJS) $(TARGET) $(ISO)
 	rm -rf limine
