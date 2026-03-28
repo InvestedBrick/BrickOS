@@ -194,8 +194,8 @@ void handle_window_request(framebuffer_t* fb,win_man_msg_t* msg){
 
     new_win->buffer_size = new_win->section.width * new_win->section.height * sizeof(uint32_t);
     new_win->next = 0;
-    new_win->section.x = n_windows * 50;
-    new_win->section.y = n_windows * 50;
+    new_win->section.x = n_windows * 50 + 1;
+    new_win->section.y = n_windows * 50 + 1;
     n_windows++;
     uint32_t filename_len = sizeof("win.tmp");
     unsigned char* backing_filename = (unsigned char*)malloc(filename_len);
@@ -418,13 +418,12 @@ uint32_t find_containing_dirty_section_idx(section_t* sec){
 
 section_t draw_visible_window_decorations(window_t* win, section_t* visible_sec, framebuffer_t* fb){
     uint32_t sec_idx = find_containing_dirty_section_idx(visible_sec);
-    if (sec_idx == UINT32_MAX || sec_idx >= dirty_section_idx) return *visible_sec;
+    if (sec_idx == UINT32_MAX) return *visible_sec;
     
     section_t* dirty_sec = &dirty_sections[sec_idx];
 
     if (!dirty_sec) return *visible_sec;
     if (!valid_section(dirty_sec)) return *visible_sec;
-
     section_t original_visible_sec = *visible_sec;
 
     if (visible_sec->y == win->section.y && win->section.y > 0){
@@ -433,16 +432,16 @@ section_t draw_visible_window_decorations(window_t* win, section_t* visible_sec,
         uint32_t clamped_width = min(visible_sec->width, fb->width - visible_sec->x);
         memset(top_border, 0xAA, clamped_width * screen_bytespp);
 
-        // also enlarge so that splitting does not create subsections that overwrites the border again
-        visible_sec->y--;
-        visible_sec->height++;
-
-
         if (dirty_sec->y == visible_sec->y && !(dirty_section_expanded[sec_idx] & SECTION_EXPANDED_TOP)){
             dirty_sec->y--;
             dirty_sec->height++;
             set_section_expanded(sec_idx, SECTION_EXPANDED_TOP);
         }
+
+        // also enlarge so that splitting does not create subsections that overwrites the border again
+        visible_sec->y--;
+        visible_sec->height++;
+
     }
     if (visible_sec->y + visible_sec->height == win->section.y + win->section.height && win->section.y + win->section.height < fb->height){
         // bottom border
@@ -450,13 +449,13 @@ section_t draw_visible_window_decorations(window_t* win, section_t* visible_sec,
         uint32_t clamped_width = min(visible_sec->width, fb->width - visible_sec->x);
         memset(bottom_border, 0xAA, clamped_width * screen_bytespp);
 
-        visible_sec->height++;
-
+        
         if (dirty_sec->y + dirty_sec->height == visible_sec->y + visible_sec->height && !(dirty_section_expanded[sec_idx] & SECTION_EXPANDED_BOTTOM)){
             dirty_sec->height++;
             set_section_expanded(sec_idx, SECTION_EXPANDED_BOTTOM);
         }
-    
+        
+        visible_sec->height++;
     }
     if (visible_sec->x == win->section.x && win->section.x > 0){
         // left border
@@ -465,15 +464,14 @@ section_t draw_visible_window_decorations(window_t* win, section_t* visible_sec,
             unsigned char* left_border = back_buffer + (visible_sec->y + y) * fb->bytes_per_row + (visible_sec->x - 1) * screen_bytespp;
             memset(left_border, 0xAA, screen_bytespp);
         }
-
-        visible_sec->x--;
-        visible_sec->width++;
-
         if (dirty_sec->x == visible_sec->x && !(dirty_section_expanded[sec_idx] & SECTION_EXPANDED_LEFT)){
             dirty_sec->x--;
             dirty_sec->width++;
             set_section_expanded(sec_idx, SECTION_EXPANDED_LEFT);
         }
+
+        visible_sec->x--;
+        visible_sec->width++;
 
     }
     if (visible_sec->x + visible_sec->width == win->section.x + win->section.width && win->section.x + win->section.width < fb->width){
@@ -484,13 +482,12 @@ section_t draw_visible_window_decorations(window_t* win, section_t* visible_sec,
             memset(right_border, 0xAA, screen_bytespp);
         }
 
-        visible_sec->width++;
-
         if (dirty_sec->x + dirty_sec->width == visible_sec->x + visible_sec->width && !(dirty_section_expanded[sec_idx] & SECTION_EXPANDED_RIGHT)){
             dirty_sec->width++;
             set_section_expanded(sec_idx, SECTION_EXPANDED_RIGHT);
         }
-
+        
+        visible_sec->width++;
     }
 
     return original_visible_sec;
@@ -605,6 +602,7 @@ void composite_windows(framebuffer_t* fb){
     if (!head) return;
     merge_dirty_sections();
     clamp_dirty_sections(fb);
+    
     // for every dirty rect update and blit them
     for (uint32_t i = 0; i < dirty_section_idx;i++){
         section_t* sec = &dirty_sections[i];
@@ -645,6 +643,10 @@ void handle_process_shudown(uint32_t pid){
     remove_window_from_list(win);
 
     // clean it up
+    if (win->section.x > 0) win->section.x--;
+    if (win->section.y > 0) win->section.y--;
+    win->section.width  += 2;
+    win->section.height += 2;
     add_dirty_section(win->section);
     free(win);
     win = 0;
@@ -712,6 +714,7 @@ void update_mouse(framebuffer_t* fb,int mouse_fd){
             if (!mouse.tried_window){
                 // only tries once so that a clicked mouse moving over a window does not start to move that window
                 mouse.dragging_window = get_mouse_top_window();
+                if (mouse.dragging_window) add_dirty_section(mouse.dragging_window->section);
                 mouse.tried_window = 1;
             }
 
