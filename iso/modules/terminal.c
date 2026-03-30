@@ -195,8 +195,14 @@ void delete_window(){
     close(wm_fd);
 }
 
-__attribute__((section(".text.start")))
-void main(){
+typedef struct{
+    int stdout_fd;
+    int stdin_fd;
+    unsigned char* stdout_filename; 
+    unsigned char* stdin_filename;
+}pipe_return_t;
+
+pipe_return_t create_io_pipes(){
     int pid = getpid();
     unsigned char* pid_str = uint32_to_ascii((uint32_t)pid);
     uint32_t pid_strlen = strlen(pid_str);
@@ -210,12 +216,6 @@ void main(){
     memcpy(&stdout[sizeof("tmp/stdout_") - 1],pid_str,pid_strlen + 1);
     free(pid_str);
 
-    term_fb = request_window(REQ_WIDTH,REQ_HEIGHT);
-    if (!term_fb) exit(2);
-
-    term_clear_screen(VBE_COLOR_BLACK);
-    commit_window();
-
     mknod_params_t params = {
         .type = TYPE_PIPE,
         .flags = 0,
@@ -227,9 +227,29 @@ void main(){
     int stdin_fd = open(stdin,FILE_FLAG_WRITE);
     int stdout_fd = open(stdout,FILE_FLAG_READ);
 
+    pipe_return_t ret;
+    ret.stdin_fd = stdin_fd;
+    ret.stdin_filename = stdin;
+    ret.stdout_fd = stdout_fd;
+    ret.stdout_filename = stdout;
+
+    return ret;
+}
+
+__attribute__((section(".text.start")))
+void main(){
+
+    term_fb = request_window(REQ_WIDTH,REQ_HEIGHT);
+    if (!term_fb) exit(2);
+
+    term_clear_screen(VBE_COLOR_BLACK);
+    commit_window();
+
+    pipe_return_t ret = create_io_pipes();
+
     process_fds_init_t fds = {
-        .stdin_filename = stdin,
-        .stdout_filename = stdout,
+        .stdin_filename = ret.stdin_filename,
+        .stdout_filename = ret.stdout_filename,
         .stderr_filename = 0,
     };
     spawn("modules/shell.bin",0,&fds);
@@ -239,9 +259,9 @@ void main(){
         int kb_n_bytes = read(kb_fd,buf,sizeof(buf));
         
         if (kb_n_bytes > 0) {
-            write(stdin_fd,buf,kb_n_bytes);
+            write(ret.stdin_fd,buf,kb_n_bytes);
         }
-        int n = read(stdout_fd, buf, sizeof(buf));
+        int n = read(ret.stdout_fd, buf, sizeof(buf));
         if (n < 0) {
             // shell exited
             delete_window();
@@ -256,6 +276,5 @@ void main(){
         }
 
     }
-
     exit(0);
 }
