@@ -19,8 +19,51 @@ shell_command_t commands[] = {
     {"mkdir",cmd_mkdir, "Creates a directory"},
     {"rm",cmd_rm,"Deletes a file"},
     {"clock",cmd_clock,"Prints current date and time"},
+    {"run",cmd_run,"Runs a specified binary"},
     {0,0,0}
 };
+
+typedef struct{
+    int stdout_fd;
+    int stdin_fd;
+    unsigned char* stdout_filename; 
+    unsigned char* stdin_filename;
+}pipe_return_t;
+
+// cleanly ripped from terminal.. I really need to add shared code
+pipe_return_t create_io_pipes(){
+    int pid = getpid();
+    unsigned char* pid_str = uint32_to_ascii((uint32_t)pid);
+    uint32_t pid_strlen = strlen(pid_str);
+
+    unsigned char* stdin = (unsigned char*)malloc(sizeof("tmp/stdin_") + pid_strlen);
+    memcpy(stdin,"tmp/stdin_",sizeof("tmp/stdin_") - 1);
+    memcpy(&stdin[sizeof("tmp/stdin_") - 1],pid_str,pid_strlen + 1);
+
+    unsigned char* stdout = (unsigned char*)malloc(sizeof("tmp/stdout_") + pid_strlen);
+    memcpy(stdout,"tmp/stdout_",sizeof("tmp/stdout_") - 1);
+    memcpy(&stdout[sizeof("tmp/stdout_") - 1],pid_str,pid_strlen + 1);
+    free(pid_str);
+
+    mknod_params_t params = {
+        .type = TYPE_PIPE,
+        .flags = 0,
+    };
+
+    mknod(stdin,&params);
+    mknod(stdout,&params);
+
+    int stdin_fd = open(stdin,FILE_FLAG_WRITE);
+    int stdout_fd = open(stdout,FILE_FLAG_READ);
+
+    pipe_return_t ret;
+    ret.stdin_fd = stdin_fd;
+    ret.stdin_filename = stdin;
+    ret.stdout_fd = stdout_fd;
+    ret.stdout_filename = stdout;
+
+    return ret;
+}
 
 int delete_dir_recursive(unsigned char* dir_name){
     int dir_fd = open(dir_name,FILE_FLAG_NONE);
@@ -143,6 +186,45 @@ void cmd_rm(command_t* cmd){
         if (rmfile(cmd->args[0].str) < 0) 
             print("Failed to delete file\n");
     }
+}
+
+void cmd_run(command_t* cmd){
+    if (argcheck(cmd,"Expected name of executable binary\n")) return;
+
+    pipe_return_t ret = create_io_pipes();
+
+    process_fds_init_t fds = {
+        .stdin_filename = ret.stdin_filename,
+        .stdout_filename = ret.stdout_filename,
+        .stderr_filename = 0,
+    };
+
+    if (spawn(cmd->args[0].str,0,&fds) == SYSCALL_FAIL) {
+        print("Failed to spawn process from binary '");
+        print(cmd->args[0].str);
+        print("'\n");
+        close(ret.stdin_fd);
+        close(ret.stdout_fd);
+        return;
+    }
+    unsigned char buf[256];
+    while(1){
+        int n_input_bytes = read(FD_STDIN,buf,sizeof(buf));
+        if (n_input_bytes > 0) write(ret.stdin_fd,buf,n_input_bytes);
+        
+        int n_output_bytes = read(ret.stdout_fd,buf,sizeof(buf));
+        if (n_output_bytes > 0) write(FD_STDOUT,buf,n_output_bytes);
+
+        if (n_output_bytes < 0){
+            // task finished
+            close(ret.stdin_fd);
+            close(ret.stdout_fd);
+            free(ret.stdin_filename);
+            free(ret.stdout_filename);
+            break;
+        }
+    }
+
 }
 
 void cmd_clock(command_t* cmd){
