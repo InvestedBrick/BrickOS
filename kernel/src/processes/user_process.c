@@ -144,7 +144,9 @@ void setup_arguments(user_process_t* proc,unsigned char* argv[]){
     main_thread->regs.rsi = argv_ptr;
     
     mem_unmap_page(TEMP_KERNEL_COPY_ADDR);
-    mem_map_page_in_pml4(proc->pml4,HHDM - MEMORY_PAGE_SIZE,page_phys, PAGE_FLAG_USER | PAGE_FLAG_WRITE);
+
+    uint64_t stack_base = USER_STACK_VMEMORY_START & ~(MEMORY_PAGE_SIZE - 1);
+    mem_map_page_in_pml4(proc->pml4, stack_base, page_phys, PAGE_FLAG_USER | PAGE_FLAG_WRITE);
 
     kfree(arg_ptrs); // might be null, but kfree does check that
 }
@@ -247,10 +249,10 @@ uint32_t create_user_process(unsigned char* binary, uint32_t size,unsigned char*
     setup_arguments(process,argv);
 
     // first page is managed by the argv setup
-    for (uint32_t i = 1; i < USER_STACK_PAGES_PER_PROCESS;i++){
+    uint64_t stack_base = USER_STACK_VMEMORY_START & ~(MEMORY_PAGE_SIZE - 1);
+    for (uint32_t i = 1; i < USER_STACK_PAGES_PER_PROCESS; i++){
         uint64_t stack_mem = pmm_alloc_page_frame();
-        mem_map_page_in_pml4(process->pml4,USER_STACK_VMEMORY_START - ((i + 1) * MEMORY_PAGE_SIZE),stack_mem,PAGE_FLAG_WRITE | PAGE_FLAG_USER);
-        
+        mem_map_page_in_pml4(process->pml4, stack_base - (i * MEMORY_PAGE_SIZE), stack_mem, PAGE_FLAG_WRITE | PAGE_FLAG_USER);
     }
     
     set_interrupt_status(int_save);
@@ -376,7 +378,9 @@ int run(char* filepath,unsigned char* argv[],process_fds_init_t* start_fds,uint8
         return -1;
     }
 
-    int fd = sys_open(&global_kernel_process,filepath,FILE_FLAG_READ | FILE_FLAG_EXEC);
+    user_process_t* curr_proc = get_current_user_process();
+
+    int fd = sys_open(curr_proc,filepath,FILE_FLAG_READ | FILE_FLAG_EXEC);
     
     if (fd < 0){
         error("FD failed");
@@ -385,9 +389,9 @@ int run(char* filepath,unsigned char* argv[],process_fds_init_t* start_fds,uint8
     
     unsigned char* binary = (unsigned char*)kmalloc(file->size);
     
-    int ret_val = sys_read(&global_kernel_process,fd,binary,file->size);
+    int ret_val = sys_read(curr_proc,fd,binary,file->size);
     
-    sys_close(&global_kernel_process,fd);
+    sys_close(curr_proc,fd);
     if (ret_val < 0){
         kfree(binary);
         error("Failed to read executable file");
