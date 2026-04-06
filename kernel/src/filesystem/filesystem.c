@@ -11,6 +11,8 @@
 #include "../processes/user_process.h"
 #include "../processes/scheduler.h"
 #include "../kernel_header.h"
+#include "virt_files/virt_files.h"
+
 vector_t inodes;
 vector_t inode_name_pairs; // Note to self: do not free this with vector free, the names have to be freed too
 sectors_headerdata_t header_data; 
@@ -47,6 +49,8 @@ inode_t* get_inode_by_path(unsigned char* path){
     }
 
     kfree(first_name);
+    user_process_t* curr_proc = get_current_user_process();
+    if (file && file->priv_lvl < curr_proc->priv_lvl) return nullptr; // chchcheck your priviledge!
 
     return file;
 }
@@ -62,6 +66,7 @@ inode_name_pair_t* get_name_by_inode_id(uint32_t id){
 }
 
 uint32_t get_inode_id_by_name(uint32_t parent_id, unsigned char* name){
+    // really inefficient, need to improve
     uint32_t len = strlen(name);
     for (uint32_t i = 0; i < inode_name_pairs.size; i++) {
         inode_name_pair_t* pair = (inode_name_pair_t*)inode_name_pairs.data[i];
@@ -73,6 +78,7 @@ uint32_t get_inode_id_by_name(uint32_t parent_id, unsigned char* name){
 }
 
 uint8_t dir_contains_name(inode_t* dir,unsigned char* name){
+    
     string_array_t* str_arr = get_all_names_in_dir(dir);
     
     uint8_t found = 0;
@@ -369,7 +375,7 @@ uint32_t allocate_inode_section(){
 void free_inode_section(uint32_t inode_id){
     if (!BIT_CHECK(header_data.inode_sector_map,inode_id)) return;
 
-    if (inode_id <= 0 || inode_id >= RESERVED_INODE_SECTORS * 8) return;
+    if (inode_id <= 0 || inode_id >= RESERVED_INODE_SECTORS * FS_INODES_PER_SECTOR) return;
 
     BIT_CLEAR(header_data.inode_sector_map,inode_id);
 }
@@ -609,10 +615,11 @@ uint8_t write_directory_entry(inode_t* parent_dir, uint32_t child_inode_id, unsi
 }
 
 string_array_t* get_all_names_in_dir(inode_t* dir){
-
+    if (dir->type == FS_TYPE_VIRT_DIR) return get_all_names_in_virt_dir(dir);
+    if (dir->type != FS_TYPE_DIR) return 0;
     string_array_t* str_arr = (string_array_t*)kmalloc(sizeof(string_array_t));
 
-    // assure that size was set
+    // assert that size was set
     if (dir->size < sizeof(uint32_t)) {
         str_arr->n_strings = 0;
         return str_arr;
@@ -640,6 +647,16 @@ string_array_t* get_all_names_in_dir(inode_t* dir){
         buffer_idx += raw_len; 
     }
 
+    string_array_t* virt_dirs = get_virt_dir_names_in_dir(dir);
+    if (virt_dirs){
+        // add virtual dir names additionally
+        uint32_t virt_dirs_cnt = virt_dirs->n_strings;
+        strings = (string_t*)krealloc(strings,sizeof(string_t) * n_strings,sizeof(string_t) * (n_strings + virt_dirs_cnt));
+        memcpy(&strings[n_strings],virt_dirs->strings,sizeof(string_t) * virt_dirs_cnt);
+        n_strings += virt_dirs_cnt;
+        kfree(virt_dirs->strings);
+        kfree(virt_dirs);
+    }
     
     str_arr->n_strings = n_strings;
     str_arr->strings = strings;
@@ -710,7 +727,7 @@ void erase_directory_entry(inode_t* dir, uint32_t entry_inode_id){
         uint32_t len = buffer[buffer_offset];
         buffer_offset += sizeof(uint8_t) + len;
     }
-
+    if (start_idx == 0 && data_len == 0) return; // entry not found, nothing to remove
     memmove(&buffer[start_idx],&buffer[start_idx + data_len],buffer_offset - data_len - start_idx);
     memset(&buffer[buffer_offset - data_len],0x00,data_len);
     n_entries--;
@@ -761,7 +778,7 @@ int delete_dir_recursive(inode_t* parent_dir, inode_t* dir){
         inode_t* inode = get_inode_by_id(id);
         if (!inode) return FILE_INVALID_FD;
         int result;
-        if (inode->type != FS_TYPE_DIR) {
+        if (!(inode->type == FS_TYPE_DIR || inode->type == FS_TYPE_VIRT_DIR)) {
             result = delete_file_by_inode(dir,inode);
         }else{
             result = delete_dir_recursive(dir,inode);
@@ -823,7 +840,39 @@ int delete_file_by_inode(inode_t* parent_dir,inode_t* inode){
     return FS_FILE_DELETION_SUCCESS;
 }
 
+inode_t* create_inode(uint8_t perms, uint8_t type, uint8_t priv_lvl,uint32_t id){
+    inode_t* file = (inode_t*)kmalloc(sizeof(inode_t));
+    file->perms = perms;
+    file->type = type;
+    file->id = id;
+    memset(file->data_sectors,0,NUM_DATA_SECTORS_PER_FILE * sizeof(uint32_t));
+    file->indirect_sector = 0;
+    file->size = 0;
+    file->priv_lvl = priv_lvl;
+    vector_append(&inodes,(vector_data_t)file);
+
+    return file;
+}
+
+inode_name_pair_t* create_inode_name_pair(uint32_t file_id, uint32_t parent_id, uint32_t name_length, unsigned char* name){
+    inode_name_pair_t* name_pair = (inode_name_pair_t*)kmalloc(sizeof(inode_name_pair_t));
+    name_pair->id = file_id;
+    name_pair->parent_id = parent_id;
+    name_pair->length = name_length;
+    name_pair->name = kmalloc(name_length + 1);
+    memcpy(name_pair->name,name,name_length);
+    name_pair->name[name_length] = 0;
+    vector_append(&inode_name_pairs,(vector_data_t)name_pair);
+
+    return name_pair;
+}
+
 int create_file(inode_t* parent_dir, unsigned char* name, uint8_t name_length, uint8_t type,uint8_t perms,uint8_t priv_lvl){
+
+
+    if (type > FS_MAX_VALID_TYPE) return FS_FILE_CREATION_FAILED;
+    if (type == FS_TYPE_VIRT_FILE) return FS_FILE_CREATION_FAILED; // cannot create virtual file in physcial parent
+    if (parent_dir->type == FS_TYPE_VIRT_DIR) return FS_FILE_CREATION_FAILED; // cannot create physical file in virt dir
 
     string_array_t* strs_in_parent_dir = get_all_names_in_dir(parent_dir);
     
@@ -846,29 +895,14 @@ int create_file(inode_t* parent_dir, unsigned char* name, uint8_t name_length, u
     } 
     
     
-    inode_t* file = (inode_t*)kmalloc(sizeof(inode_t));
-    file->perms = perms;
-    file->type = type;
-    file->id = allocate_inode_section();
-    memset(file->data_sectors,0,NUM_DATA_SECTORS_PER_FILE * sizeof(uint32_t));
-    file->indirect_sector = 0;
-    file->size = 0;
-    file->priv_lvl = priv_lvl;
-    vector_append(&inodes,(vector_data_t)file);
+    inode_t* file = create_inode(perms,type,priv_lvl,allocate_inode_section());
 
     if (!write_directory_entry(parent_dir,file->id,name,name_length)) {
         return FS_FILE_CREATION_FAILED;
     }
 
     // cache to memory, TODO: gets cleared automatically after some time
-    inode_name_pair_t* name_pair = (inode_name_pair_t*)kmalloc(sizeof(inode_name_pair_t));
-    name_pair->id = file->id;
-    name_pair->parent_id = parent_dir->id;
-    name_pair->length = name_length;
-    name_pair->name = kmalloc(name_length + 1);
-    memcpy(name_pair->name,name,name_length);
-    name_pair->name[name_length] = 0;
-    vector_append(&inode_name_pairs,(vector_data_t)name_pair);
+    create_inode_name_pair(file->id,parent_dir->id,name_length,name);
 
     return FS_FILE_CREATION_SUCCESS;
 }
@@ -879,7 +913,7 @@ void change_file_permissions(unsigned char* filename,uint8_t perms){
     if (!file) return;
 
 
-    if (file->type == FS_TYPE_DIR) return;
+    if (file->type == FS_TYPE_DIR || file->type == FS_TYPE_VIRT_DIR) return;
     file->perms = perms; 
 }
 
@@ -922,6 +956,7 @@ void write_inode_to_disk(inode_t* inode){
 void write_to_disk(){
     for (uint32_t i = 0; i < inodes.size;i++){
         inode_t* inode = (inode_t*)inodes.data[i];
+        if (inode->type == FS_TYPE_VIRT_FILE || inode->type == FS_TYPE_VIRT_DIR) continue; // virtual files/dirs dont have a representation on disk
         write_inode_to_disk(inode);
     }
     log("Wrote all inodes to disk");
