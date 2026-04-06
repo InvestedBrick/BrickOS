@@ -20,6 +20,7 @@ shell_command_t commands[] = {
     {"rm",cmd_rm,"Deletes a file"},
     {"clock",cmd_clock,"Prints current date and time"},
     {"run",cmd_run,"Runs a specified binary"},
+    {"sysinfo",cmd_sysinfo,"Displays some system information"},
     {0,0,0}
 };
 
@@ -150,8 +151,22 @@ void cmd_ls(command_t* cmd){
     if (close(dir_fd) < 0)
         print("Failed to close directory\n");
 }
+
+void cmd_sysinfo(command_t* cmd){
+    int meminfo = open("sysinfo/meminfo",FILE_FLAG_NONE);
+    unsigned char buf[128] = {0};
+    int bytes_read = read(meminfo,buf,sizeof(buf));
+    print("Meminfo: ");
+    print(buf);
+    print("\n");
+    close(meminfo);
+}
+
 void cmd_cd(command_t* cmd){
-    if (argcheck(cmd,"Expected name of directory\n")) return;
+    if (!cmd->args){
+        chdir("root");
+        return;
+    }
 
     if (chdir(cmd->args[0].str) == SYSCALL_FAIL) print("Not a directory\n");
 }
@@ -224,7 +239,7 @@ void cmd_run(command_t* cmd){
             break;
         }
     }
-
+    print("--process exited--\n");
 }
 
 void cmd_clock(command_t* cmd){
