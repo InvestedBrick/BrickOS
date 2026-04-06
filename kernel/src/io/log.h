@@ -48,6 +48,11 @@ void warnf(const unsigned char* fmt, ...);
 void errorf(const unsigned char* fmt, ...);
 
 /**
+ * write_bufferf:
+ * Fancy formatting of strings into a buffer
+ */
+void write_bufferf(unsigned char* buf, uint32_t buf_size, unsigned char* fmt, ...);
+/**
  * panic: 
  * Something went really wrong, spins in place eternally
  */
