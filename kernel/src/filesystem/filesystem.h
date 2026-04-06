@@ -50,6 +50,11 @@ typedef struct{
 #define FS_TYPE_ERASED 3
 #define FS_TYPE_DEV 4
 #define FS_TYPE_PIPE 5
+#define FS_TYPE_VIRT_DIR 6
+#define FS_TYPE_VIRT_FILE 7
+
+#define FS_MAX_VALID_TYPE (FS_TYPE_VIRT_FILE)
+
 
 #define FS_FILE_CREATION_SUCCESS 0
 #define FS_FILE_CREATION_FAILED -1
@@ -191,7 +196,7 @@ string_array_t* get_all_names_in_dir(inode_t* dir);
  * @param name The name of the new file
  * @param name_length The length if the name
  * @param type The type of file to create (FS_TYPE_FILE or FS_TYPE_DIR)
- * @param perms The permissions of the file
+ * @param perms The permissions of the file (rwx)
  * @param priv_lvl The priviledge level needed to access this file
  * @return whether the file creation was successful (return value == 0) or not (return value < 0)
  */
@@ -300,4 +305,26 @@ void cleanup_tmp();
  * Returns the currently active directory for kernel setup or the currently running thread
  */
 inode_t* get_active_dir();
+
+/**
+ * create_inode:
+ * Creates an inode and stores it in the inode vector
+ * @param perms The permissions of the file (rwx)
+ * @param type The type of the inode
+ * @param priv_lvl The priviledge level needed to access the inode 
+ * @param id The id of the inode (should NOT be assigned randomly, see inode ordering on disk / virt inodes)
+ * @return The created inode
+ */
+inode_t* create_inode(uint8_t perms, uint8_t type, uint8_t priv_lvl,uint32_t id);
+
+/**
+ * create_inode_name_pair:
+ * Creates an inode name pair for internal organising
+ * @param file_id The id of the child inode
+ * @param parent_id The id of the parent inode
+ * @param name_length The length of the inode name
+ * @param name The name of the inode without any path preceding it
+ * @return The inode name pair
+ */
+inode_name_pair_t* create_inode_name_pair(uint32_t file_id, uint32_t parent_id, uint32_t name_length, unsigned char* name);
 #endif
