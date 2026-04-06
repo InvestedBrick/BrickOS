@@ -136,7 +136,7 @@ uint64_t sys_mmap(user_process_t *p, void *addr, uint32_t size,uint32_t prot, ui
 
             uint32_t old_n_pages = shrd_obj->n_pages;
             shrd_obj->shared_pages = (shared_page_t**)
-                                        realloc(shrd_obj->shared_pages,
+                                        krealloc(shrd_obj->shared_pages,
                                             shrd_obj->n_pages * sizeof(shared_page_t*),
                                             n_pages * sizeof(shared_page_t*)
                                      );
@@ -173,7 +173,7 @@ uint64_t sys_getdents(user_process_t* p,uint32_t fd,dirent_t* ent_buffer,uint32_
     inode_t* inode = get_inode_by_id(open_file->inode_id);
 
     if (!inode) return nullptr;
-
+    if (!(inode->type == FS_TYPE_DIR || inode->type == FS_TYPE_VIRT_DIR)) return nullptr;
     string_array_t* names = get_all_names_in_dir(inode);
 
     uint32_t total_size = 0;
@@ -187,6 +187,17 @@ uint64_t sys_getdents(user_process_t* p,uint32_t fd,dirent_t* ent_buffer,uint32_
         dirent_t* entry = (dirent_t*)((uint64_t)ent_buffer + bpos);
         entry->inode_id = entry_inode->id;
         entry->type = entry_inode->type;
+        switch (entry->type)
+        {
+        case FS_TYPE_VIRT_DIR:
+            entry->type = FS_TYPE_DIR;
+            break;
+        case FS_TYPE_VIRT_FILE:
+            entry->type = FS_TYPE_FILE;
+            break;
+        default:
+            break;
+        }
         entry->len = sizeof(int) * 3 + names->strings[i].length + 1;
         memcpy(entry->name,names->strings[i].str,names->strings[i].length + 1);
         bpos += entry->len;
@@ -198,7 +209,7 @@ uint64_t sys_getdents(user_process_t* p,uint32_t fd,dirent_t* ent_buffer,uint32_
 uint64_t sys_chdir(unsigned char* dir_name){
     inode_t* new_dir = get_inode_by_path(dir_name);
     if (!new_dir) return SYSCALL_FAIL;
-    if (new_dir->type != FS_TYPE_DIR) return SYSCALL_FAIL;
+    if (!(new_dir->type == FS_TYPE_DIR || new_dir->type == FS_TYPE_VIRT_DIR)) return SYSCALL_FAIL;
 
     thread_t* curr_thread = get_current_thread();
     curr_thread->active_dir = new_dir;
@@ -208,11 +219,10 @@ uint64_t sys_chdir(unsigned char* dir_name){
 
 uint64_t sys_rmfile(unsigned char* filename){
     inode_t* file = get_inode_by_path(filename);
-
     if (!file) return SYSCALL_FAIL;
+    if (file->type == FS_TYPE_VIRT_DIR || file->type == FS_TYPE_VIRT_FILE) return SYSCALL_FAIL; // virtual files are never deleted, they just dont get saved when shutting down
 
     inode_t* parent_dir = get_parent_inode(file);
-
     if (delete_file_by_inode(parent_dir,file) < 0) return SYSCALL_FAIL;
 
     return SYSCALL_SUCCESS;
@@ -223,7 +233,6 @@ uint64_t sys_mknod(unsigned char* filename,mknod_params_t* params){
     if (params->type != FS_TYPE_PIPE) return SYSCALL_FAIL; // add other types later
     
     if (get_inode_by_path(filename)) return SYSCALL_FAIL;
-
     inode_t* creation_dir = get_active_dir();
     
     string_array_t* str_arr = split_filepath(filename);
