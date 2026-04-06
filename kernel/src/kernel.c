@@ -21,6 +21,7 @@
 #include "filesystem/file_operations.h"
 #include "drivers/PS2/ps2_controller.h"
 #include "drivers/PS2/keyboard/keyboard.h"
+#include "filesystem/virt_files/virt_files.h"
 #include <uacpi/sleep.h>
 #include <stdint.h>
 
@@ -177,6 +178,9 @@ void kmain()
     write_module_binaries_to_file();
     log("Wrote module binaries to files in the modules directory");
     
+    init_virt_dirs();
+    log("Initialized virtual directories");
+
     // Everything is now set up
     run("modules/terminal.bin",nullptr,nullptr,PRIV_STD);
     //run("modules/terminal.bin",nullptr,nullptr,PRIV_STD);
