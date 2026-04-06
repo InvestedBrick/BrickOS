@@ -5,9 +5,9 @@
 #include "../kernel_header.h"
 #include "../../limine-protocol/include/limine.h"
 
-static uint64_t total_alloced_pages;
-static uint64_t total_pages;
-static uint64_t mem_number_vpages;
+uint64_t total_alloced_pages;
+uint64_t total_pages;
+uint64_t mem_number_vpages;
 static uint64_t mem_phys_alloc_start;
 static uint8_t* memory_bitmap;
 vector_t shm_obj_vec;

@@ -45,6 +45,10 @@
 
 #include "../utilities/vector.h"
 
+extern uint64_t total_alloced_pages;
+extern uint64_t total_pages;
+extern uint64_t mem_number_vpages;
+
 typedef struct {
     uint64_t phys_addr;
     uint32_t ref_count;
