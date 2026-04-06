@@ -137,7 +137,6 @@ vfs_handles_t dev_fb0 = {
 
 
 void init_dev_wm(device_t* dev){
-
     init_vector(&wm_answers);
     wm_pipes_t* pipes = (wm_pipes_t*)dev->gen_file->generic_data;
     // set up two pipes for wm <-> kernel communication
@@ -179,7 +178,7 @@ void dev_wm_collect_pipe(){
             window_creation_ans_t* answer = (window_creation_ans_t*)kmalloc(sizeof(window_creation_ans_t));
             memcpy(answer,&buffer[bytes_parsed],sizeof(window_creation_ans_t));
             // make space for the following name
-            answer = (window_creation_ans_t*)realloc(answer,sizeof(window_creation_ans_t),sizeof(window_creation_ans_t) + answer->filename_len);
+            answer = (window_creation_ans_t*)krealloc(answer,sizeof(window_creation_ans_t),sizeof(window_creation_ans_t) + answer->filename_len);
             bytes_parsed += sizeof(window_creation_ans_t);  // the pointer is not actually passed, just part of the struct
             
             memcpy(answer->filename,&buffer[bytes_parsed],answer->filename_len);
