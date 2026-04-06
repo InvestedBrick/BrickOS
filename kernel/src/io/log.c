@@ -163,6 +163,12 @@ static int simple_vsnprintf(char *buf, size_t bufsz, const char *fmt, va_list ap
     buf[idx] = '\0';
     return (int)idx;
 }
+void write_bufferf(unsigned char* buf, uint32_t buf_size, unsigned char* fmt, ...){
+    va_list ap;
+    va_start(ap, fmt);
+    simple_vsnprintf(buf, buf_size, (const char*)fmt, ap);
+    va_end(ap);
+}
 
 void logf(const unsigned char* fmt, ...){
     char buf[256];
