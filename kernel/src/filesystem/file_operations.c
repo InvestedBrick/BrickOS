@@ -9,6 +9,7 @@
 #include "IPC/pipes.h"
 #include "../processes/user_process.h"
 #include "../processes/scheduler.h"
+#include "virt_files/virt_files.h"
 vfs_handles_t fs_ops = {
     .open = fs_open,
     .close = fs_close,
@@ -73,7 +74,7 @@ generic_file_t* fs_open(unsigned char* filepath,uint8_t flags){
     
     user_process_t* active_proc = get_current_user_process();
     if (inode && active_proc->priv_lvl > inode->priv_lvl) return nullptr;
-
+    if (inode && inode->type == FS_TYPE_VIRT_FILE) return virt_file_open(inode);
     if (inode && inode->type == FS_TYPE_DEV) return dev_open(inode);
     if (inode && inode->type == FS_TYPE_PIPE) return open_pipe(inode,flags);
 
