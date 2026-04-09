@@ -40,7 +40,7 @@ void finish_up_kernel_proc(){
 void create_kernel_process(uint64_t stack_top){
     init_user_process_vector();
 
-    memset(global_kernel_process.fd_table,0,MAX_FDS);
+    memset(global_kernel_process.fd_table,0,MAX_FDS * sizeof(generic_file_t*));
 
     global_kernel_process.kernel_stack_top = stack_top;
     global_kernel_process.pml4 = mem_get_current_pml4_table();
