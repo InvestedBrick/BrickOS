@@ -153,13 +153,45 @@ void cmd_ls(command_t* cmd){
 }
 
 void cmd_sysinfo(command_t* cmd){
-    int meminfo = open("sysinfo/meminfo",FILE_FLAG_NONE);
+
+    print("OS: BrickOS x86_64\n"); // ah yes, hardcoded, just as god intended
+    print("Shell: generic_shell v0.1\n");
+
     unsigned char buf[128] = {0};
-    int bytes_read = read(meminfo,buf,sizeof(buf));
-    print("Meminfo: ");
+    int uptime = open("sysinfo/uptime",FILE_FLAG_NONE);
+    int bytes_read = read(uptime,buf,sizeof(buf));
+    print("Uptime: ");
+    print(buf);
+    print(" seconds\n");
+    close(uptime);
+
+    int meminfo = open("sysinfo/meminfo",FILE_FLAG_NONE);
+    memset(buf,0x0,sizeof(buf));
+    bytes_read = read(meminfo,buf,sizeof(buf));
+    uint32_t split = find_char(buf,'-');
+    if (split == (uint32_t)-1) {close(meminfo);return;}
+    buf[split] = '\0';
+    uint32_t total_pages = ascii_to_uint32(buf);
+    uint32_t used_pages = ascii_to_uint32(&buf[split + 1]);
+
+    unsigned char* used_percent = uint32_to_ascii((used_pages * 100) / total_pages);
+    print("Memory: ");
+    print(&buf[split + 1]);
+    print("/");
+    print(buf);
+    print(" (");
+    print(used_percent);
+    print("%)\n");
+    free(used_percent);
+    close(meminfo);
+
+    int cpuinfo = open("sysinfo/cpuinfo",FILE_FLAG_NONE);
+    memset(buf,0x0,sizeof(buf));
+    bytes_read = read(cpuinfo,buf,sizeof(buf));
+    print("CPU: ");
     print(buf);
     print("\n");
-    close(meminfo);
+    close(cpuinfo);
 }
 
 void cmd_cd(command_t* cmd){
@@ -252,18 +284,19 @@ void cmd_clock(command_t* cmd){
     char* months[] = {"January","February","March","April","May","June","July","August","September","October","November","December"};
     print(day);
     char last_num = day[strlen(day) - 1];
-    switch (last_num)
-    {
-    case '1':
-        print("st");
-        break;
-    case '2':
-        print("nd");
-    case '3':
-        print("rd");
-    default:
-        print("th");
+    char second_last_num = '0';
+    if (strlen(day) > 1){
+        second_last_num = day[strlen(day) - 2];
     }
+    const char* suffix = "th";
+    if (second_last_num != '1') {
+        switch (last_num) {
+            case '1': suffix = "st"; break;
+            case '2': suffix = "nd"; break;
+            case '3': suffix = "rd"; break;
+        }
+    }
+    print(suffix);
 
     print(" of ");
     print(months[date.month - 1]);
