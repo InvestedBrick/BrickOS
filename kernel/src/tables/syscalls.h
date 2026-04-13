@@ -7,6 +7,9 @@
 #include "syscall_defines.h"
 #include "../filesystem/filesystem.h"
 
+// additional seconds to add to the current time (yes this ignores summer time clock adjustments but that is the issue of the EU parliament and not mine)
+#define TIMEZONE_ADJUSTMENT 3600 
+
 uint64_t sys_write(user_process_t* p,uint32_t fd, unsigned char* buf, uint32_t size);
 
 uint64_t sys_read(user_process_t* p,uint32_t fd, unsigned char* buf, uint32_t size);
