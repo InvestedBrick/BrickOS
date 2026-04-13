@@ -4,6 +4,8 @@
 #include "io.h"
 #include <stdint.h>
 
+#define MAX_BYTES_64_BIT_INT 21
+
 void serial_write_with_prefix(const unsigned char* prefix, const unsigned char* msg,uint16_t com);
 
 /**
