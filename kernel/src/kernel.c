@@ -188,7 +188,7 @@ void kmain()
     run("modules/win_man.bin",nullptr,nullptr,PRIV_SPECIAL); // window manager should open dev/kb0
 
 
-    sys_settimeofday(&global_kernel_process,sys_gettimeofday() + 3600); // add 1h for UTC+1 timezone (mine)
+    sys_settimeofday(&global_kernel_process,sys_gettimeofday() + TIMEZONE_ADJUSTMENT); //adjust for UTC+1 timezone (mine)
 
     setup_timer_switch();
     // need to manually enable since run just restores whatever was before that
