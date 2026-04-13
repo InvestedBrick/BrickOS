@@ -44,3 +44,13 @@ char* uint32_to_ascii(uint32_t value) {
 
     return buffer;
 }
+
+uint32_t ascii_to_uint32(const char* str){
+    uint32_t result = 0;
+    for (uint32_t i = 0; str[i];i++){
+        if (str[i] < '0' || str[i] > '9') break;
+        result = result * 10 + (str[i] - '0');
+    }
+
+    return result;
+}
