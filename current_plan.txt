@@ -4,7 +4,7 @@ plan:
     [X] Graphics mode switch
     [X] correctly cross-compiling the kernel
     [X] process commandline args
-    [X] window manager (needs to be optimized)
+    [X] window manager
     [X] 64 bit kernel && switch to limine
     [X] implement spinlocks/mutexes/semaphores
     [X] PCI stuff
@@ -12,6 +12,8 @@ plan:
     [X] implement IOAPIC
     [X] fix mouse driver
     [X] running more UI processes
-    [ ] dynamic linked code
+    [ ] dynamically linked code
     [ ] text editor
+    [ ] background image + clickable widgets
+    [ ] networking
     [?] better fileystem
