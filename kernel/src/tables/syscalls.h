@@ -9,6 +9,7 @@
 
 // additional seconds to add to the current time (yes this ignores summer time clock adjustments but that is the issue of the EU parliament and not mine)
 #define TIMEZONE_ADJUSTMENT 3600 
+#define MMAP_UNSPEC_ADDR (void*)0x12345
 
 uint64_t sys_write(user_process_t* p,uint32_t fd, unsigned char* buf, uint32_t size);
 
