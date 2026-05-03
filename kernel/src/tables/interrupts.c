@@ -146,7 +146,7 @@ void handle_software_interrupt(interrupt_stack_frame_t* stack_frame){
         rax =  sys_seek(get_current_user_process(),stack_frame->rbx,stack_frame->rcx);
         break;
     case SYS_ALLOC_PAGE:
-        rax =  sys_mmap(get_current_user_process(),0,stack_frame->rbx,stack_frame->rcx,stack_frame->rdx,stack_frame->rdi,stack_frame->rsi);
+        rax =  sys_mmap(get_current_user_process(),MMAP_UNSPEC_ADDR,stack_frame->rbx,stack_frame->rcx,stack_frame->rdx,stack_frame->rdi,stack_frame->rsi);
         break;
     case SYS_GETCWD:
         rax =  sys_getcwd((unsigned char*)stack_frame->rbx, stack_frame->rcx);
@@ -192,17 +192,17 @@ void handle_software_interrupt(interrupt_stack_frame_t* stack_frame){
 
 uint64_t init_new_page(virt_mem_area_t* vma,user_process_t* p,uint64_t aligned_fault_addr){
     uint64_t frame = pmm_alloc_page_frame();        
-    mem_map_page(TEMP_KERNEL_COPY_ADDR,frame,PAGE_FLAG_WRITE | PAGE_FLAG_PRESENT);
+    mem_map_page(USER_SCRATCH_PAGE,frame,PAGE_FLAG_WRITE | PAGE_FLAG_PRESENT);
     
     if (vma->fd != MAP_FD_NONE){
         uint64_t file_off = vma->offset + (aligned_fault_addr - (uint64_t)vma->addr);
         sys_seek(p,vma->fd,file_off);
-        sys_read(p,vma->fd,(unsigned char*)TEMP_KERNEL_COPY_ADDR,MEMORY_PAGE_SIZE);
+        sys_read(p,vma->fd,(unsigned char*)USER_SCRATCH_PAGE,MEMORY_PAGE_SIZE);
     }else{
-        memset((void*)TEMP_KERNEL_COPY_ADDR,0,MEMORY_PAGE_SIZE);
+        memset((void*)USER_SCRATCH_PAGE,0,MEMORY_PAGE_SIZE);
     }
     
-    mem_unmap_page(TEMP_KERNEL_COPY_ADDR);
+    mem_unmap_page(USER_SCRATCH_PAGE);
 
     return frame;
 }
