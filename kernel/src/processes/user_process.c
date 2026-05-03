@@ -91,8 +91,8 @@ void setup_arguments(user_process_t* proc,unsigned char* argv[]){
     thread_t* main_thread = proc->main_thread;
     if (!main_thread) error("Failed to get main thread");
     // map temporarily to write memory into it
-    mem_map_page(TEMP_KERNEL_COPY_ADDR,page_phys,PAGE_FLAG_WRITE | PAGE_FLAG_PRESENT);
-    unsigned char* page = (unsigned char*)TEMP_KERNEL_COPY_ADDR;
+    mem_map_page(USER_SCRATCH_PAGE,page_phys,PAGE_FLAG_WRITE | PAGE_FLAG_PRESENT);
+    unsigned char* page = (unsigned char*)USER_SCRATCH_PAGE;
     memset(page,0x0,MEMORY_PAGE_SIZE);
     uint64_t argc = 0;
     for(uint32_t i = 0; argv[i];i++) {argc++;}
@@ -143,7 +143,7 @@ void setup_arguments(user_process_t* proc,unsigned char* argv[]){
     main_thread->regs.rdi = argc;
     main_thread->regs.rsi = argv_ptr;
     
-    mem_unmap_page(TEMP_KERNEL_COPY_ADDR);
+    mem_unmap_page(USER_SCRATCH_PAGE);
 
     uint64_t stack_base = USER_STACK_VMEMORY_START & ~(MEMORY_PAGE_SIZE - 1);
     mem_map_page_in_pml4(proc->pml4, stack_base, page_phys, PAGE_FLAG_USER | PAGE_FLAG_WRITE);
@@ -151,7 +151,7 @@ void setup_arguments(user_process_t* proc,unsigned char* argv[]){
     kfree(arg_ptrs); // might be null, but kfree does check that
 }
 
-uint32_t create_user_process(unsigned char* binary, uint32_t size,unsigned char* process_name,uint8_t priv_lvl, unsigned char* argv[],process_fds_init_t* start_fds) {
+uint32_t create_user_process(unsigned char* file_path,uint8_t priv_lvl, unsigned char* argv[],process_fds_init_t* start_fds) {
     uint32_t int_save = get_interrupt_status();
     disable_interrupts();
 // To setup a user process:
@@ -180,11 +180,11 @@ uint32_t create_user_process(unsigned char* binary, uint32_t size,unsigned char*
     generic_file_t* stdin;
     generic_file_t* stdout;
     generic_file_t* stderr;
-    logf("Spawning process: %s",process_name);
+    logf("Spawning process: %s",file_path);
 
-    uint32_t name_len = strlen(process_name);
+    uint32_t name_len = strlen(file_path);
     process->process_name = (unsigned char*)kmalloc(name_len + 1);
-    memcpy(process->process_name,process_name,name_len + 1);
+    memcpy(process->process_name,file_path,name_len + 1);
 
     process->priv_lvl = priv_lvl;
 
@@ -214,11 +214,12 @@ uint32_t create_user_process(unsigned char* binary, uint32_t size,unsigned char*
     process->running = 0;
     process->kernel_stack_top = kernel_stack + MEMORY_PAGE_SIZE;
     
-
-    uint32_t code_data_pages = CEIL_DIV(size,MEMORY_PAGE_SIZE) + 1; // add one safety page
-
+    inode_t* file = get_inode_by_path(file_path);
+    
+    uint32_t code_data_pages = CEIL_DIV(file->size,MEMORY_PAGE_SIZE) + 1; // add one safety page
+    
     process->page_alloc_start = code_data_pages * MEMORY_PAGE_SIZE;
-
+    
     vector_append(&user_process_vector,(vector_data_t)process); // too lazy to implement a vector for structs
     
     uint64_t* pml4 = create_user_pml4_table();
@@ -229,22 +230,12 @@ uint32_t create_user_process(unsigned char* binary, uint32_t size,unsigned char*
     if (tid == -1) return 0;
     process->main_thread = get_thread_by_tid(tid);
     
-    for (uint32_t i = 0; i < code_data_pages;i++){
-        uint64_t code_data_mem = pmm_alloc_page_frame();
-        // some weird kernel mapping stuff because if I change the current page directory too early the OS shits itself
-        mem_map_page(TEMP_KERNEL_COPY_ADDR,code_data_mem, PAGE_FLAG_WRITE | PAGE_FLAG_PRESENT);
-        
-        // copy binary into mapped page
-        uint32_t offset = i * MEMORY_PAGE_SIZE;
-        uint32_t to_copy = (size - offset > MEMORY_PAGE_SIZE) ? MEMORY_PAGE_SIZE : (size - offset);
-        if (to_copy > 0){
-            void* dest = (void*)(TEMP_KERNEL_COPY_ADDR);
-            memcpy(dest,binary + offset,to_copy);
-        }
-
-        mem_unmap_page(TEMP_KERNEL_COPY_ADDR);
-        mem_map_page_in_pml4(process->pml4,USER_CODE_DATA_VMEMORY_START + i * MEMORY_PAGE_SIZE,code_data_mem,PAGE_FLAG_WRITE | PAGE_FLAG_USER);
-    }
+    overwrite_current_proc(process);
+    int bin_fd = sys_open(process,file_path,FILE_FLAG_READ);
+    if (bin_fd < 0) warn("Failed to open process file");
+    restore_active_proc();
+    sys_mmap(process,0x0,file->size + MEMORY_PAGE_SIZE,PROT_READ | PROT_EXEC | PROT_WRITE,MAP_SHARED,bin_fd,0);
+    
 
     setup_arguments(process,argv);
 
@@ -378,27 +369,6 @@ int run(char* filepath,unsigned char* argv[],process_fds_init_t* start_fds,uint8
         return -1;
     }
 
-    user_process_t* curr_proc = get_current_user_process();
-
-    int fd = sys_open(curr_proc,filepath,FILE_FLAG_READ | FILE_FLAG_EXEC);
-    
-    if (fd < 0){
-        error("FD failed");
-        return -1;
-    }
-    
-    unsigned char* binary = (unsigned char*)kmalloc(file->size);
-    
-    int ret_val = sys_read(curr_proc,fd,binary,file->size);
-    
-    sys_close(curr_proc,fd);
-    if (ret_val < 0){
-        kfree(binary);
-        error("Failed to read executable file");
-        return -1;
-    }
-
-
     uint8_t old_int_status = get_interrupt_status();
     disable_interrupts();
 
@@ -407,9 +377,8 @@ int run(char* filepath,unsigned char* argv[],process_fds_init_t* start_fds,uint8
         argv = argv2;
     }
 
-    uint32_t pid = create_user_process(binary,file->size,filepath,priv_lvl,argv,start_fds);
+    uint32_t pid = create_user_process(filepath,priv_lvl,argv,start_fds);
 
-    kfree(binary);
     if (!pid) {
         error("Creating user process failed");
         return -1;
