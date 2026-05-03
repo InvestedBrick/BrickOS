@@ -704,6 +704,10 @@ void move_window(window_t* win,framebuffer_t* fb,int16_t relx, int16_t rely){
 void update_mouse(framebuffer_t* fb,int mouse_fd){
     mouse_packet_t buffer[MAX_MOUSE_PACKETS];
     int bytes_read = read(mouse_fd,(const char*)buffer,sizeof(buffer));
+    if (bytes_read <= 0) return;
+
+    getpid(); // if I remove this useless syscall I get a page fault, I dont know why.. please help, temporary support pillar here
+
     uint32_t n_packets = bytes_read / sizeof(mouse_packet_t);
     for (uint32_t i = 0; i < n_packets;i++){
 
