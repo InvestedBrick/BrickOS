@@ -92,19 +92,18 @@ uint64_t sys_exit(user_process_t* p,interrupt_stack_frame_t* stack_frame){
 }
 
 uint64_t sys_mmap(user_process_t *p, void *addr, uint32_t size,uint32_t prot, uint32_t flags, uint32_t fd, uint32_t offset){
-    if (size == 0 || (offset % MEMORY_PAGE_SIZE) != 0) return SYSCALL_FAIL;
+    if (addr == MMAP_UNSPEC_ADDR) addr = (void*)p->page_alloc_start;
+    if (addr + size >= (void*)HHDM) return SYSCALL_FAIL;
+    if (size == 0 || ((uint64_t)addr % MEMORY_PAGE_SIZE) != 0) return SYSCALL_FAIL;
     
     if (fd < 3) fd = MAP_FD_NONE;
 
     if (flags & MAP_ANONYMOUS && flags & MAP_SHARED) return SYSCALL_FAIL; // not implemented yet
-
     if (!(flags & MAP_ANONYMOUS)){
         // we are mapping a file
         if (!p->fd_table[fd]) return SYSCALL_FAIL;
     }
-
-    if (!addr) addr = (void*)p->page_alloc_start;
-
+    
     uint32_t n_pages = CEIL_DIV(size,MEMORY_PAGE_SIZE);
     size = n_pages * MEMORY_PAGE_SIZE;
 
