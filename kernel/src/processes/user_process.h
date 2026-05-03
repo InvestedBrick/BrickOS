@@ -35,7 +35,8 @@ typedef struct {
 }process_fds_init_t;
 
 #define USER_CODE_DATA_VMEMORY_START 0x0000000000000000
-#define USER_STACK_VMEMORY_START     CANONICALIZE(HHDM - 0x8) 
+#define USER_STACK_VMEMORY_START     CANONICALIZE(HHDM - 0x8 - MEMORY_PAGE_SIZE * 2)
+#define USER_SCRATCH_PAGE            (CANONICALIZE(HHDM - 0x8) & ~0xfff) 
 
 #define USER_STACK_PAGES_PER_PROCESS 5
 
@@ -50,14 +51,12 @@ extern vector_t user_process_vector;
  * create_user_process:
  * Allocates the needed memory for a user process and loads the binary into memory
  * 
- * @param binary A pointer to the first byte of the binary to be loaded into memory
- * @param size The size of the binary in bytes
- * @param process_name The name of the process
+ * @param file_path The path to the executable
  * @param priv_lvl The priviledge level of the user process (0 highest)
  * @param argv An array of null terminated strings with the last index of the array being null
  * @return The proccess ID of the created process
  */
-uint32_t create_user_process(unsigned char* binary, uint32_t size,unsigned char* process_name,uint8_t priv_lvl,unsigned char* argv[],process_fds_init_t* start_fds);
+uint32_t create_user_process(unsigned char* file_path,uint8_t priv_lvl,unsigned char* argv[],process_fds_init_t* start_fds);
 /**
  * init_user_process_vector:
  * Sets up the user process vector
