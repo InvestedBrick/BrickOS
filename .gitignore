@@ -13,4 +13,5 @@ linecounter.py
 limine.conf
 hdd.img
 *.bin
+*.elf
 limine.conf
