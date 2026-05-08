@@ -24,6 +24,7 @@
 #include "filesystem/virt_files/virt_files.h"
 #include <uacpi/sleep.h>
 #include <stdint.h>
+#include "utilities/elf_parser.h"
 
 struct user_process global_kernel_process;
 extern uint8_t check_SSE();
@@ -48,6 +49,7 @@ void create_kernel_process(uint64_t stack_top){
     global_kernel_process.vm_areas = 0;
     global_kernel_process.priv_lvl = PRIV_ALUCARD; // the all-powerful
     global_kernel_process.process_name = kmalloc(sizeof("root"));
+    global_kernel_process.page_alloc_start = 0x0;
 
     memcpy(global_kernel_process.process_name,"root",sizeof("root"));
     global_kernel_process.running = 1;
@@ -180,6 +182,9 @@ void kmain()
     
     init_virt_dirs();
     log("Initialized virtual directories");
+
+    parse_elf("modules/win_man.elf");
+    panic("not set up beyond this point");
 
     // Everything is now set up
     run("modules/terminal.bin",nullptr,nullptr,PRIV_STD);
