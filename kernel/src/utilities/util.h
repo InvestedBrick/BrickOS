@@ -7,6 +7,7 @@
 #define ALIGN_UP(a,b) (a + b - 1) & ~(a - 1)
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include "vector.h"
 #define COMBINE_WORDS(lsb,msb) ((uint32_t)(msb) >> 16 | (lsb))
 #define nullptr 0
@@ -145,4 +146,16 @@ bool shared_address_add(vector_t* vec,void* addr);
  * @return A boolean that is true if the address was freed and false if only its counter was decreased
  */
 bool shared_address_remove(vector_t* vec, void* addr);
+
+/**
+ * memcmp:
+ * Compares two memory regions 
+ * @param ptr1 The first memory region
+ * @param ptr2 The second memory region
+ * @param num The number of bytes to compare
+ * @return 0 if both memory regions are equal
+ *         A positive value if the first differing byte in ptr1 is greater than the corresponding byte in ptr2
+ *         A negative value if the first differing byte in ptr1 is less than the corresponding byte in ptr2
+ */
+int memcmp(const void* ptr1, const void* ptr2, size_t num);
 #endif
