@@ -1,5 +1,4 @@
 bits 64
-org 0x0000000000000000
 section .text
     mov rax, 0x10
     int 0x30
