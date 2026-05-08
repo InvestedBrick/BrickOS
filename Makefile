@@ -67,7 +67,7 @@ $(ISO): always_run kernel/.deps-obtained $(TARGET)
 	mkdir -p iso_root/boot
 	cp -v $(TARGET) iso_root/boot/
 	mkdir -p iso_root/modules
-	cp -v iso/modules/*.bin iso_root/modules
+	cp -v iso/modules/*.elf iso_root/modules
 	mkdir -p iso_root/boot/limine
 	cp -v limine.conf iso_root/boot/limine
 	mkdir -p iso_root/EFI/BOOT
