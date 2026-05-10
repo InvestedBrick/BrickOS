@@ -5,6 +5,8 @@
 #include "../filesystem/vfs/vfs.h"
 #include "../utilities/vector.h"
 #include "../memory/memory.h"
+#include <elf.h>
+#include <stdbool.h>
 #define MAX_FDS 512
 
 #define FD_STDIN 0x0
@@ -19,12 +21,16 @@ typedef struct user_process{
     uint64_t kernel_stack_top; 
     uint8_t running;
     uint8_t priv_lvl;
-    
+
     struct thread* main_thread;
 
     uint64_t page_alloc_start;
     struct virt_mem_area* vm_areas; 
     generic_file_t* fd_table[MAX_FDS];
+
+    Elf64_Phdr* phdrs; 
+    uint32_t n_phdrs; 
+
 } user_process_t;
 
 
@@ -34,7 +40,6 @@ typedef struct {
     unsigned char* stderr_filename;
 }process_fds_init_t;
 
-#define USER_CODE_DATA_VMEMORY_START 0x0000000000000000
 #define USER_STACK_VMEMORY_START     CANONICALIZE(HHDM - 0x8 - MEMORY_PAGE_SIZE * 2)
 #define USER_SCRATCH_PAGE            (CANONICALIZE(HHDM - 0x8) & ~0xfff) 
 
@@ -120,4 +125,22 @@ void restore_active_proc();
  * @note does not return
  */
 void enter_user_mode(struct thread* thread);
+
+/**
+ * find_responsible_phdr:
+ * Finds the phdr that corresponds to a virtual memory address for a process
+ * @param p The process
+ * @param virt_addr The virtual memory address
+ * @return The phdr that corresponds to the virtual memory address or nullptr if it doesn't exist
+ */
+Elf64_Phdr* find_responsible_phdr(user_process_t* p, uint64_t virt_addr);
+
+/**
+ * handle_phdr_mapping:
+ * Tries to resolve mapping process program parts into memory
+ * @param p The process
+ * @param fault_addr The address where the process faulted
+ * @return Whether the mapping was successful
+ */
+bool handle_phdr_mapping(user_process_t* p, uint64_t fault_addr);
 #endif
