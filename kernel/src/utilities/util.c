@@ -117,3 +117,11 @@ bool shared_address_remove(vector_t* vec, void* addr){
     }
     return false;
 }
+
+uint64_t min(uint64_t a, uint64_t b){
+    return a < b ? a : b;
+}
+
+uint64_t max(int64_t a, int64_t b){
+    return a > b ? a : b;
+}

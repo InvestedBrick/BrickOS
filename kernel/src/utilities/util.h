@@ -158,4 +158,8 @@ bool shared_address_remove(vector_t* vec, void* addr);
  *         A negative value if the first differing byte in ptr1 is less than the corresponding byte in ptr2
  */
 int memcmp(const void* ptr1, const void* ptr2, size_t num);
+
+
+uint64_t min(uint64_t a, uint64_t b);
+uint64_t max(int64_t a, int64_t b);
 #endif
