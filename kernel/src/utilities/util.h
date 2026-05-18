@@ -4,7 +4,7 @@
 
 #define CEIL_DIV(a,b) (((a + b) - 1 )/ b)
 #define ALIGN_DOWN(a, b) ((b) ? ((a) - ((a) % (b))) : (a))
-#define ALIGN_UP(a,b) (a + b - 1) & ~(a - 1)
+#define ALIGN_UP(a, b) (((a) + (b) - 1) & ~((b) - 1))
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
