@@ -12,7 +12,7 @@ plan:
     [X] implement IOAPIC
     [X] fix mouse driver
     [X] running more UI processes
-    [ ] switch executables to ELF format
+    [X] switch executables to ELF format
     [ ] dynamically linked code
     [ ] text editor
     [ ] background image + clickable widgets
