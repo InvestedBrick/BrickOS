@@ -17,6 +17,7 @@
 #include "../tables/syscall_defines.h"
 #include "../filesystem/devices/devs.h"
 #include "scheduler.h"
+#include "../utilities/elf_parser.h"
 vector_t user_process_vector;
 static uint8_t pid_used[MAX_PIDS] = {0};
 static uint32_t next_pid = 1;
@@ -86,6 +87,89 @@ void free_pid(uint32_t pid){
     }
 }
 
+Elf64_Phdr* find_responsible_phdr(user_process_t* p, uint64_t virt_addr){
+    for (uint32_t i = 0; i < p->n_phdrs;i++){
+        if (p->phdrs[i].p_vaddr <= virt_addr && virt_addr < p->phdrs[i].p_vaddr + p->phdrs[i].p_memsz){
+            return &p->phdrs[i];
+        }
+    }
+    return nullptr;
+}
+Elf64_Phdr* find_lowest_responsible_phdr(user_process_t* p, uint64_t low){
+    uint64_t high = ALIGN_UP(low + 1,MEMORY_PAGE_SIZE); // low + 1 to handle when low is exactly the start of a page
+    uint32_t min = high;
+    if (low >= high) error("phdr alignment broke somehow");
+    Elf64_Phdr* lowest = nullptr;
+    for (uint32_t i = 0; i < p->n_phdrs;i++){
+        if (p->phdrs[i].p_vaddr <= high && p->phdrs[i].p_vaddr + p->phdrs[i].p_memsz >= low){
+            // intersecting
+            if (p->phdrs[i].p_vaddr < min){
+                min = p->phdrs[i].p_vaddr;
+                lowest = &p->phdrs[i];
+            }
+        }
+    }
+    return lowest;
+}
+
+
+bool handle_phdr_mapping(user_process_t* p, uint64_t fault_addr){
+    uint64_t aligned_fault_addr = ALIGN_DOWN(fault_addr,MEMORY_PAGE_SIZE);
+    uint64_t page_top = aligned_fault_addr + MEMORY_PAGE_SIZE;
+    int fd = sys_open(p,p->process_name,FILE_FLAG_READ);
+    
+    if (fd < 0) return false;
+
+    bool success = false;
+    uint64_t low = aligned_fault_addr;
+    uint64_t page = pmm_alloc_page_frame();
+    mem_map_page(USER_SCRATCH_PAGE,page,PAGE_FLAG_WRITE | PAGE_FLAG_USER);
+    uint32_t flags = PAGE_FLAG_USER;
+    while(true){
+        if (low > page_top) break;
+        Elf64_Phdr* phdr = find_lowest_responsible_phdr(p, low);
+        if (!phdr || phdr->p_type != PT_LOAD) break;
+        // Handle the phdr mapping
+        uint64_t top = min(phdr->p_vaddr + phdr->p_memsz,page_top);
+        uint64_t bottom = max(phdr->p_vaddr,low);
+        uint64_t file_off = phdr->p_offset + (bottom - phdr->p_vaddr);
+        if ((top - bottom) == 0) break;
+        
+        uint32_t page_off = bottom - aligned_fault_addr;
+
+        
+        if (phdr->p_filesz > 0){
+            sys_seek(p,fd,file_off);
+        }
+
+        uint64_t read_top = min(phdr->p_vaddr + phdr->p_filesz,top);
+        uint64_t read_size = max(read_top - bottom,0);
+        if (read_size > 0){
+            sys_read(p,fd,(unsigned char*)(USER_SCRATCH_PAGE + page_off),read_size);
+        }
+        uint64_t zero_size = top - max(read_top,bottom);
+        if (zero_size > 0){
+            memset((void*)(USER_SCRATCH_PAGE + page_off + read_size),0,zero_size);
+        }
+        if (phdr->p_flags & PF_W) flags |= PAGE_FLAG_WRITE;
+        if (phdr->p_flags & PF_X) flags |= PAGE_FLAG_EXEC;
+        low = top + 1;
+        success = true;
+        
+    }
+    mem_unmap_page(USER_SCRATCH_PAGE);
+    if (success){
+        mem_map_page(aligned_fault_addr,page,flags);
+    }   
+    sys_close(p,fd);
+    if (!success){
+        pmm_free_page_frame(page);
+    }
+    return success;
+
+}
+
+
 void setup_arguments(user_process_t* proc,unsigned char* argv[]){
     uint64_t page_phys = pmm_alloc_page_frame();
     thread_t* main_thread = proc->main_thread;
@@ -154,25 +238,21 @@ void setup_arguments(user_process_t* proc,unsigned char* argv[]){
 uint32_t create_user_process(unsigned char* file_path,uint8_t priv_lvl, unsigned char* argv[],process_fds_init_t* start_fds) {
     uint32_t int_save = get_interrupt_status();
     disable_interrupts();
-// To setup a user process:
-  /**
-   * create_user_page_dir()
-   * mem_change_pml4_table()
-   * pmm_alloc_frame_page() for code/data and stack
-   * load programs into page frames
-   * mem_map_page() for both pages (code/data at 0x0000000000000000, stack at 0x00007ffffffffffc) with flag PAGE_FLAG_USER
-   */
 
+    Elf64_Ehdr ehdr;
+    if (!validate_elf(file_path,&ehdr)){
+        errorf("Tried to spawn invalid ELF: %s",file_path);
+        return 0;
+    }
 
-    // All kmalloc calls need to be made before creating the page directory, otherwise they are not correctly copied 
+    int pid = get_pid();
+    if (pid == -1) return 0;
 
     //allocate a kernel stack
     uint64_t kernel_stack = (uint64_t)kmalloc(MEMORY_PAGE_SIZE);
     
     user_process_t* process = (user_process_t*)kmalloc(sizeof(user_process_t));
     
-    int pid = get_pid();
-    if (pid == -1) return 0;
     process->process_id = pid;
     
     memset(process->fd_table,0,MAX_FDS * sizeof(generic_file_t*));
@@ -215,6 +295,7 @@ uint32_t create_user_process(unsigned char* file_path,uint8_t priv_lvl, unsigned
     process->kernel_stack_top = kernel_stack + MEMORY_PAGE_SIZE;
     
     inode_t* file = get_inode_by_path(file_path);
+    file->perms &= ~FS_FILE_PERM_WRITABLE;
     
     uint32_t code_data_pages = CEIL_DIV(file->size,MEMORY_PAGE_SIZE) + 1; // add one safety page
     
@@ -230,12 +311,9 @@ uint32_t create_user_process(unsigned char* file_path,uint8_t priv_lvl, unsigned
     if (tid == -1) return 0;
     process->main_thread = get_thread_by_tid(tid);
     
-    overwrite_current_proc(process);
-    int bin_fd = sys_open(process,file_path,FILE_FLAG_READ);
-    if (bin_fd < 0) warn("Failed to open process file");
-    restore_active_proc();
-    sys_mmap(process,0x0,file->size + MEMORY_PAGE_SIZE,PROT_READ | PROT_EXEC | PROT_WRITE,MAP_SHARED,bin_fd,0);
-    
+    process->n_phdrs = ehdr.e_phnum;
+    process->phdrs = extract_elf_phdrs(file_path);
+    process->main_thread->regs.rip = ehdr.e_entry;
 
     setup_arguments(process,argv);
 
@@ -246,6 +324,7 @@ uint32_t create_user_process(unsigned char* file_path,uint8_t priv_lvl, unsigned
         mem_map_page_in_pml4(process->pml4, stack_base - (i * MEMORY_PAGE_SIZE), stack_mem, PAGE_FLAG_WRITE | PAGE_FLAG_USER);
     }
     
+
     set_interrupt_status(int_save);
 
     return process->process_id;
@@ -263,7 +342,6 @@ void load_registers(thread_t* main_thread){
 
     main_thread->regs.cs = (0x18 | 0x3);
     main_thread->regs.rflags = (1 << 9); // enable interrupts for user
-    main_thread->regs.rip = USER_CODE_DATA_VMEMORY_START;
     //esp and ebp are already set up
     main_thread->init_user_ss = user_mode_data_segment_selector;
     main_thread->exec_state = EXEC_STATE_FINALIZED;
@@ -330,7 +408,10 @@ int kill_user_process(uint32_t pid){
     }
     // Threads are already dead since we should be coming from remove_thread
     free_user_pml4_table(process->pml4);
+    inode_t* file = get_inode_by_path(process->process_name);
+    file->perms |= FS_FILE_PERM_WRITABLE;
     kfree((void*)(process->kernel_stack_top - MEMORY_PAGE_SIZE));
+    kfree(process->phdrs);
     logf("Killed '%s'",process->process_name);
     kfree(process->process_name);
     kfree(process);
@@ -368,7 +449,10 @@ int run(char* filepath,unsigned char* argv[],process_fds_init_t* start_fds,uint8
         error("Fetching file failed");
         return -1;
     }
-
+    if (!(file->perms & FS_FILE_PERM_EXECUTABLE)) {
+        error("File not executable");
+        return -1;
+    }
     uint8_t old_int_status = get_interrupt_status();
     disable_interrupts();
 
