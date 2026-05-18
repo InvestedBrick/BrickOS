@@ -379,7 +379,6 @@ void parse_line(unsigned char* line,uint32_t line_length,command_t* comd){
 
 }
 
-__attribute__((section(".text.start")))
 void main(int argc, char* argv[]){
     print("BrickOS Shell started\n");
     unsigned char* line = (unsigned char*)malloc(LINE_BUFFER_SIZE + 1);
