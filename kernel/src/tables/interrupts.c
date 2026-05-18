@@ -192,7 +192,7 @@ void handle_software_interrupt(interrupt_stack_frame_t* stack_frame){
 
 uint64_t init_new_page(virt_mem_area_t* vma,user_process_t* p,uint64_t aligned_fault_addr){
     uint64_t frame = pmm_alloc_page_frame();        
-    mem_map_page(USER_SCRATCH_PAGE,frame,PAGE_FLAG_WRITE | PAGE_FLAG_PRESENT);
+    mem_map_page(USER_SCRATCH_PAGE,frame,PAGE_FLAG_WRITE | PAGE_FLAG_USER);
     
     if (vma->fd != MAP_FD_NONE){
         uint64_t file_off = vma->offset + (aligned_fault_addr - (uint64_t)vma->addr);
@@ -208,7 +208,12 @@ uint64_t init_new_page(virt_mem_area_t* vma,user_process_t* p,uint64_t aligned_f
 }
 
 void page_fault_handler(user_process_t* p,uint64_t fault_addr,interrupt_stack_frame_t* stack_frame){
-
+    uint8_t int_status = get_interrupt_status();
+    disable_interrupts();
+    if (handle_phdr_mapping(p,fault_addr)) {
+        set_interrupt_status(int_status);
+        return;
+    }
     virt_mem_area_t* vma = find_virt_mem_area(p->vm_areas,fault_addr);
     if (!vma){
         errorf("A page fault has occured in process: %s",p->process_name);
@@ -222,6 +227,7 @@ void page_fault_handler(user_process_t* p,uint64_t fault_addr,interrupt_stack_fr
         if (stack_frame->error_code & 0x20) error("Protection key violation");
 
         stack_frame->rbx = 1; // exit code
+        set_interrupt_status(int_status);
         sys_exit(p,stack_frame);
     }
 
@@ -250,8 +256,10 @@ void page_fault_handler(user_process_t* p,uint64_t fault_addr,interrupt_stack_fr
 
     int page_flags = PAGE_FLAG_USER;
     if (vma->prot & PROT_WRITE) page_flags |= PAGE_FLAG_WRITE;
+    if (vma->prot & PROT_EXEC)  page_flags |= PAGE_FLAG_EXEC;
 
     mem_map_page(aligned_fault_addr,frame,page_flags);
+    set_interrupt_status(int_status);
 }
 
 void interrupt_handler(interrupt_stack_frame_t* stack_frame) {
