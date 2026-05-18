@@ -1,8 +1,6 @@
 SECTIONS
 {
-    . = 0x0000000000000000;
     .text ALIGN(16) : {
-        KEEP(*(.text.start))
         *(.text)
     } :text
 
