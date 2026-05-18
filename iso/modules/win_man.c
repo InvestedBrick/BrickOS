@@ -756,7 +756,6 @@ void update_mouse(framebuffer_t* fb,int mouse_fd){
     }
 }
 
-__attribute__((section(".text.start")))
 void main(){
     int fb0_fd   = open("dev/fb0",FILE_FLAG_NONE);
     int kb0_fd   = open("dev/kb0",FILE_FLAG_NONE);
