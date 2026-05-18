@@ -236,7 +236,6 @@ pipe_return_t create_io_pipes(){
     return ret;
 }
 
-__attribute__((section(".text.start")))
 void main(){
 
     term_fb = request_window(REQ_WIDTH,REQ_HEIGHT);
@@ -252,7 +251,7 @@ void main(){
         .stdout_filename = ret.stdout_filename,
         .stderr_filename = 0,
     };
-    spawn("modules/shell.bin",0,&fds);
+    spawn("modules/shell.elf",0,&fds);
     unsigned char buf[256];
 
     while(1){
