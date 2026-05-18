@@ -18,7 +18,7 @@ void parse_elf(unsigned char* filepath){
         sys_close(proc,fd);
         return;
     }
-    log("ELF header parsed successfully");
+    logf("ELF header of %s parsed successfully", filepath);
     logf("format: %d-bit",ehdr.e_ident[EI_CLASS] == ELFCLASS64 ? 64 : 32);
     logf("endianness: %s",ehdr.e_ident[EI_DATA] == ELFDATA2LSB ? "little endian" : "big endian");
     logf("object file type: %d",ehdr.e_type);
@@ -38,8 +38,10 @@ void parse_elf(unsigned char* filepath){
         sys_close(proc,fd);
         return;
     }
-    void* addr = (void*)sys_mmap(proc,MMAP_UNSPEC_ADDR,total_phdr_size,PROT_READ, MAP_ANON,fd,ehdr.e_phoff);
-    memcpy(phdrs,addr,total_phdr_size);
+
+    sys_seek(proc,fd,ehdr.e_phoff);
+    n_bytes = sys_read(proc,fd,phdrs,total_phdr_size);
+
     //TODO: munmap
     for (uint32_t i = 0; i < ehdr.e_phnum;i++){
         logf("Program header %d:",i);
@@ -52,6 +54,7 @@ void parse_elf(unsigned char* filepath){
         logf("  flags: %d",phdrs[i].p_flags);
         logf("  alignment: %x",phdrs[i].p_align);
     }
+    kfree(phdrs);
     sys_close(proc,fd);
 
 }
@@ -88,7 +91,7 @@ Elf64_Phdr* extract_elf_phdrs(unsigned char* filepath){
     if (fd == SYSCALL_FAIL) return nullptr;
     
     Elf64_Ehdr ehdr;
-    uint64_t n_bytes = sys_read(proc,fd,&ehdr,sizeof(Elf64_Ehdr));
+    uint64_t n_bytes = sys_read(proc,fd,(unsigned char*)&ehdr,sizeof(Elf64_Ehdr));
     if (n_bytes == SYSCALL_FAIL) {
         sys_close(proc,fd);
         return nullptr;
