@@ -183,14 +183,13 @@ void kmain()
     init_virt_dirs();
     log("Initialized virtual directories");
 
-    parse_elf("modules/win_man.elf");
-    panic("not set up beyond this point");
+    parse_elf("modules/terminal.elf");
 
     // Everything is now set up
-    run("modules/terminal.bin",nullptr,nullptr,PRIV_STD);
+    run("modules/terminal.elf",nullptr,nullptr,PRIV_STD);
     //run("modules/terminal.bin",nullptr,nullptr,PRIV_STD);
     
-    run("modules/win_man.bin",nullptr,nullptr,PRIV_SPECIAL); // window manager should open dev/kb0
+    run("modules/win_man.elf",nullptr,nullptr,PRIV_SPECIAL); // window manager should open dev/kb0
 
 
     sys_settimeofday(&global_kernel_process,sys_gettimeofday() + TIMEZONE_ADJUSTMENT); //adjust for UTC+1 timezone (mine)
