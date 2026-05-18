@@ -206,7 +206,17 @@ void mem_map_page_in_pml4(uint64_t* pml4, uint64_t virt_addr, uint64_t phys_addr
 
     uint64_t* pt =  create_table_if_not_present(pd,pd_idx,flags);
 
-    pt[pt_idx] = (phys_addr & ~0xfff) | PAGE_FLAG_PRESENT | flags;
+
+    pt[pt_idx] = (phys_addr & ~0xfff) | PAGE_FLAG_PRESENT;
+
+    if (flags & PAGE_FLAG_EXEC){
+        flags &= ~PAGE_FLAG_EXEC; // exec is not a formal page flag
+        pt[pt_idx] &= ~(1ull << 63); // clear execute disable bit
+    }else{
+        pt[pt_idx] |= (1ull << 63); // set execute disable bit
+    }
+
+    pt[pt_idx] |= flags;
     mem_number_vpages++;
     invalidate(virt_addr);
 
