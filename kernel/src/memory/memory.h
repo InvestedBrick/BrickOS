@@ -39,7 +39,6 @@
 #define PAGE_FLAG_PRESENT 0x1
 #define PAGE_FLAG_WRITE (1 << 1)
 #define PAGE_FLAG_USER  (1 << 2)
-#define PAGE_FLAG_EXEC  (1 << 3)
 
 
 #define INVALID_PHYS_ADDR (uint64_t)-1

@@ -122,19 +122,19 @@ void free_table_entry(uint64_t* tbl,uint32_t tbl_idx){
 void free_user_pml4_table(uint64_t* user_pml4) {
     for (uint32_t pml4_idx = 0; pml4_idx < KERNEL_SHARED_MAPPING_IDX; pml4_idx++) {
         if (!(user_pml4[pml4_idx] & PAGE_FLAG_PRESENT)) continue;
-
+        
         uint64_t* pdpt = (uint64_t*)(linear_phys_to_virt(user_pml4[pml4_idx] & ~0xFFF));
-
+        
         for (uint32_t pdpt_idx = 0; pdpt_idx < ENTRIES_PER_TABLE; pdpt_idx++) {
             if (!(pdpt[pdpt_idx] & PAGE_FLAG_PRESENT)) continue;
-
+            
             uint64_t* pd = (uint64_t*)(linear_phys_to_virt(pdpt[pdpt_idx] & ~0xFFF));
-
+            
             for (uint32_t pd_idx = 0; pd_idx < ENTRIES_PER_TABLE; pd_idx++) {
                 if (!(pd[pd_idx] & PAGE_FLAG_PRESENT)) continue;
-
+                
                 uint64_t* pt = (uint64_t*)(linear_phys_to_virt(pd[pd_idx] & ~0xFFF));
-
+                
                 for (uint32_t pt_idx = 0; pt_idx < ENTRIES_PER_TABLE; pt_idx++) {
                     if (pt[pt_idx] & PAGE_FLAG_PRESENT) {
                         free_table_entry(pt,pt_idx);
@@ -146,7 +146,7 @@ void free_user_pml4_table(uint64_t* user_pml4) {
         }
         free_table_entry(user_pml4,pml4_idx);
     }
-
+    
     mem_unmap_page((uint64_t)user_pml4);
     uint64_t pml4_phys = linear_virt_to_phys((uint64_t)user_pml4);
     pmm_free_page_frame(pml4_phys);
@@ -207,16 +207,8 @@ void mem_map_page_in_pml4(uint64_t* pml4, uint64_t virt_addr, uint64_t phys_addr
     uint64_t* pt =  create_table_if_not_present(pd,pd_idx,flags);
 
 
-    pt[pt_idx] = (phys_addr & ~0xfff) | PAGE_FLAG_PRESENT;
+    pt[pt_idx] = (phys_addr & ~0xfff) | PAGE_FLAG_PRESENT | flags;
 
-    if (flags & PAGE_FLAG_EXEC){
-        flags &= ~PAGE_FLAG_EXEC; // exec is not a formal page flag
-        pt[pt_idx] &= ~(1ull << 63); // clear execute disable bit
-    }else{
-        pt[pt_idx] |= (1ull << 63); // set execute disable bit
-    }
-
-    pt[pt_idx] |= flags;
     mem_number_vpages++;
     invalidate(virt_addr);
 
