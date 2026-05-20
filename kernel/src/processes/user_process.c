@@ -152,7 +152,6 @@ bool handle_phdr_mapping(user_process_t* p, uint64_t fault_addr){
             memset((void*)(USER_SCRATCH_PAGE + page_off + read_size),0,zero_size);
         }
         if (phdr->p_flags & PF_W) flags |= PAGE_FLAG_WRITE;
-        if (phdr->p_flags & PF_X) flags |= PAGE_FLAG_EXEC;
         low = top + 1;
         success = true;
         
@@ -175,12 +174,14 @@ void setup_arguments(user_process_t* proc,unsigned char* argv[]){
     thread_t* main_thread = proc->main_thread;
     if (!main_thread) error("Failed to get main thread");
     // map temporarily to write memory into it
-    mem_map_page(USER_SCRATCH_PAGE,page_phys,PAGE_FLAG_WRITE | PAGE_FLAG_PRESENT);
+    mem_map_page(USER_SCRATCH_PAGE,page_phys,PAGE_FLAG_WRITE | PAGE_FLAG_USER);
     unsigned char* page = (unsigned char*)USER_SCRATCH_PAGE;
     memset(page,0x0,MEMORY_PAGE_SIZE);
     uint64_t argc = 0;
-    for(uint32_t i = 0; argv[i];i++) {argc++;}
-
+    if (argv){
+        for(uint32_t i = 0; argv[i];i++) {argc++;}
+    }
+    
     uint64_t* arg_ptrs = (uint64_t*)kmalloc(argc * sizeof(uint64_t));    
     uint64_t sp = USER_STACK_VMEMORY_START;
     uint32_t write_ptr = MEMORY_PAGE_SIZE;
@@ -188,6 +189,7 @@ void setup_arguments(user_process_t* proc,unsigned char* argv[]){
     // argv data
     for (int64_t i = argc - 1; i >= 0; i--){
         uint32_t len = strlen(argv[i]) + 1;
+        if (len > write_ptr) error("Too many arguments to fit on stack");
         sp -= len;
         write_ptr -= len;
         memcpy(&page[write_ptr],argv[i],len);
@@ -310,20 +312,19 @@ uint32_t create_user_process(unsigned char* file_path,uint8_t priv_lvl, unsigned
     int tid = add_thread(process);
     if (tid == -1) return 0;
     process->main_thread = get_thread_by_tid(tid);
-    
+
     process->n_phdrs = ehdr.e_phnum;
     process->phdrs = extract_elf_phdrs(file_path);
     process->main_thread->regs.rip = ehdr.e_entry;
 
     setup_arguments(process,argv);
-
+        
     // first page is managed by the argv setup
     uint64_t stack_base = USER_STACK_VMEMORY_START & ~(MEMORY_PAGE_SIZE - 1);
     for (uint32_t i = 1; i < USER_STACK_PAGES_PER_PROCESS; i++){
         uint64_t stack_mem = pmm_alloc_page_frame();
         mem_map_page_in_pml4(process->pml4, stack_base - (i * MEMORY_PAGE_SIZE), stack_mem, PAGE_FLAG_WRITE | PAGE_FLAG_USER);
     }
-    
 
     set_interrupt_status(int_save);
 
@@ -409,14 +410,14 @@ int kill_user_process(uint32_t pid){
     // Threads are already dead since we should be coming from remove_thread
     free_user_pml4_table(process->pml4);
     inode_t* file = get_inode_by_path(process->process_name);
-    file->perms |= FS_FILE_PERM_WRITABLE;
+    if (file)
+        file->perms |= FS_FILE_PERM_WRITABLE;
     kfree((void*)(process->kernel_stack_top - MEMORY_PAGE_SIZE));
     kfree(process->phdrs);
     logf("Killed '%s'",process->process_name);
     kfree(process->process_name);
     kfree(process);
     free_pid(pid);
-
     return 0;
 }
 
@@ -456,13 +457,8 @@ int run(char* filepath,unsigned char* argv[],process_fds_init_t* start_fds,uint8
     uint8_t old_int_status = get_interrupt_status();
     disable_interrupts();
 
-    if (!argv) {
-        unsigned char* argv2[] = {0};
-        argv = argv2;
-    }
-
     uint32_t pid = create_user_process(filepath,priv_lvl,argv,start_fds);
-
+    
     if (!pid) {
         error("Creating user process failed");
         return -1;
