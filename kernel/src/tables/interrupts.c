@@ -256,7 +256,6 @@ void page_fault_handler(user_process_t* p,uint64_t fault_addr,interrupt_stack_fr
 
     int page_flags = PAGE_FLAG_USER;
     if (vma->prot & PROT_WRITE) page_flags |= PAGE_FLAG_WRITE;
-    if (vma->prot & PROT_EXEC)  page_flags |= PAGE_FLAG_EXEC;
 
     mem_map_page(aligned_fault_addr,frame,page_flags);
     set_interrupt_status(int_status);
