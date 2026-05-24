@@ -40,20 +40,27 @@ void save_module_binaries(struct limine_module_response* module_response){
 
 void write_module_binaries_to_file(){
     for (uint32_t i = 0; i < module_count;i++){
-        inode_t* module_dir = get_inode_by_full_file_path("modules/");
+        inode_t* module_dir = get_inode_by_path("modules/");
         
         if (!module_dir) 
             {error("Modules directory was not initialized"); return; }
         
         sys_chdir("modules");
-        
+        bool exec = true;
         unsigned char* name = (unsigned char*)module_binary_structs[i].cmdline;
+        uint32_t dot_pos = rfind_char(name,'.');
+        if (dot_pos != (uint32_t)-1 && memcmp(&name[dot_pos],".qoi",4) == 0){
+            module_dir = get_inode_by_path("images/");
+            sys_chdir("images");
+            exec = false;
+        }
         uint32_t len = strlen(name);
+        
         if (dir_contains_name(module_dir,name)){
             // if it is already here, remove it
             sys_rmfile(name);
         }
-
+        logf("Writing module binary to file: %s", name);
         int ret_code = create_file(module_dir,name,len,FS_TYPE_FILE,FS_FILE_PERM_WRITABLE | FS_FILE_PERM_READABLE,PRIV_STD);
         if (ret_code < 0) 
             {error("Failed to create module binary file"); continue;}
@@ -61,7 +68,8 @@ void write_module_binaries_to_file(){
         int fd = sys_open(&global_kernel_process,name,FILE_FLAG_WRITE);
         if (fd < 0) 
             {error("Failed to open module binary file"); continue;}
-
+        
+        logf("Writing module binary to file: %s, size: %d bytes", name, module_binary_structs[i].size);
         ret_code = sys_write(&global_kernel_process,fd,(unsigned char*)module_binary_structs[i].start,module_binary_structs[i].size);
         if (ret_code < 0) 
             {error("Failed to write to module binary file"); continue;}
@@ -69,7 +77,9 @@ void write_module_binaries_to_file(){
         ret_code = sys_close(&global_kernel_process,fd);
         if (ret_code == FILE_INVALID_FD) error("Failed to close module binary file");
 
-        change_file_permissions(name, FS_FILE_PERM_EXECUTABLE | FS_FILE_PERM_READABLE);
+        uint8_t perms = FS_FILE_PERM_READABLE;
+        if (exec) perms |= FS_FILE_PERM_EXECUTABLE;
+        change_file_permissions(name, perms);
 
         sys_chdir("root");
         kfree((void*) name);
