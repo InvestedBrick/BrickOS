@@ -165,6 +165,7 @@ void kmain()
     if (first_time_fs_init){
         inode_t* current_dir = get_active_dir();
         create_file(current_dir,"modules",strlen("modules"),FS_TYPE_DIR, FS_FILE_PERM_NONE,PRIV_STD);
+        create_file(get_inode_by_path("modules"),"images",strlen("images"),FS_TYPE_DIR, FS_FILE_PERM_NONE,PRIV_STD);
         create_file(current_dir,"home",strlen("home"),FS_TYPE_DIR, FS_FILE_PERM_NONE,PRIV_STD);
         create_file(current_dir,"dev",strlen("dev"),FS_TYPE_DIR,FS_FILE_PERM_NONE,PRIV_STD);
         create_file(current_dir,"tmp",strlen("tmp"),FS_TYPE_DIR,FS_FILE_PERM_NONE,PRIV_STD);
@@ -182,8 +183,6 @@ void kmain()
     
     init_virt_dirs();
     log("Initialized virtual directories");
-
-    parse_elf("modules/terminal.elf");
 
     // Everything is now set up
     run("modules/terminal.elf",nullptr,nullptr,PRIV_STD);
