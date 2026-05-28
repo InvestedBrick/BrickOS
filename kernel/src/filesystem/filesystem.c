@@ -116,6 +116,13 @@ inode_t* get_parent_inode(inode_t* child){
     return get_inode_by_id(name_pair->parent_id);
 }
 
+void efficient_read_sector(uint32_t sector_id){
+    if (last_read_sector_idx != sector_id){
+        read_sectors(ATA_PRIMARY_BUS_IO,1,last_read_sector,sector_id);
+        last_read_sector_idx = sector_id;
+    }
+}
+
 inode_t* get_inode_by_file_path(unsigned char* path,uint32_t inode_id){
     
     inode_t* inode = get_inode_by_id(inode_id);
@@ -160,13 +167,13 @@ inode_t* get_inode_by_relative_file_path(unsigned char* path){
 }
 
 uint32_t count_partially_used_big_sectors(uint32_t end){
+    // expects "end" to be a bitmap index into the big sector bitmaps, NOT byte size
+
     uint32_t partially_used_bitmaps = 0;
     for(uint32_t i = 0; i < end;i++){
-        for(uint32_t j = 0; j < 8;j++){
             // check whether the big sector is partially used, if so, a bitmap for it should exist
-            if (BIT_CHECK(header_data.big_sector_used_map,i * 8 + j) &&
-               !BIT_CHECK(header_data.big_sector_full_map,i * 8 + j)) partially_used_bitmaps++;
-        }
+            if (BIT_CHECK(header_data.big_sector_used_map,i) &&
+               !BIT_CHECK(header_data.big_sector_full_map,i)) partially_used_bitmaps++;
     }
 
     return partially_used_bitmaps;
@@ -211,7 +218,7 @@ void read_bitmaps_from_disk(){
     memcpy(header_data.big_sector_full_map,&last_read_sector[BIG_SECTOR_BITMAP_SIZE],BIG_SECTOR_BITMAP_SIZE); // read in fully used bitmap
     memcpy(header_data.inode_sector_map,&last_read_sector[BIG_SECTOR_BITMAP_SIZE * 2],RESERVED_INODE_SECTORS);
 
-    uint32_t partially_used_bitmaps = count_partially_used_big_sectors(BIG_SECTOR_BITMAP_SIZE);
+    uint32_t partially_used_bitmaps = count_partially_used_big_sectors(TOTAL_BIG_SECTORS);
     if (partially_used_bitmaps > 128) panic("Not enough reserved sectors for bitmaps");
     active_partially_used_bitmaps = partially_used_bitmaps;
 
@@ -219,10 +226,7 @@ void read_bitmaps_from_disk(){
         uint32_t sector_bitmap_idx = (BITMAP_SECTOR_START + 1) + (i / SECTOR_BITMAPS_PER_SECTOR);  
         uint32_t bitmap_idx_in_sector = (i % SECTOR_BITMAPS_PER_SECTOR);
 
-        if (last_read_sector_idx != sector_bitmap_idx){
-            read_sectors(ATA_PRIMARY_BUS_IO,1,last_read_sector,sector_bitmap_idx);
-            last_read_sector_idx = sector_bitmap_idx;
-        }
+        efficient_read_sector(sector_bitmap_idx);
 
         header_data.sector_bitmaps[i] = (unsigned char*)kmalloc(SECTOR_BITMAP_SIZE);
 
@@ -300,7 +304,7 @@ uint32_t allocate_sector(){
 
     uint8_t break_loop = 0; 
     uint8_t free_sector_found = 0;
-    for (uint32_t i = 0; i < 128;i++){
+    for (uint32_t i = 0; i < (TOTAL_BIG_SECTORS / 8);i++){
 
         for (uint32_t j = 0; j < 8;j++){
             
@@ -319,7 +323,7 @@ uint32_t allocate_sector(){
         if (first_free_big_sector_idx == (uint32_t)-1) panic("No free big sector exists");
 
         unsigned char* bitmap = (unsigned char*)kmalloc(SECTOR_BITMAP_SIZE);
-
+        memset(bitmap, 0x00, SECTOR_BITMAP_SIZE);
         // alloc first sector of big sector
         BIT_SET(bitmap,0); 
 
@@ -332,7 +336,9 @@ uint32_t allocate_sector(){
         return first_free_big_sector_idx * BIG_SECTOR_SECTOR_COUNT;
 
     }else{
-        unsigned char* big_sector_bitmap = header_data.sector_bitmaps[0];
+
+        uint32_t bitmap_idx = count_partially_used_big_sectors(partially_free_big_sector_idx);
+        unsigned char* big_sector_bitmap = header_data.sector_bitmaps[bitmap_idx];
 
         uint32_t free_sector_idx = (uint32_t)-1;
 
@@ -344,9 +350,9 @@ uint32_t allocate_sector(){
                     
                     if (is_bitmap_full(big_sector_bitmap,SECTOR_BITMAP_SIZE)){
                         kfree(big_sector_bitmap);
-                        shift_sector_bitmaps_left(header_data.sector_bitmaps,0,active_partially_used_bitmaps);
+                        shift_sector_bitmaps_left(header_data.sector_bitmaps,bitmap_idx,active_partially_used_bitmaps);
                         active_partially_used_bitmaps--;
-                        BIT_SET(header_data.big_sector_full_map,i * 8 + j);
+                        BIT_SET(header_data.big_sector_full_map,partially_free_big_sector_idx);
                     }
                     return (partially_free_big_sector_idx * BIG_SECTOR_SECTOR_COUNT + i * 8 + j);
                 }
@@ -380,33 +386,60 @@ void free_inode_section(uint32_t inode_id){
     BIT_CLEAR(header_data.inode_sector_map,inode_id);
 }
 
+
+uint32_t count_indirect_sector_entries(uint32_t sector_idx){
+    uint32_t count = 0;
+    efficient_read_sector(sector_idx);
+
+    for (uint32_t i = 0; i < FS_SECTORS_PER_INDIRECT_SECTOR;i++){
+        if (*(uint32_t*)&last_read_sector[i * sizeof(uint32_t)] != 0) count++;
+    }
+
+    return count;
+}
+
 unsigned char* read_dir_entries_to_buffer(inode_t* dir){
-    uint32_t n_indirect_sectors = 0;
-    uint32_t n_sectors = 0;
+    uint32_t total_sectors = 0;
 
     if (dir->indirect_sector){
-        read_sectors(ATA_PRIMARY_BUS_IO,1,last_read_sector,dir->indirect_sector);
-        last_read_sector_idx = dir->indirect_sector;
+        total_sectors += count_indirect_sector_entries(dir->indirect_sector);
+    }
+    if (dir->d_indirect_sector){
+        efficient_read_sector(dir->d_indirect_sector);
 
-        for(uint32_t i = 0; *(uint32_t*)&last_read_sector[i * sizeof(uint32_t)] != 0 && i < ATA_SECTOR_SIZE / sizeof(uint32_t);i++){
-            n_indirect_sectors++;
+        for (uint32_t i = 0; i < FS_SECTORS_PER_INDIRECT_SECTOR;i++){
+            uint32_t indirect_sector_idx = *(uint32_t*)&last_read_sector[i * sizeof(uint32_t)];
+            if (indirect_sector_idx != 0) total_sectors += count_indirect_sector_entries(indirect_sector_idx);
         }
     }
 
-    for (uint32_t sec = 0; dir->data_sectors[sec] != 0 && sec < NUM_DATA_SECTORS_PER_FILE;sec++){n_sectors++;}
+    for (uint32_t sec = 0; dir->data_sectors[sec] != 0 && sec < NUM_DATA_SECTORS_PER_FILE;sec++){total_sectors++;}
 
-    if ((n_sectors + n_indirect_sectors) == 0) return 0;
+    if (total_sectors == 0) return 0;
 
-    unsigned char* buffer = (char*)kmalloc((n_sectors + n_indirect_sectors) * ATA_SECTOR_SIZE);
+    unsigned char* buffer = (char*)kmalloc(total_sectors * ATA_SECTOR_SIZE);
     // read all the sectors individually, since they might not be continuous
-    for (uint32_t i = 0; i < n_sectors + n_indirect_sectors;i++ ){
+    for (uint32_t i = 0; i < total_sectors;i++ ){
         // normal sectors
         if (i < NUM_DATA_SECTORS_PER_FILE){
             read_sectors(ATA_PRIMARY_BUS_IO,1,&buffer[i * ATA_SECTOR_SIZE],dir->data_sectors[i]);
         }
         //indirect sectors
+        else if (i < NUM_INDIR_DATA_SECTORS + NUM_DATA_SECTORS_PER_FILE){
+            efficient_read_sector(dir->indirect_sector);
+            uint32_t sector = *(uint32_t*)&last_read_sector[sizeof(uint32_t) * (i - NUM_DATA_SECTORS_PER_FILE)];
+            read_sectors(ATA_PRIMARY_BUS_IO,1,&buffer[i * ATA_SECTOR_SIZE],sector);            
+        }
+        // double indirect sectors
         else{
-            read_sectors(ATA_PRIMARY_BUS_IO,1,&buffer[i * ATA_SECTOR_SIZE],*(uint32_t*)&last_read_sector[sizeof(uint32_t) * (i - NUM_DATA_SECTORS_PER_FILE)]);            
+            uint32_t d_indir_idx = (i - (NUM_INDIR_DATA_SECTORS + NUM_DATA_SECTORS_PER_FILE)) / NUM_INDIR_DATA_SECTORS;
+            uint32_t s_indir_idx = (i - (NUM_INDIR_DATA_SECTORS + NUM_DATA_SECTORS_PER_FILE)) % NUM_INDIR_DATA_SECTORS;
+
+            efficient_read_sector(dir->d_indirect_sector);
+            uint32_t s_indir_sector = *(uint32_t*)&last_read_sector[d_indir_idx * sizeof(uint32_t)];
+            efficient_read_sector(s_indir_sector);
+            uint32_t sector = *(uint32_t*)&last_read_sector[s_indir_idx * sizeof(uint32_t)];
+            read_sectors(ATA_PRIMARY_BUS_IO,1,&buffer[i * ATA_SECTOR_SIZE],sector);
         }
     }
 
@@ -453,10 +486,7 @@ void build_inodes(inode_t* parent){
 
         inode_t* inode = (inode_t*)kmalloc(sizeof(inode_t));
         
-        if (last_read_sector_idx != inode_sector){
-            read_sectors(ATA_PRIMARY_BUS_IO,1,last_read_sector,inode_sector);
-            last_read_sector_idx = inode_sector;
-        }
+        efficient_read_sector(inode_sector);
 
         // copy the data from disk to memory
         memcpy((void*)inode,&last_read_sector[sector_offset],sizeof(inode_t));
@@ -501,8 +531,9 @@ void init_filesystem(){
         last_read_sector[sizeof(uint32_t) * 2 + sizeof(uint8_t)] = root_node->priv_lvl;
         last_read_sector[sizeof(uint32_t) * 2 + sizeof(uint8_t) * 2] = 0;
         last_read_sector[sizeof(uint32_t) * 2 + sizeof(uint8_t) * 3] = 0;
-        *(uint32_t*)&last_read_sector[sizeof(uint32_t) * 3] = 0;
-        memset(&last_read_sector[sizeof(uint32_t) * 4],0x0,NUM_DATA_SECTORS_PER_FILE * sizeof(uint32_t));
+        *(uint32_t*)&last_read_sector[sizeof(uint32_t) * 3] = 0; // singly indirect sector
+        *(uint32_t*)&last_read_sector[sizeof(uint32_t) * 4] = 0; // doubly indirect sector
+        memset(&last_read_sector[sizeof(uint32_t) * 5],0x0,NUM_DATA_SECTORS_PER_FILE * sizeof(uint32_t));
         last_read_sector[ATA_SECTOR_SIZE - 1] = FS_SECTOR_0_INIT_FLAG;
         write_sectors(ATA_PRIMARY_BUS_IO,1,last_read_sector,0); 
         
@@ -511,7 +542,7 @@ void init_filesystem(){
         
         // reserve the reserved sectors
         for (uint32_t i = 0; i < RESERVED_SECTORS;i++){
-            allocate_sector();
+            uint32_t sector = allocate_sector();
         }
     }else{
         /**
@@ -522,7 +553,8 @@ void init_filesystem(){
          * 0x0000000a: priv_lvl
          * 0x0000000b: flags 3
          * 0x0000000c: indirect_sector
-         * 0x00000010: root_data_sectors
+         * 0x00000010: d_indirect_sector
+         * 0x00000014: root_data_sectors
          */
         root_node->id = *(uint32_t*)&last_read_sector[0x00];
         root_node->size = *(uint32_t*)&last_read_sector[sizeof(uint32_t)];
@@ -531,7 +563,8 @@ void init_filesystem(){
         root_node->priv_lvl = last_read_sector[sizeof(uint32_t) * 2 + sizeof(uint8_t) * 2];
         root_node->unused_flag_three = last_read_sector[sizeof(uint32_t) * 2 + sizeof(uint8_t) * 3];
         root_node->indirect_sector = *(uint32_t*)&last_read_sector[sizeof(uint32_t) * 3];
-        memcpy(root_node->data_sectors,&last_read_sector[sizeof(uint32_t) * 4],NUM_DATA_SECTORS_PER_FILE * sizeof(uint32_t));
+        root_node->d_indirect_sector = *(uint32_t*)&last_read_sector[sizeof(uint32_t) * 4];
+        memcpy(root_node->data_sectors,&last_read_sector[sizeof(uint32_t) * 5],NUM_DATA_SECTORS_PER_FILE * sizeof(uint32_t));
         read_bitmaps_from_disk();
     }
     
@@ -564,27 +597,64 @@ uint8_t write_directory_entry(inode_t* parent_dir, uint32_t child_inode_id, unsi
     uint32_t sector_idx = total_bytes / ATA_SECTOR_SIZE;
     uint32_t sector_offset = total_bytes % ATA_SECTOR_SIZE;
 
-    if (sector_idx >= NUM_DATA_SECTORS_PER_FILE) return 0;
-
-    if(parent_dir->data_sectors[sector_idx] == 0){
-        parent_dir->data_sectors[sector_idx] = allocate_sector();
-    }
-
-    uint32_t sector = parent_dir->data_sectors[sector_idx];
-
-    if (last_read_sector_idx != sector){
-        read_sectors(ATA_PRIMARY_BUS_IO, 1, last_read_sector, sector);
-        last_read_sector_idx = sector;
-    }
-
     uint32_t bytes_written = 0;
     uint32_t remaining_bytes_in_sector = ATA_SECTOR_SIZE - sector_offset;
-    
     while(bytes_written < data_buffer_size){
 
         uint32_t to_write = data_buffer_size - bytes_written;
         if(to_write > remaining_bytes_in_sector) to_write = remaining_bytes_in_sector;
 
+        uint32_t sector;
+        
+        if (sector_idx >= NUM_INDIR_DATA_SECTORS + NUM_DATA_SECTORS_PER_FILE){
+            // double indirect sector
+            if (!parent_dir->d_indirect_sector) parent_dir->d_indirect_sector = allocate_sector();
+
+            uint32_t d_indir_idx = (sector_idx - (NUM_INDIR_DATA_SECTORS + NUM_DATA_SECTORS_PER_FILE)) / NUM_INDIR_DATA_SECTORS;
+            uint32_t s_indir_idx = (sector_idx - (NUM_INDIR_DATA_SECTORS + NUM_DATA_SECTORS_PER_FILE)) % NUM_INDIR_DATA_SECTORS;
+
+            efficient_read_sector(parent_dir->d_indirect_sector);
+            if (*(uint32_t*)&last_read_sector[d_indir_idx * sizeof(uint32_t)] == 0){
+                *(uint32_t*)&last_read_sector[d_indir_idx * sizeof(uint32_t)] = allocate_sector();
+                write_sectors(ATA_PRIMARY_BUS_IO,1,last_read_sector,parent_dir->d_indirect_sector);
+                sector_offset = 0;
+                remaining_bytes_in_sector = ATA_SECTOR_SIZE;
+            }
+
+            uint32_t s_indir_sector = *(uint32_t*)&last_read_sector[d_indir_idx * sizeof(uint32_t)];
+
+            efficient_read_sector(s_indir_sector);
+            if (*(uint32_t*)&last_read_sector[s_indir_idx * sizeof(uint32_t)] == 0){
+                *(uint32_t*)&last_read_sector[s_indir_idx * sizeof(uint32_t)] = allocate_sector();
+                write_sectors(ATA_PRIMARY_BUS_IO,1,last_read_sector,s_indir_sector);
+                sector_offset = 0;
+                remaining_bytes_in_sector = ATA_SECTOR_SIZE;
+            }
+
+            sector = *(uint32_t*)&last_read_sector[s_indir_idx * sizeof(uint32_t)];
+        }
+        else if (sector_idx >= NUM_DATA_SECTORS_PER_FILE){
+            //indirect sector
+            if (!parent_dir->indirect_sector) parent_dir->indirect_sector = allocate_sector();
+            uint32_t indir_sector_idx = sector_idx - NUM_DATA_SECTORS_PER_FILE;
+            efficient_read_sector(parent_dir->indirect_sector);
+            if (*(uint32_t*)&last_read_sector[indir_sector_idx * sizeof(uint32_t)] == 0){
+                *(uint32_t*)&last_read_sector[indir_sector_idx * sizeof(uint32_t)] = allocate_sector();
+                write_sectors(ATA_PRIMARY_BUS_IO,1,last_read_sector,parent_dir->indirect_sector);
+                sector_offset = 0;
+                remaining_bytes_in_sector = ATA_SECTOR_SIZE;
+            }
+            sector = *(uint32_t*)&last_read_sector[indir_sector_idx * sizeof(uint32_t)];
+        }
+        else {
+            if (!parent_dir->data_sectors[sector_idx]){
+                parent_dir->data_sectors[sector_idx] = allocate_sector();
+            }
+            sector = parent_dir->data_sectors[sector_idx];
+        }
+
+
+        efficient_read_sector(sector);
         memcpy(&last_read_sector[sector_offset],&data_buffer[bytes_written],to_write);
         write_sectors(ATA_PRIMARY_BUS_IO,1,last_read_sector,sector);
 
@@ -594,16 +664,7 @@ uint8_t write_directory_entry(inode_t* parent_dir, uint32_t child_inode_id, unsi
         if (bytes_written == data_buffer_size) break;
 
         sector_idx++;
-        if (sector_idx >= NUM_DATA_SECTORS_PER_FILE) return 0;
-        if (parent_dir->data_sectors[sector_idx] == 0) {
-            parent_dir->data_sectors[sector_idx] = allocate_sector();
-        }
-        sector = parent_dir->data_sectors[sector_idx];
-        read_sectors(ATA_PRIMARY_BUS_IO, 1, last_read_sector, sector);
-        last_read_sector_idx = sector;
 
-        sector_offset = 0;
-        remaining_bytes_in_sector = ATA_SECTOR_SIZE;
     }
 
     read_sectors(ATA_PRIMARY_BUS_IO,1,last_read_sector,parent_dir->data_sectors[0]);
@@ -680,16 +741,23 @@ int write_data_buffer_to_disk(inode_t* inode, unsigned char* buffer, uint32_t bu
         if (sector_idx >= MAX_FILE_SECTORS) return INTERNAL_FUNCTION_FAIL;
 
         uint32_t sector;
+        if (sector_idx >= NUM_DATA_SECTORS_PER_FILE + NUM_INDIR_DATA_SECTORS){
+            if (!inode->d_indirect_sector) return INTERNAL_FUNCTION_FAIL;
+            uint32_t d_indir_sector_idx = (sector_idx - (NUM_DATA_SECTORS_PER_FILE + NUM_INDIR_DATA_SECTORS)) / NUM_INDIR_DATA_SECTORS;
+            uint32_t s_indir_sector_idx = (sector_idx - (NUM_DATA_SECTORS_PER_FILE + NUM_INDIR_DATA_SECTORS)) % NUM_INDIR_DATA_SECTORS;
 
-        if(sector_idx >= FS_INODES_PER_SECTOR){
+            efficient_read_sector(inode->d_indirect_sector);
+            uint32_t s_indir_sector = *(uint32_t*)&last_read_sector[d_indir_sector_idx * sizeof(uint32_t)];
+            efficient_read_sector(s_indir_sector);
+            sector = *(uint32_t*)&last_read_sector[s_indir_sector_idx * sizeof(uint32_t)];
+
+        }
+        else if(sector_idx >= NUM_DATA_SECTORS_PER_FILE){
 
             if (!inode->indirect_sector) return INTERNAL_FUNCTION_FAIL;
-            if(last_read_sector_idx != inode->indirect_sector){
-                read_sectors(ATA_PRIMARY_BUS_IO,1,last_read_sector,inode->indirect_sector);
-                last_read_sector_idx = inode->indirect_sector;
-            }
+            efficient_read_sector(inode->indirect_sector);
 
-            sector = *(uint32_t*)&last_read_sector[sizeof(uint32_t) * (sector_idx - FS_INODES_PER_SECTOR )];
+            sector = *(uint32_t*)&last_read_sector[sizeof(uint32_t) * (sector_idx - NUM_DATA_SECTORS_PER_FILE )];
         }else{
             sector = inode->data_sectors[sector_idx];
         }
@@ -712,7 +780,7 @@ void erase_directory_entry(inode_t* dir, uint32_t entry_inode_id){
     
     if (!dir->data_sectors[0]) return; // nothing there so nothing to remove
 
-    unsigned char* buffer = read_dir_entries_to_buffer(dir);
+    unsigned char* buffer = read_dir_entries_to_buffer(dir); // this is painfull inefficient :(
 
     n_entries = *(uint32_t*)&buffer[0];
 
@@ -739,9 +807,31 @@ void erase_directory_entry(inode_t* dir, uint32_t entry_inode_id){
     uint8_t last_sector_free = ((buffer_offset - first_sector_header) % ATA_SECTOR_SIZE) <= data_len;
     if (last_sector_free){
         uint32_t sector_idx = buffer_offset / ATA_SECTOR_SIZE;
-        uint32_t sector = dir->data_sectors[sector_idx];
-        free_sector(sector);
-        dir->data_sectors[sector_idx] = 0;
+
+        if (sector_idx >= NUM_INDIR_DATA_SECTORS + NUM_DATA_SECTORS_PER_FILE){
+            uint32_t d_indir_idx = (sector_idx - (NUM_INDIR_DATA_SECTORS + NUM_DATA_SECTORS_PER_FILE)) / NUM_INDIR_DATA_SECTORS;
+            uint32_t s_indir_idx = (sector_idx - (NUM_INDIR_DATA_SECTORS + NUM_DATA_SECTORS_PER_FILE)) % NUM_INDIR_DATA_SECTORS;
+
+            efficient_read_sector(dir->d_indirect_sector);
+            uint32_t s_indir_sector = *(uint32_t*)&last_read_sector[d_indir_idx * sizeof(uint32_t)];
+            efficient_read_sector(s_indir_sector);
+            uint32_t sector = *(uint32_t*)&last_read_sector[s_indir_idx * sizeof(uint32_t)];
+            free_sector(sector);
+            *(uint32_t*)&last_read_sector[s_indir_idx * sizeof(uint32_t)] = 0;
+            write_sectors(ATA_PRIMARY_BUS_IO,1,last_read_sector,s_indir_sector);
+        }
+        else if (sector_idx >= NUM_DATA_SECTORS_PER_FILE){
+            efficient_read_sector(dir->indirect_sector);
+            uint32_t indir_sector_idx = sector_idx - NUM_DATA_SECTORS_PER_FILE;
+            uint32_t sector = *(uint32_t*)&last_read_sector[indir_sector_idx * sizeof(uint32_t)];
+            free_sector(sector);
+            *(uint32_t*)&last_read_sector[indir_sector_idx * sizeof(uint32_t)] = 0;
+            write_sectors(ATA_PRIMARY_BUS_IO,1,last_read_sector,dir->indirect_sector);
+        }
+        else {
+            free_sector(dir->data_sectors[sector_idx]);
+            dir->data_sectors[sector_idx] = 0;
+        }
 
         if (first_sector_header) dir->size = 0; // directory has no entries now
     }
@@ -804,20 +894,33 @@ int delete_dir(inode_t* parent_dir,unsigned char* name){
     return delete_dir_recursive(parent_dir,dir);
 }
 
+void free_indirect_sector(uint32_t sector_idx){
+    efficient_read_sector(sector_idx);
+
+    for (uint32_t i = 0; i < FS_SECTORS_PER_INDIRECT_SECTOR;i++){
+        uint32_t data_sector = *(uint32_t*)&last_read_sector[i * sizeof(uint32_t)];
+        if (data_sector) free_sector(data_sector);
+    }
+    free_sector(sector_idx);
+}
+
 int delete_file_by_inode(inode_t* parent_dir,inode_t* inode){
 
     if (inode->type == FS_TYPE_DIR && inode->data_sectors[0] != 0)
         return FS_FILE_DELETION_FAILED; // cant remote a non-empty dir
 
-    if (inode->indirect_sector){
-        read_sectors(ATA_PRIMARY_BUS_IO,1,last_read_sector,inode->indirect_sector);
-        last_read_sector_idx = inode->indirect_sector;
 
-        for(uint32_t i = 0;i < ATA_SECTOR_SIZE / sizeof(uint32_t);i++){
-            uint32_t sector = *(uint32_t*)&last_read_sector[i * sizeof(uint32_t)];
-            if (sector) free_sector(sector);
+    if (inode->d_indirect_sector){
+        efficient_read_sector(inode->d_indirect_sector);
+        for (uint32_t i = 0; i < FS_SECTORS_PER_INDIRECT_SECTOR;i++){
+            uint32_t s_indir_sector = *(uint32_t*)&last_read_sector[i * sizeof(uint32_t)];
+            if (s_indir_sector) free_indirect_sector(s_indir_sector);
         }
-        free_sector(inode->indirect_sector);
+        free_sector(inode->d_indirect_sector);
+    }
+
+    if (inode->indirect_sector){
+        free_indirect_sector(inode->indirect_sector);
     }
 
     for (uint32_t i = 0; i < NUM_DATA_SECTORS_PER_FILE;i++){
@@ -847,6 +950,7 @@ inode_t* create_inode(uint8_t perms, uint8_t type, uint8_t priv_lvl,uint32_t id)
     file->id = id;
     memset(file->data_sectors,0,NUM_DATA_SECTORS_PER_FILE * sizeof(uint32_t));
     file->indirect_sector = 0;
+    file->d_indirect_sector = 0;
     file->size = 0;
     file->priv_lvl = priv_lvl;
     vector_append(&inodes,(vector_data_t)file);
@@ -886,10 +990,7 @@ int create_file(inode_t* parent_dir, unsigned char* name, uint8_t name_length, u
 
     if (parent_dir->data_sectors[0] == 0){
         parent_dir->data_sectors[0] = allocate_sector();
-        read_sectors(ATA_PRIMARY_BUS_IO,1,last_read_sector,parent_dir->data_sectors[0]);
-        last_read_sector_idx = parent_dir->data_sectors[0];
         memset(last_read_sector, 0, ATA_SECTOR_SIZE); 
-        *(uint32_t*)&last_read_sector[0] = 0; 
         write_sectors(ATA_PRIMARY_BUS_IO, 1, last_read_sector, parent_dir->data_sectors[0]);
         parent_dir->size = sizeof(uint32_t);
     } 
@@ -931,15 +1032,12 @@ void change_file_priviledge_level(unsigned char* filename,uint8_t priv){
 void write_inode_to_disk(inode_t* inode){
     uint32_t sector_idx = (inode->id / FS_INODES_PER_SECTOR) + 1; 
 
-    uint32_t sector_start = (inode->id % FS_INODES_PER_SECTOR) * SECTOR_BITMAP_SIZE;
+    uint32_t sector_start = (inode->id % FS_INODES_PER_SECTOR) * sizeof(inode_t);
     if (inode->id == FS_ROOT_DIR_ID){
         sector_idx = 0;
         sector_start = 0;
     }
-    if (last_read_sector_idx != sector_idx){
-        read_sectors(ATA_PRIMARY_BUS_IO,1,last_read_sector,sector_idx);
-        last_read_sector_idx = sector_idx;
-    }
+    efficient_read_sector(sector_idx);
 
     *(uint32_t*)&last_read_sector[sector_start] = inode->id;
     *(uint32_t*)&last_read_sector[sector_start + sizeof(uint32_t)] = inode->size;
@@ -948,7 +1046,8 @@ void write_inode_to_disk(inode_t* inode){
     last_read_sector[sector_start + sizeof(uint32_t) * 2 + sizeof(uint8_t) * 2] = inode->priv_lvl;
     last_read_sector[sector_start + sizeof(uint32_t) * 2 + sizeof(uint8_t) * 3] = 0x0;
     *(uint32_t*)&last_read_sector[sector_start + sizeof(uint32_t) * 3] = inode->indirect_sector;
-    memcpy(&last_read_sector[sector_start + sizeof(uint32_t) * 4],inode->data_sectors,sizeof(uint32_t) * NUM_DATA_SECTORS_PER_FILE);
+    *(uint32_t*)&last_read_sector[sector_start + sizeof(uint32_t) * 4] = inode->d_indirect_sector;
+    memcpy(&last_read_sector[sector_start + sizeof(uint32_t) * 5],inode->data_sectors,sizeof(uint32_t) * NUM_DATA_SECTORS_PER_FILE);
 
     write_sectors(ATA_PRIMARY_BUS_IO,1,last_read_sector,sector_idx);
 }
@@ -966,7 +1065,7 @@ void write_to_disk(){
 
 void cleanup_tmp(){
     
-    global_kernel_process.main_thread->active_dir = get_inode_by_full_file_path("tmp/");
+    global_kernel_process.main_thread->active_dir = get_inode_by_path("tmp/");
     inode_t* active_dir = global_kernel_process.main_thread->active_dir;
     string_array_t* names = get_all_names_in_dir(active_dir);
 
