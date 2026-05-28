@@ -11,7 +11,6 @@ typedef struct {
 
 
 #define FILE_READ_ALL (uint32_t)-1
-#define MAX_FILE_SECTORS (NUM_DATA_SECTORS_PER_FILE + ATA_SECTOR_SIZE / sizeof(uint32_t))
 
 /**
  * fs_open:
