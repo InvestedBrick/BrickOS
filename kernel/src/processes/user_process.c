@@ -139,7 +139,7 @@ bool handle_phdr_mapping(user_process_t* p, uint64_t fault_addr){
 
         
         if (phdr->p_filesz > 0){
-            sys_seek(p,fd,file_off);
+            sys_seek(p,fd,file_off,SEEK_SET);
         }
 
         uint64_t read_top = min(phdr->p_vaddr + phdr->p_filesz,top);

@@ -9,7 +9,7 @@ void parse_elf(unsigned char* filepath){
     uint64_t fd = sys_open(proc,filepath,FILE_FLAG_READ);
     if (fd == SYSCALL_FAIL) return;
 
-    uint64_t n_bytes = sys_read(proc,fd,&ehdr,sizeof(ehdr));
+    uint64_t n_bytes = sys_read(proc,fd,(unsigned char*)&ehdr,sizeof(ehdr));
     if (n_bytes == SYSCALL_FAIL) {
         sys_close(proc,fd);
         return;
@@ -39,8 +39,8 @@ void parse_elf(unsigned char* filepath){
         return;
     }
 
-    sys_seek(proc,fd,ehdr.e_phoff);
-    n_bytes = sys_read(proc,fd,phdrs,total_phdr_size);
+    sys_seek(proc,fd,ehdr.e_phoff,SEEK_SET);
+    n_bytes = sys_read(proc,fd,(unsigned char*)phdrs,total_phdr_size);
 
     //TODO: munmap
     for (uint32_t i = 0; i < ehdr.e_phnum;i++){
@@ -64,7 +64,7 @@ bool validate_elf(unsigned char* filepath,Elf64_Ehdr* out_ehdr){
     uint64_t fd = sys_open(proc,filepath,FILE_FLAG_READ);
     if (fd == SYSCALL_FAIL) return false;
 
-    uint64_t n_bytes = sys_read(proc,fd,out_ehdr,sizeof(Elf64_Ehdr));
+    uint64_t n_bytes = sys_read(proc,fd,(unsigned char*)out_ehdr,sizeof(Elf64_Ehdr));
     if (n_bytes == SYSCALL_FAIL) {
         sys_close(proc,fd);
         return false;
@@ -107,8 +107,8 @@ Elf64_Phdr* extract_elf_phdrs(unsigned char* filepath){
         sys_close(proc,fd);
         return nullptr;
     }
-    sys_seek(proc,fd,ehdr.e_phoff);
-    n_bytes = sys_read(proc,fd,phdrs,total_phdrs_size);
+    sys_seek(proc,fd,ehdr.e_phoff,SEEK_SET);
+    n_bytes = sys_read(proc,fd,(unsigned char*)phdrs,total_phdrs_size);
     sys_close(proc,fd);
     if (n_bytes < total_phdrs_size) {
         kfree(phdrs);

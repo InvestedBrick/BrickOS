@@ -111,12 +111,12 @@ int rmfile(unsigned char* filename) {
     return ret;
 }
 
-int seek(uint32_t fd,uint32_t offset){
+int seek(uint32_t fd,uint32_t offset,uint32_t whence){
     int ret;
     asm volatile (
         "int $0x30"
         : "=a"(ret)
-        : "a"(SYS_SEEK), "b"(fd), "c"(offset)
+        : "a"(SYS_SEEK), "b"(fd), "c"(offset), "d"(whence)
         : "memory"
     );
     return ret;

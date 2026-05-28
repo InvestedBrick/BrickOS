@@ -129,10 +129,11 @@ int rmfile(unsigned char* filename);
  * Sets the read-write pointer of a file
  * @param fd The file descriptor to the file
  * @param offset The new offset of the rw pointer
+ * @param whence The mode in which to seek (SET, CUR or END)
  * 
  * @return The offset (may be capped at the filesize)
  */
-int seek(uint32_t fd,uint32_t offset);
+int seek(uint32_t fd,uint32_t offset,uint32_t whence);
 
 /**
  * ioctl:
