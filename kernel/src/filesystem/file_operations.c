@@ -31,7 +31,7 @@ int fs_seek(generic_file_t* file, uint32_t offset,uint32_t whence){
         open_file->rw_pointer += offset;
     break;
     case SEEK_END:
-        open_file->rw_pointer = inode->size - offset;
+        open_file->rw_pointer = inode->size + offset;
         break;
     case SEEK_SET:
     default:
@@ -40,7 +40,7 @@ int fs_seek(generic_file_t* file, uint32_t offset,uint32_t whence){
     }
     open_file->rw_pointer = min(open_file->rw_pointer,inode->size);
 
-    return offset;
+    return open_file->rw_pointer;
 }
 
 uint32_t create_new_write_sector(){
