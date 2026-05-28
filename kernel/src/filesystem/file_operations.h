@@ -58,8 +58,9 @@ int fs_read(generic_file_t* file, unsigned char* buffer, uint32_t size);
  * Sets the read-write pointer of a file to the given offset
  * @param file The file to seek
  * @param offset The new offset
+ * @param whence The mode in which to seek (SET, CUR or END)
  * 
  * @return The offset which may be capped at the filesize
  */
-int fs_seek(generic_file_t* file, uint32_t offset);
+int fs_seek(generic_file_t* file, uint32_t offset,uint32_t whence);
 #endif

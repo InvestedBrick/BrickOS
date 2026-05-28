@@ -11,6 +11,7 @@
 #include "../processes/scheduler.h"
 #include "virt_files/virt_files.h"
 #include "../io/log.h"
+#include "../tables/syscall_defines.h"
 vfs_handles_t fs_ops = {
     .open = fs_open,
     .close = fs_close,
@@ -20,11 +21,24 @@ vfs_handles_t fs_ops = {
     .ioctl = 0,
 };
 
-int fs_seek(generic_file_t* file, uint32_t offset){
+int fs_seek(generic_file_t* file, uint32_t offset,uint32_t whence){
     open_file_t* open_file = (open_file_t*)file->generic_data;
     inode_t* inode = get_inode_by_id(open_file->inode_id);
-    if (offset >= inode->size) offset = inode->size - 1;
-    open_file->rw_pointer = offset;
+
+    switch (whence)
+    {
+    case SEEK_CUR:
+        open_file->rw_pointer += offset;
+    break;
+    case SEEK_END:
+        open_file->rw_pointer = inode->size - offset;
+        break;
+    case SEEK_SET:
+    default:
+        open_file->rw_pointer = offset;
+        break;
+    }
+    open_file->rw_pointer = min(open_file->rw_pointer,inode->size);
 
     return offset;
 }
