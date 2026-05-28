@@ -6,7 +6,7 @@
 #include "../drivers/ATA_PIO/ata.h"
 #include <stdint.h>
 // must be set so that the inode struct is exactly 64 bytes wide
-#define NUM_DATA_SECTORS_PER_FILE 12
+#define NUM_DATA_SECTORS_PER_FILE 11
 
 #define RESERVED_BITMAP_SECTORS 17 // (16 * 8) normal sector bitmaps + 1 sector for header && 2 big bitmaps
 // we can create up to 800 files / directories. Will be enough for now
@@ -81,6 +81,7 @@ typedef struct {
     uint8_t  priv_lvl;
     uint8_t  unused_flag_three;
     uint32_t indirect_sector;
+    uint32_t d_indirect_sector;
     uint32_t data_sectors[NUM_DATA_SECTORS_PER_FILE];
 
 }__attribute__((packed)) inode_t;
@@ -101,6 +102,10 @@ typedef struct {
 // This should be 8
 #define FS_INODES_PER_SECTOR (ATA_SECTOR_SIZE / sizeof(inode_t)) 
 
+#define FS_SECTORS_PER_INDIRECT_SECTOR (ATA_SECTOR_SIZE / sizeof(uint32_t))
+#define NUM_INDIR_DATA_SECTORS (FS_SECTORS_PER_INDIRECT_SECTOR) 
+#define NUM_DINDIR_DATA_SECTORS (FS_SECTORS_PER_INDIRECT_SECTOR * FS_SECTORS_PER_INDIRECT_SECTOR)
+#define MAX_FILE_SECTORS (NUM_DATA_SECTORS_PER_FILE + NUM_INDIR_DATA_SECTORS + NUM_DINDIR_DATA_SECTORS)
 // make sure that the root dir id is unique and cannot be overwritten by allocated inodes
 #define FS_ROOT_DIR_ID ((RESERVED_INODE_SECTORS * FS_INODES_PER_SECTOR ) + 1)
 /**
@@ -327,4 +332,11 @@ inode_t* create_inode(uint8_t perms, uint8_t type, uint8_t priv_lvl,uint32_t id)
  * @return The inode name pair
  */
 inode_name_pair_t* create_inode_name_pair(uint32_t file_id, uint32_t parent_id, uint32_t name_length, unsigned char* name);
+
+/**
+ * efficient_read_sector:
+ * Reads a sector from the disk if it is not already stored in the last_read_sector buffer
+ * @param sector_id The id of the sector to read
+ */
+void efficient_read_sector(uint32_t sector_id);
 #endif
