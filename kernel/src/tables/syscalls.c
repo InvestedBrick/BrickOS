@@ -57,14 +57,14 @@ uint64_t sys_close(user_process_t* p, uint32_t fd){
     return ret_val;
 }
 
-uint64_t sys_seek(user_process_t* p,uint32_t fd, uint32_t offset){
+uint64_t sys_seek(user_process_t* p,uint32_t fd, uint32_t offset, uint32_t whence){
     if (fd >= MAX_FDS) return SYSCALL_FAIL;
 
     generic_file_t* file = p->fd_table[fd];
 
     if (!file || !file->ops || !file->ops->seek) return SYSCALL_FAIL;
 
-    return file->ops->seek(file,offset);
+    return file->ops->seek(file,offset,whence);
 }
 
 uint64_t sys_ioctl(user_process_t* p, uint32_t fd,uint32_t cmd, void* arg){

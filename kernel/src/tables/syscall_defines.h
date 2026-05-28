@@ -41,6 +41,10 @@
 
 #define MNODE_FLAG_PID_DEFINED_PIPE 0x1 
 
+#define SEEK_SET 0x1
+#define SEEK_CUR 0x2
+#define SEEK_END 0x3
+
 typedef struct{
     uint8_t type;
     uint8_t flags;
