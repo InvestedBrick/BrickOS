@@ -10,6 +10,7 @@
 #include "../processes/user_process.h"
 #include "../processes/scheduler.h"
 #include "virt_files/virt_files.h"
+#include "../io/log.h"
 vfs_handles_t fs_ops = {
     .open = fs_open,
     .close = fs_close,
@@ -28,39 +29,71 @@ int fs_seek(generic_file_t* file, uint32_t offset){
     return offset;
 }
 
+uint32_t create_new_write_sector(){
+    uint32_t new_sector = allocate_sector();
+    memset(last_read_sector, 0, ATA_SECTOR_SIZE);
+    write_sectors(ATA_PRIMARY_BUS_IO, 1, last_read_sector, new_sector);
+    last_read_sector_idx = new_sector;
+    return new_sector;
+}
+
 uint32_t get_sector_for_rw(inode_t* inode, uint32_t sector_idx, uint8_t is_write) {
     uint32_t sector;
-
-    if (sector_idx >= NUM_DATA_SECTORS_PER_FILE + ATA_SECTOR_SIZE / sizeof(uint32_t))
+    if (sector_idx >= NUM_DINDIR_DATA_SECTORS + NUM_INDIR_DATA_SECTORS + NUM_DATA_SECTORS_PER_FILE)
         return 0; // Signal: Invalid sector index
 
-    if (sector_idx >= NUM_DATA_SECTORS_PER_FILE) {
+    if (sector_idx >= NUM_INDIR_DATA_SECTORS + NUM_DATA_SECTORS_PER_FILE){
+        // double indirect sector
+        if (is_write && !inode->d_indirect_sector) {
+            inode->d_indirect_sector = create_new_write_sector();
+        }
+
+        efficient_read_sector(inode->d_indirect_sector);
+        uint32_t d_indir_idx = (sector_idx - (NUM_DATA_SECTORS_PER_FILE + NUM_INDIR_DATA_SECTORS)) / NUM_INDIR_DATA_SECTORS;
+        uint32_t s_indir_idx = (sector_idx - (NUM_DATA_SECTORS_PER_FILE + NUM_INDIR_DATA_SECTORS)) % NUM_INDIR_DATA_SECTORS;
+
+        uint32_t s_indir_sector = ((uint32_t*)last_read_sector)[d_indir_idx];
+
+        if (is_write && !s_indir_sector) {
+            s_indir_sector = create_new_write_sector();
+            efficient_read_sector(inode->d_indirect_sector);
+            ((uint32_t*)last_read_sector)[d_indir_idx] = s_indir_sector;
+            write_sectors(ATA_PRIMARY_BUS_IO,1,last_read_sector,inode->d_indirect_sector);
+        }
+
+        efficient_read_sector(s_indir_sector);
+
+        sector = ((uint32_t*)last_read_sector)[s_indir_idx];
+        if (is_write && !sector) {
+            sector = create_new_write_sector();
+            efficient_read_sector(s_indir_sector);
+            ((uint32_t*)last_read_sector)[s_indir_idx] = sector;
+            write_sectors(ATA_PRIMARY_BUS_IO,1,last_read_sector,s_indir_sector);
+        }
+
+    }
+    else if (sector_idx >= NUM_DATA_SECTORS_PER_FILE) {
         // Indirect sector
         if (is_write && !inode->indirect_sector) {
-            inode->indirect_sector = allocate_sector();
-            memset(last_read_sector, 0, ATA_SECTOR_SIZE);
-            write_sectors(ATA_PRIMARY_BUS_IO, 1, last_read_sector, inode->indirect_sector);
-            last_read_sector_idx = inode->indirect_sector;
+            inode->indirect_sector = create_new_write_sector();
         }
 
-        if (last_read_sector_idx != inode->indirect_sector) {
-            read_sectors(ATA_PRIMARY_BUS_IO, 1, last_read_sector, inode->indirect_sector);
-            last_read_sector_idx = inode->indirect_sector;
-        }
+        efficient_read_sector(inode->indirect_sector);
 
         uint32_t indirect_idx = sector_idx - NUM_DATA_SECTORS_PER_FILE;
-        uint32_t* indirect_entries = (uint32_t*)last_read_sector;
-        sector = indirect_entries[indirect_idx];
+        sector = last_read_sector[indirect_idx];
 
         if (is_write && !sector) {
-            sector = allocate_sector();
-            indirect_entries[indirect_idx] = sector;
-            write_sectors(ATA_PRIMARY_BUS_IO, 1, last_read_sector, inode->indirect_sector);
+            sector = create_new_write_sector();
+            efficient_read_sector(inode->indirect_sector);
+            *(uint32_t*)&last_read_sector[indirect_idx] = sector;
+            write_sectors(ATA_PRIMARY_BUS_IO,1,last_read_sector,inode->indirect_sector);
         }
 
     } else {
         if (is_write && !inode->data_sectors[sector_idx]) {
-            inode->data_sectors[sector_idx] = allocate_sector();
+            sector = create_new_write_sector();
+            inode->data_sectors[sector_idx] = sector;
         }
         sector = inode->data_sectors[sector_idx];
     }
@@ -194,7 +227,8 @@ int fs_read(generic_file_t* f, unsigned char* buffer, uint32_t size){
             return FILE_READ_OVER_END;
         
         uint32_t sector = get_sector_for_rw(inode,sector_idx,0);
-
+        if (!sector) break; // reached end of file
+        
         uint32_t sector_offset = read_pos % ATA_SECTOR_SIZE;
 
         read_sectors(ATA_PRIMARY_BUS_IO,1,last_read_sector,sector);
