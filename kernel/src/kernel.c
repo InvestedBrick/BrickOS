@@ -64,7 +64,7 @@ void create_kernel_process(uint64_t stack_top){
 }
 
 void shutdown(){
-    
+    disable_interrupts();
     restore_kernel_pml4_table();
     log("SHUTTING DOWN...");
     
@@ -72,7 +72,7 @@ void shutdown(){
     log("Cleaned up /tmp");
     
     write_to_disk();
-    
+    enable_interrupts();
     
     uacpi_status ret = uacpi_prepare_for_sleep_state(UACPI_SLEEP_STATE_S5);
     if (uacpi_unlikely_error(ret)){
@@ -163,13 +163,13 @@ void kmain()
     log("Initialized the filesystem");
 
     if (first_time_fs_init){
-        inode_t* current_dir = get_active_dir();
-        create_file(current_dir,"modules",strlen("modules"),FS_TYPE_DIR, FS_FILE_PERM_NONE,PRIV_STD);
-        create_file(get_inode_by_path("modules"),"images",strlen("images"),FS_TYPE_DIR, FS_FILE_PERM_NONE,PRIV_STD);
-        create_file(current_dir,"home",strlen("home"),FS_TYPE_DIR, FS_FILE_PERM_NONE,PRIV_STD);
-        create_file(current_dir,"dev",strlen("dev"),FS_TYPE_DIR,FS_FILE_PERM_NONE,PRIV_STD);
-        create_file(current_dir,"tmp",strlen("tmp"),FS_TYPE_DIR,FS_FILE_PERM_NONE,PRIV_STD);
-        log("Initialized /modules, /home, /dev and /tmp directories");
+        inode_t* root = get_inode_by_id(FS_ROOT_DIR_ID);
+        if (create_file(root,"modules",strlen("modules"),FS_TYPE_DIR, FS_FILE_PERM_NONE,PRIV_STD) < 0) error("Failed to create modules/");
+        if (create_file(get_inode_by_path("modules"),"images",strlen("images"),FS_TYPE_DIR, FS_FILE_PERM_NONE,PRIV_STD) < 0) error("Failed to create images/");
+        if (create_file(root,"home",strlen("home"),FS_TYPE_DIR, FS_FILE_PERM_NONE,PRIV_STD) < 0) error("Failed to create home/");
+        if (create_file(root,"dev",strlen("dev"),FS_TYPE_DIR,FS_FILE_PERM_NONE,PRIV_STD) < 0) error("Failed to create dev/");
+        if (create_file(root,"tmp",strlen("tmp"),FS_TYPE_DIR,FS_FILE_PERM_NONE,PRIV_STD) < 0) error("Failed to create tmp/");
+        log("Initialized /modules, modules/images, /home, /dev and /tmp directories");
     }
 
     initialize_devices(); // needs the global kernel process
