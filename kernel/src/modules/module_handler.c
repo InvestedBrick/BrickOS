@@ -60,22 +60,22 @@ void write_module_binaries_to_file(){
             // if it is already here, remove it
             sys_rmfile(name);
         }
-        logf("Writing module binary to file: %s", name);
         int ret_code = create_file(module_dir,name,len,FS_TYPE_FILE,FS_FILE_PERM_WRITABLE | FS_FILE_PERM_READABLE,PRIV_STD);
         if (ret_code < 0) 
-            {error("Failed to create module binary file"); continue;}
+            {errorf("Failed to create module file (%s)", name); continue;}
 
         int fd = sys_open(&global_kernel_process,name,FILE_FLAG_WRITE);
         if (fd < 0) 
-            {error("Failed to open module binary file"); continue;}
-        
-        logf("Writing module binary to file: %s, size: %d bytes", name, module_binary_structs[i].size);
+            {errorf("Failed to open module file (%s)", name); continue;}
+
         ret_code = sys_write(&global_kernel_process,fd,(unsigned char*)module_binary_structs[i].start,module_binary_structs[i].size);
-        if (ret_code < 0) 
-            {error("Failed to write to module binary file"); continue;}
+        if (ret_code < 0) {
+                sys_close(&global_kernel_process,fd);
+                errorf("Failed to write to module file (%s)", name); continue;
+            }
         
         ret_code = sys_close(&global_kernel_process,fd);
-        if (ret_code == FILE_INVALID_FD) error("Failed to close module binary file");
+        if (ret_code == FILE_INVALID_FD) errorf("Failed to close module file (%s)", name);
 
         uint8_t perms = FS_FILE_PERM_READABLE;
         if (exec) perms |= FS_FILE_PERM_EXECUTABLE;
