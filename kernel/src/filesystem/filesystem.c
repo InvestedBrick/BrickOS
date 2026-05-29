@@ -582,6 +582,14 @@ void init_filesystem(){
     vector_append(&inodes,(vector_data_t)root_node);
     
     build_inodes(root_node);
+
+    if (first_time_fs_init){
+        if (create_file(root_node,"modules",strlen("modules"),FS_TYPE_DIR, FS_FILE_PERM_NONE,PRIV_STD) < 0) error("Failed to create modules/");
+        if (create_file(get_inode_by_path("modules"),"images",strlen("images"),FS_TYPE_DIR, FS_FILE_PERM_NONE,PRIV_STD) < 0) error("Failed to create images/");
+        if (create_file(root_node,"home",strlen("home"),FS_TYPE_DIR, FS_FILE_PERM_NONE,PRIV_STD) < 0) error("Failed to create home/");
+        if (create_file(root_node,"dev",strlen("dev"),FS_TYPE_DIR,FS_FILE_PERM_NONE,PRIV_STD) < 0) error("Failed to create dev/");
+        if (create_file(root_node,"tmp",strlen("tmp"),FS_TYPE_DIR,FS_FILE_PERM_NONE,PRIV_STD) < 0) error("Failed to create tmp/");
+    }
 }
 
 uint8_t write_directory_entry(inode_t* parent_dir, uint32_t child_inode_id, unsigned char* name, uint8_t name_length){

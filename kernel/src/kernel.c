@@ -162,16 +162,6 @@ void kmain()
     init_filesystem();
     log("Initialized the filesystem");
 
-    if (first_time_fs_init){
-        inode_t* root = get_inode_by_id(FS_ROOT_DIR_ID);
-        if (create_file(root,"modules",strlen("modules"),FS_TYPE_DIR, FS_FILE_PERM_NONE,PRIV_STD) < 0) error("Failed to create modules/");
-        if (create_file(get_inode_by_path("modules"),"images",strlen("images"),FS_TYPE_DIR, FS_FILE_PERM_NONE,PRIV_STD) < 0) error("Failed to create images/");
-        if (create_file(root,"home",strlen("home"),FS_TYPE_DIR, FS_FILE_PERM_NONE,PRIV_STD) < 0) error("Failed to create home/");
-        if (create_file(root,"dev",strlen("dev"),FS_TYPE_DIR,FS_FILE_PERM_NONE,PRIV_STD) < 0) error("Failed to create dev/");
-        if (create_file(root,"tmp",strlen("tmp"),FS_TYPE_DIR,FS_FILE_PERM_NONE,PRIV_STD) < 0) error("Failed to create tmp/");
-        log("Initialized /modules, modules/images, /home, /dev and /tmp directories");
-    }
-
     initialize_devices(); // needs the global kernel process
     log("Initialized devices");
 
