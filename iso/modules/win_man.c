@@ -3,7 +3,7 @@
 #include "cstdlib/stdio.h"
 #include "../../kernel/src/filesystem/devices/device_defines.h"
 #include "cstdlib/malloc.h"
-
+#include "../qoi/qoi.h"
 #define MAX_MOUSE_PACKETS 128
 typedef struct {
     uint32_t cmd;
@@ -61,6 +61,8 @@ section_t* dirty_sections = 0;
 uint8_t dirty_section_expanded[MAX_DIRTY_SECTIONS] = {0};
 uint32_t dirty_section_idx = 0;
 
+unsigned char* background_image = 0;
+uint32_t bg_stride;
 
 void set_section_expanded(uint32_t idx, uint8_t expanded){
     if (idx >= MAX_DIRTY_SECTIONS) return;
@@ -311,6 +313,16 @@ void clear_section(section_t sec, framebuffer_t* fb){
     }
 }
 
+void draw_background_section(section_t* sec,framebuffer_t* fb){
+    for (uint32_t y = 0;y < sec->height;y++) {
+        memcpy(
+            back_buffer + (sec->y+y)*fb->bytes_per_row + sec->x*screen_bytespp,
+            background_image + (sec->y+y)*bg_stride + sec->x*screen_bytespp,
+            sec->width * screen_bytespp
+        );
+    }
+}
+
 
 void blit_section(section_t* sec, framebuffer_t* fb) {
     for (uint32_t y = 0;y < sec->height;y++) {
@@ -497,7 +509,7 @@ section_t draw_visible_window_decorations(window_t* win, section_t* visible_sec,
 void update_rect(window_t* win,section_t* rect,framebuffer_t* fb){
     
     if (!win){
-        clear_section(*rect,fb); // normally draw background here
+        draw_background_section(rect,fb);
         return;
     }
     
@@ -780,7 +792,7 @@ void main(){
     if (ioctl(fb0_fd,DEV_FB0_GET_METADATA,&fb) < 0) exit(3);
     screen_bytes_per_row = fb.bytes_per_row;
     screen_bytespp = fb.bpp / 8;
-    
+    if (screen_bytespp != 4) debug("WARN: expected bpp == 32");
     dirty_sections = (section_t*)mmap((MAX_DIRTY_SECTIONS * sizeof(section_t)),PROT_READ | PROT_WRITE,MAP_ANON,0,0);
     memset(dirty_sections,0,MAX_DIRTY_SECTIONS * sizeof(section_t));
     fb0 = (unsigned char*)mmap(fb.size, PROT_READ | PROT_WRITE, MAP_SHARED, fb0_fd,0);
@@ -796,6 +808,21 @@ void main(){
     unsigned char buffer[256];
     memset(buffer,0,sizeof(buffer));
     
+
+    //get background image
+    int backg_fd = open("modules/images/space.qoi",FILE_FLAG_READ);
+    if (backg_fd < 0) debug("Failed to get background image");
+    int size = seek(backg_fd,0,SEEK_END);
+    seek(backg_fd,0,SEEK_SET);
+    unsigned char* file_buffer = (unsigned char*)malloc(size);
+    read(backg_fd,file_buffer,size);
+    qoi_desc desc;
+    background_image = (unsigned char*)qoi_decode(file_buffer,size,&desc,4);
+    free(file_buffer);
+    if (!background_image) debug("Decoding failed");
+    if (desc.width != fb.width || desc.height != fb.height) debug("Background image size does not match framebuffer size");
+    bg_stride = desc.width * 4;
+    memcpy(fb0,background_image,fb.height * fb.bytes_per_row);
     uint32_t n_input = 0;
     uint32_t n_kmsg = 0;
     while(1){
