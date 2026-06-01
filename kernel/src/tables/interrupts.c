@@ -268,7 +268,7 @@ void interrupt_handler(interrupt_stack_frame_t* stack_frame) {
     interrupt_handler_t* head = int_head;
     while (head && head->int_num != stack_frame->interrupt_number) head = head->next;
     if (!head) {
-        if (stack_frame->interrupt_number < APIC_INTERRUPT_START)logf("Fault occured: %x",stack_frame->interrupt_number);
+        if (stack_frame->interrupt_number < APIC_INTERRUPT_START)logf("Fault occured: %x (%s)",stack_frame->interrupt_number,get_current_user_process()->process_name);
         return;
     }
     head->handler(head->special_arg ? head->special_arg : stack_frame);
