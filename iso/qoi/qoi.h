@@ -2,7 +2,7 @@
 
 NOTE: This version has been adapted specifically for the use in BrickOS
 -> uses specific userspace code
--> exports as ARGB pixel data
+-> exports as ARGB pixel data intended for the fb0 framebuffer
 
 Copyright (c) 2021, Dominic Szablewski - https://phoboslab.org
 SPDX-License-Identifier: MIT
@@ -27,18 +27,18 @@ stb_image_write QOI offers 20x-50x faster encoding, 3x-4x faster decoding and
 
 // Encode and store an RGBA buffer to the file system. The qoi_desc describes
 // the input pixel data.
-qoi_write("image_new.qoi", argb_pixels, &(qoi_desc){
-	.width = 1920,
-	.height = 1080,
-	.channels = 4,
-	.colorspace = QOI_SRGB
+qoi_write("image_new.qoi", rgba_pixels, &(qoi_desc){
+    .width = 1920,
+    .height = 1080,
+    .channels = 4,
+    .colorspace = QOI_SRGB
 });
 
 // Load and decode a QOI image from the file system into a 32bbp RGBA buffer.
 // The qoi_desc struct will be filled with the width, height, number of channels
 // and colorspace read from the file header.
 qoi_desc desc;
-void *argb_pixels = qoi_read("image.qoi", &desc, 4);
+void *rgba_pixels = qoi_read("image.qoi", &desc, 4);
 
 
 
@@ -48,7 +48,7 @@ This library provides the following functions;
 - qoi_read    -- read and decode a QOI file
 - qoi_decode  -- decode the raw bytes of a QOI image from memory
 - qoi_write   -- encode and write a QOI file
-- qoi_encode  -- encode an argb buffer into a QOI image in memory
+- qoi_encode  -- encode an rgba buffer into a QOI image in memory
 
 See the function declaration below for the signature and more information.
 
@@ -68,11 +68,11 @@ A QOI file has a 14 byte header, followed by any number of data "chunks" and an
 8-byte end marker.
 
 struct qoi_header_t {
-	char     magic[4];   // magic bytes "qoif"
-	uint32_t width;      // image width in pixels (BE)
-	uint32_t height;     // image height in pixels (BE)
-	uint8_t  channels;   // 3 = RGB, 4 = RGBA
-	uint8_t  colorspace; // 0 = sRGB with linear alpha, 1 = all channels linear
+    char     magic[4];   // magic bytes "qoif"
+    uint32_t width;      // image width in pixels (BE)
+    uint32_t height;     // image height in pixels (BE)
+    uint8_t  channels;   // 3 = RGB, 4 = RGBA
+    uint8_t  colorspace; // 0 = sRGB with linear alpha, 1 = all channels linear
 };
 
 Images are encoded row by row, left to right, top to bottom. The decoder and
@@ -95,7 +95,7 @@ the color value. In the encoder, if the pixel value at the index matches the
 current pixel, this index position is written to the stream as QOI_OP_INDEX.
 The hash function for the index is:
 
-	index_position = (r * 3 + g * 5 + b * 7 + a * 11) % 64
+    index_position = (r * 3 + g * 5 + b * 7 + a * 11) % 64
 
 Each chunk starts with a 2- or 8-bit tag, followed by a number of data bits. The
 bit length of chunks is divisible by 8 - i.e. all chunks are byte aligned. All
@@ -157,8 +157,8 @@ The alpha value remains unchanged from the previous pixel.
 The green channel is used to indicate the general direction of change and is
 encoded in 6 bits. The red and blue channels (dr and db) base their diffs off
 of the green channel difference and are encoded in 4 bits. I.e.:
-	dr_dg = (cur_px.r - prev_px.r) - (cur_px.g - prev_px.g)
-	db_dg = (cur_px.b - prev_px.b) - (cur_px.g - prev_px.g)
+    dr_dg = (cur_px.r - prev_px.r) - (cur_px.g - prev_px.g)
+    db_dg = (cur_px.b - prev_px.b) - (cur_px.g - prev_px.g)
 
 The difference to the current channel values are using a wraparound operation,
 so "10 - 13" will result in 253, while "250 + 7" will result in 1.
@@ -218,18 +218,14 @@ Header - Public functions */
 #ifndef QOI_H
 #define QOI_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /* A pointer to a qoi_desc struct has to be supplied to all of qoi's functions.
 It describes either the input format (for qoi_write and qoi_encode), or is
 filled with the description read from the file header (for qoi_read and
 qoi_decode).
 
 The colorspace in this qoi_desc is an enum where
-	0 = sRGB, i.e. gamma scaled RGB channels and a linear alpha channel
-	1 = all channels are linear
+    0 = sRGB, i.e. gamma scaled RGB channels and a linear alpha channel
+    1 = all channels are linear
 You may use the constants QOI_SRGB or QOI_LINEAR. The colorspace is purely
 informative. It will be saved to the file header, but does not affect
 how chunks are en-/decoded. */
@@ -238,13 +234,11 @@ how chunks are en-/decoded. */
 #define QOI_LINEAR 1
 
 typedef struct {
-	unsigned int width;
-	unsigned int height;
-	unsigned char channels;
-	unsigned char colorspace;
+    unsigned int width;
+    unsigned int height;
+    unsigned char channels;
+    unsigned char colorspace;
 } qoi_desc;
-
-#ifndef QOI_NO_STDIO
 
 /* Encode raw RGB or RGBA pixels into a QOI image and write it to the file
 system. The qoi_desc struct must be filled with the image width, height,
@@ -268,9 +262,6 @@ The returned pixel data should be free()d after use. */
 
 void *qoi_read(const char *filename, qoi_desc *desc, int channels);
 
-#endif /* QOI_NO_STDIO */
-
-
 /* Encode raw RGB or RGBA pixels into a QOI image in memory.
 
 The function either returns NULL on failure (invalid parameters or malloc
@@ -292,305 +283,4 @@ The returned pixel data should be free()d after use. */
 
 void *qoi_decode(const void *data, int size, qoi_desc *desc, int channels);
 
-
-#ifdef __cplusplus
-}
-#endif
 #endif /* QOI_H */
-
-
-/* -----------------------------------------------------------------------------
-Implementation */
-#define QOI_IMPLEMENTATION
-#ifdef QOI_IMPLEMENTATION
-#include "../modules/cstdlib/malloc.h"
-#include "../modules/cstdlib/stdutils.h"
-#include "../modules/cstdlib/syscalls.h"
-#define NULL 0
-#ifndef QOI_MALLOC
-	#define QOI_MALLOC(sz) malloc(sz)
-	#define QOI_FREE(p)    free(p)
-#endif
-#ifndef QOI_ZEROARR
-	#define QOI_ZEROARR(a) memset((a),0,sizeof(a))
-#endif
-
-#define QOI_OP_INDEX  0x00 /* 00xxxxxx */
-#define QOI_OP_DIFF   0x40 /* 01xxxxxx */
-#define QOI_OP_LUMA   0x80 /* 10xxxxxx */
-#define QOI_OP_RUN    0xc0 /* 11xxxxxx */
-#define QOI_OP_RGB    0xfe /* 11111110 */
-#define QOI_OP_RGBA   0xff /* 11111111 */
-
-#define QOI_MASK_2    0xc0 /* 11000000 */
-
-#define QOI_COLOR_HASH(C) (C.argb.r*3 + C.argb.g*5 + C.argb.b*7 + C.argb.a*11)
-#define QOI_MAGIC \
-	(((unsigned int)'q') << 24 | ((unsigned int)'o') << 16 | \
-	 ((unsigned int)'i') <<  8 | ((unsigned int)'f'))
-#define QOI_HEADER_SIZE 14
-
-/* 2GB is the max file size that this implementation can safely handle. We guard
-against anything larger than that, assuming the worst case with 5 bytes per
-pixel, rounded down to a nice clean value. 400 million pixels ought to be
-enough for anybody. */
-#define QOI_PIXELS_MAX ((unsigned int)400000000)
-
-typedef union {
-	struct { unsigned char a, r, g, b; } argb;
-	unsigned int v;
-} qoi_argb_t;
-
-static const unsigned char qoi_padding[8] = {0,0,0,0,0,0,0,1};
-
-static void qoi_write_32(unsigned char *bytes, int *p, unsigned int v) {
-	bytes[(*p)++] = (0xff000000 & v) >> 24;
-	bytes[(*p)++] = (0x00ff0000 & v) >> 16;
-	bytes[(*p)++] = (0x0000ff00 & v) >> 8;
-	bytes[(*p)++] = (0x000000ff & v);
-}
-
-static unsigned int qoi_read_32(const unsigned char *bytes, int *p) {
-	unsigned int a = bytes[(*p)++];
-	unsigned int b = bytes[(*p)++];
-	unsigned int c = bytes[(*p)++];
-	unsigned int d = bytes[(*p)++];
-	return a << 24 | b << 16 | c << 8 | d;
-}
-
-void *qoi_encode(const void *data, const qoi_desc *desc, int *out_len) {
-	int i, max_size, p, run;
-	int px_len, px_end, px_pos, channels;
-	unsigned char *bytes;
-	const unsigned char *pixels;
-	qoi_argb_t index[64];
-	qoi_argb_t px, px_prev;
-
-	if (
-		data == NULL || out_len == NULL || desc == NULL ||
-		desc->width == 0 || desc->height == 0 ||
-		desc->channels < 3 || desc->channels > 4 ||
-		desc->colorspace > 1 ||
-		desc->height >= QOI_PIXELS_MAX / desc->width
-	) {
-		return NULL;
-	}
-
-	max_size =
-		desc->width * desc->height * (desc->channels + 1) +
-		QOI_HEADER_SIZE + sizeof(qoi_padding);
-
-	p = 0;
-	bytes = (unsigned char *) QOI_MALLOC(max_size);
-	if (!bytes) {
-		return NULL;
-	}
-
-	qoi_write_32(bytes, &p, QOI_MAGIC);
-	qoi_write_32(bytes, &p, desc->width);
-	qoi_write_32(bytes, &p, desc->height);
-	bytes[p++] = desc->channels;
-	bytes[p++] = desc->colorspace;
-
-
-	pixels = (const unsigned char *)data;
-
-	QOI_ZEROARR(index);
-
-	run = 0;
-	px_prev.argb.r = 0;
-	px_prev.argb.g = 0;
-	px_prev.argb.b = 0;
-	px_prev.argb.a = 255;
-	px = px_prev;
-
-	px_len = desc->width * desc->height * desc->channels;
-	px_end = px_len - desc->channels;
-	channels = desc->channels;
-
-	for (px_pos = 0; px_pos < px_len; px_pos += channels) {
-		px.argb.r = pixels[px_pos + 0];
-		px.argb.g = pixels[px_pos + 1];
-		px.argb.b = pixels[px_pos + 2];
-
-		if (channels == 4) {
-			px.argb.a = pixels[px_pos + 3];
-		}
-
-		if (px.v == px_prev.v) {
-			run++;
-			if (run == 62 || px_pos == px_end) {
-				bytes[p++] = QOI_OP_RUN | (run - 1);
-				run = 0;
-			}
-		}
-		else {
-			int index_pos;
-
-			if (run > 0) {
-				bytes[p++] = QOI_OP_RUN | (run - 1);
-				run = 0;
-			}
-
-			index_pos = QOI_COLOR_HASH(px) & (64 - 1);
-
-			if (index[index_pos].v == px.v) {
-				bytes[p++] = QOI_OP_INDEX | index_pos;
-			}
-			else {
-				index[index_pos] = px;
-
-				if (px.argb.a == px_prev.argb.a) {
-					signed char vr = px.argb.r - px_prev.argb.r;
-					signed char vg = px.argb.g - px_prev.argb.g;
-					signed char vb = px.argb.b - px_prev.argb.b;
-
-					signed char vg_r = vr - vg;
-					signed char vg_b = vb - vg;
-
-					if (
-						vr > -3 && vr < 2 &&
-						vg > -3 && vg < 2 &&
-						vb > -3 && vb < 2
-					) {
-						bytes[p++] = QOI_OP_DIFF | (vr + 2) << 4 | (vg + 2) << 2 | (vb + 2);
-					}
-					else if (
-						vg_r >  -9 && vg_r <  8 &&
-						vg   > -33 && vg   < 32 &&
-						vg_b >  -9 && vg_b <  8
-					) {
-						bytes[p++] = QOI_OP_LUMA     | (vg   + 32);
-						bytes[p++] = (vg_r + 8) << 4 | (vg_b +  8);
-					}
-					else {
-						bytes[p++] = QOI_OP_RGB;
-						bytes[p++] = px.argb.r;
-						bytes[p++] = px.argb.g;
-						bytes[p++] = px.argb.b;
-					}
-				}
-				else {
-					bytes[p++] = QOI_OP_RGBA;
-					bytes[p++] = px.argb.r;
-					bytes[p++] = px.argb.g;
-					bytes[p++] = px.argb.b;
-					bytes[p++] = px.argb.a;
-				}
-			}
-		}
-		px_prev = px;
-	}
-
-	for (i = 0; i < (int)sizeof(qoi_padding); i++) {
-		bytes[p++] = qoi_padding[i];
-	}
-
-	*out_len = p;
-	return bytes;
-}
-
-void *qoi_decode(const void *data, int size, qoi_desc *desc, int channels) {
-	const unsigned char *bytes;
-	unsigned int header_magic;
-	unsigned char *pixels;
-	qoi_argb_t index[64];
-	qoi_argb_t px;
-	int px_len, chunks_len, px_pos;
-	int p = 0, run = 0;
-	debug("HEH?"); // <- load bearing debug statement
-	if (
-		data == NULL || desc == NULL ||
-		(channels != 0 && channels != 3 && channels != 4) ||
-		size < QOI_HEADER_SIZE + (int)sizeof(qoi_padding)
-	) {
-		return NULL;
-	}
-
-	bytes = (const unsigned char *)data;
-
-	header_magic = qoi_read_32(bytes, &p);
-	desc->width = qoi_read_32(bytes, &p);
-	desc->height = qoi_read_32(bytes, &p);
-	desc->channels = bytes[p++];
-	desc->colorspace = bytes[p++];
-	if (
-		desc->width == 0 || desc->height == 0 ||
-		desc->channels < 3 || desc->channels > 4 ||
-		desc->colorspace > 1 ||
-		header_magic != QOI_MAGIC ||
-		desc->height >= QOI_PIXELS_MAX / desc->width
-	) {
-		return NULL;
-	}
-
-	if (channels == 0) {
-		channels = desc->channels;
-	}
-
-	px_len = desc->width * desc->height * channels;
-	pixels = (unsigned char *) QOI_MALLOC(px_len);
-	if (!pixels) {
-		return NULL;
-	}
-
-	QOI_ZEROARR(index);
-	px.argb.r = 0;
-	px.argb.g = 0;
-	px.argb.b = 0;
-	px.argb.a = 255;
-
-	chunks_len = size - (int)sizeof(qoi_padding);
-	for (px_pos = 0; px_pos < px_len; px_pos += channels) {
-		if (run > 0) {
-			run--;
-		}
-		else if (p < chunks_len) {
-			int b1 = bytes[p++];
-
-			if (b1 == QOI_OP_RGB) {
-				px.argb.r = bytes[p++];
-				px.argb.g = bytes[p++];
-				px.argb.b = bytes[p++];
-			}
-			else if (b1 == QOI_OP_RGBA) {
-				px.argb.r = bytes[p++];
-				px.argb.g = bytes[p++];
-				px.argb.b = bytes[p++];
-				px.argb.a = bytes[p++];
-			}
-			else if ((b1 & QOI_MASK_2) == QOI_OP_INDEX) {
-				px = index[b1];
-			}
-			else if ((b1 & QOI_MASK_2) == QOI_OP_DIFF) {
-				px.argb.r += ((b1 >> 4) & 0x03) - 2;
-				px.argb.g += ((b1 >> 2) & 0x03) - 2;
-				px.argb.b += ( b1       & 0x03) - 2;
-			}
-			else if ((b1 & QOI_MASK_2) == QOI_OP_LUMA) {
-				int b2 = bytes[p++];
-				int vg = (b1 & 0x3f) - 32;
-				px.argb.r += vg - 8 + ((b2 >> 4) & 0x0f);
-				px.argb.g += vg;
-				px.argb.b += vg - 8 +  (b2       & 0x0f);
-			}
-			else if ((b1 & QOI_MASK_2) == QOI_OP_RUN) {
-				run = (b1 & 0x3f);
-			}
-
-			index[QOI_COLOR_HASH(px) & (64 - 1)] = px;
-		}
-
-		pixels[px_pos + 1] = px.argb.r;
-		pixels[px_pos + 2] = px.argb.g;
-		pixels[px_pos + 3] = px.argb.b;
-		
-		if (channels == 4) {
-			pixels[px_pos + 0] = px.argb.a;
-		}
-	}
-
-	return pixels;
-}
-
-#endif /* QOI_IMPLEMENTATION */
