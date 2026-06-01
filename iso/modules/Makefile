@@ -4,7 +4,6 @@ C_SRCS := $(wildcard *.c)
 C_MODULES := $(basename $(C_SRCS))
 C_OBJS := $(addsuffix .o, $(C_MODULES))
 C_ELFS := $(addsuffix .elf, $(C_MODULES))
-#C_BINS := $(addsuffix .bin, $(C_MODULES))
 
 ASM_ELFS := $(ASM_SRCS:.asm=.elf)
 
@@ -24,7 +23,11 @@ CSTDLIB_DIR := cstdlib
 CSTDLIB_C_SRCS := $(wildcard $(CSTDLIB_DIR)/*.c)
 CSTDLIB_ASM_SRCS := $(wildcard $(CSTDLIB_DIR)/*.asm)
 CSTDLIB_OBJS := $(patsubst $(CSTDLIB_DIR)/%.c, $(CSTDLIB_DIR)/%.o, $(CSTDLIB_C_SRCS)) \
-			    $(patsubst $(CSTDLIB_DIR)/%.asm, $(CSTDLIB_DIR)/%.o, $(CSTDLIB_ASM_SRCS))
+			$(patsubst $(CSTDLIB_DIR)/%.asm, $(CSTDLIB_DIR)/%.o, $(CSTDLIB_ASM_SRCS))
+
+QOI_DIR := ../qoi
+QOI_C_SRCS := $(wildcard $(QOI_DIR)/*.c)
+QOI_OBJS := $(patsubst $(QOI_DIR)/%.c, $(QOI_DIR)/%.o, $(QOI_C_SRCS))
 
 .PHONY: all clean
 
@@ -42,14 +45,12 @@ $(CSTDLIB_DIR)/%.o: $(CSTDLIB_DIR)/%.asm
 %.o: %.c
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-# Link .o to .elf with code starting at 0x0, link with cstdlib objects
-%.elf: %.o $(CSTDLIB_OBJS)
+$(QOI_DIR)/%.o: $(QOI_DIR)/%.c
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+%.elf: %.o $(CSTDLIB_OBJS) $(QOI_OBJS)
 	$(LLD) $(LDFLAGS)  -o $@ $^
 	$(ELF_STRIP) $@ 
-
-# Convert .elf to flat binary
-#%.bin: %.elf
-#	$(OBJCOPY) -O binary $< $@
 
 # Pure ASM to flat binary
 %.elf: %.asm
@@ -57,4 +58,4 @@ $(CSTDLIB_DIR)/%.o: $(CSTDLIB_DIR)/%.asm
 	$(ELF_STRIP) $@
 
 clean:
-	rm -f *.o *.elf *.bin $(CSTDLIB_DIR)/*.o
+	rm -f *.o *.elf *.bin $(CSTDLIB_DIR)/*.o $(QOI_DIR)/*.o
