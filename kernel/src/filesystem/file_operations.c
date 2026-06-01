@@ -95,12 +95,12 @@ uint32_t get_sector_for_rw(inode_t* inode, uint32_t sector_idx, uint8_t is_write
         efficient_read_sector(inode->indirect_sector);
 
         uint32_t indirect_idx = sector_idx - NUM_DATA_SECTORS_PER_FILE;
-        sector = last_read_sector[indirect_idx];
+        sector = ((uint32_t*)last_read_sector)[indirect_idx];
 
         if (is_write && !sector) {
             sector = create_new_write_sector();
             efficient_read_sector(inode->indirect_sector);
-            *(uint32_t*)&last_read_sector[indirect_idx] = sector;
+            ((uint32_t*)last_read_sector)[indirect_idx] = sector;
             write_sectors(ATA_PRIMARY_BUS_IO,1,last_read_sector,inode->indirect_sector);
         }
 
