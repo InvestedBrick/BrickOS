@@ -236,42 +236,64 @@ void cmd_rm(command_t* cmd){
 }
 
 void cmd_run(command_t* cmd){
-    if (argcheck(cmd,"Expected name of executable binary\n")) return;
-
-    pipe_return_t ret = create_io_pipes();
-
-    process_fds_init_t fds = {
-        .stdin_filename = ret.stdin_filename,
-        .stdout_filename = ret.stdout_filename,
-        .stderr_filename = 0,
-    };
-
-    if (spawn(cmd->args[0].str,0,&fds) == SYSCALL_FAIL) {
-        print("Failed to spawn process from binary '");
-        print(cmd->args[0].str);
-        print("'\n");
-        close(ret.stdin_fd);
-        close(ret.stdout_fd);
+    if (argcheck(cmd,"Expected binary filename and attachment style\n")) return;
+    if (cmd->n_args < 2){
+        print("Expected binary filename and attachment style\n");
+        return;
+    }    
+    if (cmd->args[1].str[0] != 'd' && cmd->args[1].str[0] != 'a'){
+        print("Invalid attachment style, expected 'd'(etached) or 'a'(ttached)\n");
         return;
     }
-    unsigned char buf[256];
-    while(1){
-        int n_input_bytes = read(FD_STDIN,buf,sizeof(buf));
-        if (n_input_bytes > 0) write(ret.stdin_fd,buf,n_input_bytes);
-        
-        int n_output_bytes = read(ret.stdout_fd,buf,sizeof(buf));
-        if (n_output_bytes > 0) write(FD_STDOUT,buf,n_output_bytes);
 
-        if (n_output_bytes < 0){
-            // task finished
+    uint8_t attached = cmd->args[1].str[0] == 'a';
+    if (attached){
+        //attached -> overwrites stdio from shell
+        pipe_return_t ret = create_io_pipes();
+        
+        process_fds_init_t fds = {
+            .stdin_filename = ret.stdin_filename,
+            .stdout_filename = ret.stdout_filename,
+            .stderr_filename = 0,
+        };
+
+        if (spawn(cmd->args[0].str,0,&fds) == SYSCALL_FAIL) {
+            print("Failed to spawn process from binary '");
+            print(cmd->args[0].str);
+            print("'\n");
             close(ret.stdin_fd);
             close(ret.stdout_fd);
-            free(ret.stdin_filename);
-            free(ret.stdout_filename);
-            break;
+            return;
         }
+        unsigned char buf[256];
+        while(1){
+            int n_input_bytes = read(FD_STDIN,buf,sizeof(buf));
+            if (n_input_bytes > 0) write(ret.stdin_fd,buf,n_input_bytes);
+
+            int n_output_bytes = read(ret.stdout_fd,buf,sizeof(buf));
+            if (n_output_bytes > 0) write(FD_STDOUT,buf,n_output_bytes);
+
+            if (n_output_bytes < 0){
+                // task finished
+                close(ret.stdin_fd);
+                close(ret.stdout_fd);
+                free(ret.stdin_filename);
+                free(ret.stdout_filename);
+                break;
+            }
+        }
+    }else{
+        //detached -> independant process
+        if (spawn(cmd->args[0].str,0,0) == SYSCALL_FAIL) {
+            print("Failed to spawn process from binary '");
+            print(cmd->args[0].str);
+            print("'\n");
+            return;
+        }
+        print("Spawned '");
+        print(cmd->args[0].str);
+        print("' in detached mode\n");
     }
-    print("--process exited--\n");
 }
 
 void cmd_clock(command_t* cmd){
