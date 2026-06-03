@@ -282,6 +282,9 @@ void cmd_run(command_t* cmd){
                 break;
             }
         }
+        print("Process '");
+        print(cmd->args[0].str);
+        print("' finished execution\n");
     }else{
         //detached -> independant process
         if (spawn(cmd->args[0].str,0,0) == SYSCALL_FAIL) {
