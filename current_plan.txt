@@ -15,6 +15,6 @@ plan:
     [X] switch executables to ELF format
     [ ] dynamically linked code
     [ ] text editor
-    [ ] background image + clickable widgets
+    [X] background image
     [ ] networking
     [?] better fileystem
