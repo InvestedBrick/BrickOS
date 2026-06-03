@@ -16,7 +16,7 @@ ELF_STRIP := llvm-strip
 
 CFLAGS = -target x86_64-elf -ffreestanding -m64 -nostdlib \
          -fno-builtin -fno-stack-protector -fno-exceptions -g \
-         -Wno-pointer-sign -fno-pic -fno-pie -O1
+         -Wno-pointer-sign -fno-pic -fno-pie
 LDFLAGS := --no-pie -T link_c.ld
 
 CSTDLIB_DIR := cstdlib
