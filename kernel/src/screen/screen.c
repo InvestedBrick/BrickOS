@@ -5,7 +5,6 @@
 #include "../filesystem/devices/devs.h"
 #include "../utilities/util.h"
 #include "../memory/memory.h"
-#include "font_bitmaps.h"
 #include <stdint.h>
 #include <stddef.h>
 #include "../../limine-protocol/include/limine.h"
