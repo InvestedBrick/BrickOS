@@ -303,6 +303,12 @@ uint64_t sys_settimezone(user_process_t* p,int utc_timezone){
     if (utc_timezone < -12 || utc_timezone > 12) return SYSCALL_FAIL;
     timezone_adjustment = utc_timezone * 3600;
 
+    /*
+     *   This operating system does not care about daylight savings time, as it should have been removed many years ago and many countries don't even uses it.
+     *   In some countries it is even relevant in which state you are in to determine if dst is applied... pure madness
+     *   It has lost its purpose and my sympathy and therefore it will be disregarded. 
+    */
+
     return SYSCALL_SUCCESS;
 }
 
