@@ -7,8 +7,6 @@
 #include "syscall_defines.h"
 #include "../filesystem/filesystem.h"
 
-// additional seconds to add to the current time (yes this ignores summer time clock adjustments but that is the issue of the EU parliament and not mine)
-#define TIMEZONE_ADJUSTMENT 3600 
 // only internally used
 #define MMAP_UNSPEC_ADDR (void*)0x12345
 
@@ -46,5 +44,5 @@ uint64_t sys_getpid(user_process_t* p);
 
 uint64_t sys_gettimeofday();
 
-uint64_t sys_settimeofday(user_process_t* p,uint64_t timestamp);
+uint64_t sys_settimezone(user_process_t* p,int utc_timezone);
 #endif

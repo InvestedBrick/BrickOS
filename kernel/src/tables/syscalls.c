@@ -298,9 +298,11 @@ uint64_t sys_gettimeofday(){
     return current_timestamp;
 }
 
-uint64_t sys_settimeofday(user_process_t* p,uint64_t timestamp){
+uint64_t sys_settimezone(user_process_t* p,int utc_timezone){
     if (p->priv_lvl > PRIV_SPECIAL) return SYSCALL_FAIL;
-    current_timestamp = timestamp;
+    if (utc_timezone < -12 || utc_timezone > 12) return SYSCALL_FAIL;
+    timezone_adjustment = utc_timezone * 3600;
+
     return SYSCALL_SUCCESS;
 }
 
