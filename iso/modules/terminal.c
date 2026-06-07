@@ -3,198 +3,114 @@
 #include "cstdlib/stdutils.h"
 #include "cstdlib/malloc.h"
 #include "cstdlib/stdio.h"
-#include "../../kernel/src/filesystem/devices/device_defines.h"
-#include "../../kernel/src/screen/font_bitmaps.h"
+#include "cstdlib/window.h"
 #include <stdint.h>
 
 #define REQ_WIDTH  650
 #define REQ_HEIGHT 400
 
-static uint32_t term_win_width = 0;
-static uint32_t term_win_height = 0;
-
-static uint32_t term_cursor_x = 0;
-static uint32_t term_cursor_y = 0;
-static uint32_t term_cursor_x_max = 0;
-static uint32_t term_cursor_y_max = 0;
-
-static unsigned char* term_fb = 0;
-uint32_t kb_fd;
-
 #define VBE_COLOR_BLACK 0xff000000
 #define VBE_COLOR_GRAY  0xffaaaaaa
 
-void term_write_pixel(uint32_t x, uint32_t y, uint32_t color){
-    if (x >= term_win_width || y >= term_win_height) return;
-    volatile uint32_t *fb32 = (volatile uint32_t*)term_fb;
-    fb32[y * term_win_width + x] = color;
-}
+void scroll_up(user_fb_t* fb){
+    if (fb->win_height == 0 || fb->win_width == 0) return;
 
-void scroll_up(){
-    if (term_win_height == 0 || term_win_width == 0) return;
-
-    uint32_t bytes_per_row = term_win_width * sizeof(uint32_t);
+    uint32_t bytes_per_row = fb->win_width * sizeof(uint32_t);
     uint32_t rows_to_move = ROWS_PER_CHAR;
 
-    uint32_t dest_rows = term_win_height - rows_to_move;
+    uint32_t dest_rows = fb->win_height - rows_to_move;
 
     for (uint32_t r = 0; r < dest_rows; r++) {
-        unsigned char* dst = term_fb + (r * bytes_per_row);
-        unsigned char* src = term_fb + ((r + rows_to_move) * bytes_per_row);
+        unsigned char* dst = fb->fb + (r * bytes_per_row);
+        unsigned char* src = fb->fb + ((r + rows_to_move) * bytes_per_row);
         memcpy(dst, src, bytes_per_row);
     }
 
-    unsigned char* clear_start = term_fb + (dest_rows * bytes_per_row);
+    unsigned char* clear_start = fb->fb + (dest_rows * bytes_per_row);
     memset(clear_start, 0, rows_to_move * bytes_per_row);
 
-    if (term_cursor_y > 0) term_cursor_y--;
+    if (fb->cursor_y > 0) fb->cursor_y--;
 }
 
-void term_write_char(uint8_t ch, uint32_t fg, uint32_t bg){
-    if (ch < ' ' || ch > '~') return;
-    const uint8_t map_idx = ch - ' ';
-
-    uint32_t px = term_cursor_x * COLUMNS_PER_CHAR;
-    uint32_t py = term_cursor_y * ROWS_PER_CHAR;
-
-    for (uint32_t i = 0; i < ROWS_PER_CHAR; i++) {
-        uint8_t row = char_bitmap_8x16[map_idx][i];
-        for (uint8_t bit_idx = 0; bit_idx < 8; bit_idx++) {
-            term_write_pixel(px + (7 - bit_idx), py, (row & (1 << bit_idx)) ? fg : bg);
-        }
-        py++;
-    }
-    term_cursor_x++;
-    if (term_cursor_x >= term_cursor_x_max) { term_cursor_x = 0; term_cursor_y++; }
-    if (term_cursor_y >= term_cursor_y_max) {
-        scroll_up();
+void term_write_char(user_fb_t* fb, uint8_t ch, uint32_t fg, uint32_t bg){
+    write_char(fb, ch, fg, bg);
+    fb->cursor_x++;
+    if (fb->cursor_x >= fb->cursor_x_max) { fb->cursor_x = 0; fb->cursor_y++; }
+    if (fb->cursor_y >= fb->cursor_y_max) {
+        scroll_up(fb);
     }
 }
 
-void term_clear_screen(uint32_t color){
-    for (uint32_t i = 0; i < term_win_height; i++) {
-        for (uint32_t j = 0; j < term_win_width; j++) {
-            term_write_pixel(j, i, color);
+void term_clear_screen(user_fb_t* fb, uint32_t color){
+    for (uint32_t i = 0; i < fb->win_height; i++) {
+        for (uint32_t j = 0; j < fb->win_width; j++) {
+            write_pixel(fb, j, i, color);
         }
     }
-    term_cursor_x = 0;
-    term_cursor_y = 0;
+    fb->cursor_x = 0;
+    fb->cursor_y = 0;
 }
 
-void term_move_cursor_one_back(){
-    if (term_cursor_x != 0) {
-        term_cursor_x--;
+void term_move_cursor_one_back(user_fb_t* fb){
+    if (fb->cursor_x != 0) {
+        fb->cursor_x--;
     } else {
-        if (term_cursor_y != 0) {
-            term_cursor_x = term_cursor_x_max - 1;
-            term_cursor_y--;
+        if (fb->cursor_y != 0) {
+            fb->cursor_x = fb->cursor_x_max - 1;
+            fb->cursor_y--;
         }
     }
 }
 
-void term_update_cursor() {
-    term_write_char(' ', VBE_COLOR_GRAY, VBE_COLOR_GRAY);
-    term_move_cursor_one_back();
+void term_update_cursor(user_fb_t* fb) {
+    term_write_char(fb, ' ', VBE_COLOR_GRAY, VBE_COLOR_GRAY);
+    term_move_cursor_one_back(fb);
 }
 
-void term_erase_one_char(){
-    term_write_char(' ', VBE_COLOR_BLACK, VBE_COLOR_BLACK);
-    term_move_cursor_one_back();
-    term_move_cursor_one_back();
-    term_update_cursor();
+void term_erase_one_char(user_fb_t* fb){
+    term_write_char(fb,' ', VBE_COLOR_BLACK, VBE_COLOR_BLACK);
+    term_move_cursor_one_back(fb);
+    term_move_cursor_one_back(fb);
+    term_update_cursor(fb);
 }
 
-void term_newline(){
-    term_write_char(' ', VBE_COLOR_BLACK, VBE_COLOR_BLACK);
-    term_cursor_y++;
-    term_cursor_x = 0;
-    if (term_cursor_y >= term_cursor_y_max) {
-        scroll_up();
+void term_newline(user_fb_t* fb){
+    term_write_char(fb, ' ', VBE_COLOR_BLACK, VBE_COLOR_BLACK);
+    fb->cursor_y++;
+    fb->cursor_x = 0;
+    if (fb->cursor_y >= fb->cursor_y_max) {
+        scroll_up(fb);
     }
-    term_update_cursor();
+    term_update_cursor(fb);
 }
 
-void term_handle_input(unsigned char c){
+void term_handle_input(user_fb_t* fb, unsigned char c){
     switch (c) {
         case '\n': {
-            term_newline();
+            term_newline(fb);
             break;
         }
         case '\e':{
-            term_clear_screen(VBE_COLOR_BLACK);
+            term_clear_screen(fb, VBE_COLOR_BLACK);
             break;
         }
         case '\t':{
-            term_cursor_x += 4;
+            fb->cursor_x += 4;
             break;
         }
         case '\b': {
-            term_erase_one_char();
+            term_erase_one_char(fb);
             break;
         }
         default: {
-            term_write_char(c, VBE_COLOR_GRAY, VBE_COLOR_BLACK);
+            term_write_char(fb, c, VBE_COLOR_GRAY, VBE_COLOR_BLACK);
             break;
         }
     }
-    if (term_cursor_x >= term_cursor_x_max) { term_cursor_x = 0; term_cursor_y++; }
-    if (term_cursor_y >= term_cursor_y_max) term_cursor_y = term_cursor_y_max - 1;
-    term_update_cursor();
+    if (fb->cursor_x >= fb->cursor_x_max) { fb->cursor_x = 0; fb->cursor_y++; }
+    if (fb->cursor_y >= fb->cursor_y_max) fb->cursor_y = fb->cursor_y_max - 1;
+    term_update_cursor(fb);
 }
-
-unsigned char* request_window(uint32_t width,uint32_t height){
-    int wm_fd = open("dev/wm",FILE_FLAG_NONE);
-    chdir("tmp"); 
-    
-    window_req_t win_req;
-    win_req.flags = 0;
-    win_req.height = height;
-    win_req.width = width;
-    ioctl(wm_fd,DEV_WM_REQUEST_WINDOW,&win_req);
-
-
-
-    window_creation_wm_answer_t* answer = (window_creation_wm_answer_t*)malloc(sizeof(window_creation_wm_answer_t) + 256); // 256 for filename
-    memset(answer,0x0,sizeof(window_creation_wm_answer_t) + 256);
-    
-    while (ioctl(wm_fd,DEV_WM_REQUEST_WINDOW_CREATION_ANSWER,answer) < 0){}
-    unsigned char* pid_str = uint32_to_ascii(getpid());
-    chdir("wm");
-    chdir(pid_str);
-
-    int backing_fd = open(answer->filename,FILE_FLAG_NONE);
-    kb_fd = answer->kb_fd;
-    unsigned char* fb = (unsigned char*)mmap(answer->width * answer->height * sizeof(uint32_t),PROT_READ | PROT_WRITE, MAP_SHARED,backing_fd,0);
-    
-    term_win_height = answer->height;
-    term_win_width = answer->width;
-
-    term_cursor_x_max = term_win_width / COLUMNS_PER_CHAR;
-    term_cursor_y_max = term_win_height / ROWS_PER_CHAR;
-    
-    close(backing_fd);
-    rmfile(answer->filename); // dispose of the connector
-    chdir("../../..");
-    free(pid_str);
-    free(answer);
-    close(wm_fd);
-    if (term_win_width == 0 || term_win_height == 0) return 0;
-    
-    return fb;
-}
-
-void commit_window(){
-    int wm_fd = open("dev/wm",FILE_FLAG_NONE);
-    ioctl(wm_fd,DEV_WM_COMMIT_WINDOW,0);
-    close(wm_fd);
-}
-
-void delete_window(){
-    int wm_fd = open("dev/wm",FILE_FLAG_NONE);
-    ioctl(wm_fd,DEV_WM_PROC_SHUTDOWN,0);
-    close(wm_fd);
-}
-
 typedef struct{
     int stdout_fd;
     int stdin_fd;
@@ -237,11 +153,11 @@ pipe_return_t create_io_pipes(){
 }
 
 void main(){
+    user_fb_t term_fb;
+    request_window(&term_fb,REQ_WIDTH,REQ_HEIGHT);
+    if (!term_fb.fb) exit(2);
 
-    term_fb = request_window(REQ_WIDTH,REQ_HEIGHT);
-    if (!term_fb) exit(2);
-
-    term_clear_screen(VBE_COLOR_BLACK);
+    term_clear_screen(&term_fb, VBE_COLOR_BLACK);
     commit_window();
 
     pipe_return_t ret = create_io_pipes();
@@ -255,7 +171,7 @@ void main(){
     unsigned char buf[256];
 
     while(1){
-        int kb_n_bytes = read(kb_fd,buf,sizeof(buf));
+        int kb_n_bytes = read(term_fb.kb_fd,buf,sizeof(buf));
         
         if (kb_n_bytes > 0) {
             write(ret.stdin_fd,buf,kb_n_bytes);
@@ -269,7 +185,7 @@ void main(){
         }
         if (n > 0){
             for (int i = 0; i < n; i++) {
-                term_handle_input(buf[i]);
+                term_handle_input(&term_fb, buf[i]);
             }
             commit_window();
         }
