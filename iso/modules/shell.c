@@ -171,14 +171,14 @@ void cmd_sysinfo(command_t* cmd){
     uint32_t split = find_char(buf,'-');
     if (split == (uint32_t)-1) {close(meminfo);return;}
     buf[split] = '\0';
-    uint32_t total_pages = ascii_to_uint32(buf);
-    uint32_t used_pages = ascii_to_uint32(&buf[split + 1]);
+    uint32_t used_pages = ascii_to_uint32(buf);
+    uint32_t total_pages = ascii_to_uint32(&buf[split + 1]);
 
     unsigned char* used_percent = uint32_to_ascii((used_pages * 100) / total_pages);
     print("Memory: ");
-    print(&buf[split + 1]);
-    print("/");
     print(buf);
+    print("/");
+    print(&buf[split + 1]);
     print(" (");
     print(used_percent);
     print("%)\n");
@@ -192,6 +192,25 @@ void cmd_sysinfo(command_t* cmd){
     print(buf);
     print("\n");
     close(cpuinfo);
+
+    int diskinfo = open("sysinfo/diskinfo",FILE_FLAG_NONE);
+    memset(buf,0x0,sizeof(buf));
+    bytes_read = read(diskinfo,buf,sizeof(buf));
+    split = find_char(buf,'-');
+    if (split == (uint32_t)-1) {close(diskinfo);return;}
+    buf[split] = '\0';
+    uint32_t used_sectors = ascii_to_uint32(buf);
+    uint32_t total_sectors = ascii_to_uint32(&buf[split + 1]);
+    print("Disk: ");
+    print(buf);
+    print("/");
+    print(&buf[split + 1]);
+    print(" (");
+    char* disk_used_percent = uint32_to_ascii((used_sectors * 100) / total_sectors);
+    print(disk_used_percent);
+    print("%)\n");
+    free(disk_used_percent);
+    close(diskinfo);
 }
 
 void cmd_cd(command_t* cmd){
