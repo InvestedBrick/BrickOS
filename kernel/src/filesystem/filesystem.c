@@ -17,6 +17,7 @@ vector_t inodes;
 vector_t inode_name_pairs; // Note to self: do not free this with vector free, the names have to be freed too
 sectors_headerdata_t header_data; 
 uint32_t active_partially_used_bitmaps;
+uint32_t used_sectors = 0;
 
 // this is only valid for kernel setup and shutdown.
 // when user processes are running, the active directories of the threads are correct
@@ -295,6 +296,7 @@ void free_sector(uint32_t sector_idx) {
         }
 
     }
+    used_sectors--;
 }
 
 uint32_t allocate_sector(){
@@ -332,7 +334,7 @@ uint32_t allocate_sector(){
 
         // this bitmap must be at position 0 because if there are no partially free sectors, there are no bitmaps present
         header_data.sector_bitmaps[0] = bitmap;
-
+        used_sectors++;
         return first_free_big_sector_idx * BIG_SECTOR_SECTOR_COUNT;
 
     }else{
@@ -354,6 +356,7 @@ uint32_t allocate_sector(){
                         active_partially_used_bitmaps--;
                         BIT_SET(header_data.big_sector_full_map,partially_free_big_sector_idx);
                     }
+                    used_sectors++;
                     return (partially_free_big_sector_idx * BIG_SECTOR_SECTOR_COUNT + i * 8 + j);
                 }
             }

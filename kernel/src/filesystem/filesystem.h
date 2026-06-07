@@ -108,6 +108,8 @@ typedef struct {
 #define MAX_FILE_SECTORS (NUM_DATA_SECTORS_PER_FILE + NUM_INDIR_DATA_SECTORS + NUM_DINDIR_DATA_SECTORS)
 // make sure that the root dir id is unique and cannot be overwritten by allocated inodes
 #define FS_ROOT_DIR_ID ((RESERVED_INODE_SECTORS * FS_INODES_PER_SECTOR ) + 1)
+
+extern uint32_t used_sectors;
 /**
  * init_filesystem:
  * Initializes the filesystem
