@@ -72,6 +72,7 @@ typedef struct interrupt_handler{
 
 extern uint64_t ticks;
 extern uint64_t current_timestamp;
+extern int timezone_adjustment; 
 /**
  * set_idt_entry:
  * creates an idt entry with the given parameters

@@ -56,7 +56,7 @@ int virt_file_cpuinfo_read(generic_file_t* file, unsigned char* buffer, uint32_t
 
 int virt_file_uptime_read(generic_file_t* file, unsigned char* buffer, uint32_t size){
     if (size < MAX_BYTES_64_BIT_INT + 1) return -1;
-    write_bufferf(buffer,size,"%d",current_timestamp - limine_data.boot_time - TIMEZONE_ADJUSTMENT);
+    write_bufferf(buffer,size,"%d",current_timestamp - limine_data.boot_time - timezone_adjustment);
     return MAX_BYTES_64_BIT_INT;
     
 }
