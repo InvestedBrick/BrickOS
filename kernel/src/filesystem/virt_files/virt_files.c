@@ -6,6 +6,7 @@
 #include "../../tables/interrupts.h"
 #include "../../kernel_header.h"
 #include "../../tables/syscalls.h"
+#include "../../filesystem/filesystem.h"
 vector_t virt_dirs;
 vector_t virt_files;
 
@@ -31,7 +32,7 @@ int virt_file_generic_close(generic_file_t* file){
 
 int virt_file_meminfo_read(generic_file_t* file,unsigned char* buffer,uint32_t size){
     if (size < 2 * MAX_BYTES_64_BIT_INT + 2) return -1; // 2 numbers with each max 21 digits + 2 terminators
-    write_bufferf(buffer,size,"%d-%d",total_pages,mem_number_vpages);
+    write_bufferf(buffer,size,"%d-%d",mem_number_vpages,total_pages);
 
     return strlen(buffer);
 }
@@ -58,6 +59,12 @@ int virt_file_uptime_read(generic_file_t* file, unsigned char* buffer, uint32_t 
     write_bufferf(buffer,size,"%d",current_timestamp - limine_data.boot_time - TIMEZONE_ADJUSTMENT);
     return MAX_BYTES_64_BIT_INT;
     
+}
+
+int virt_file_diskinfo_read(generic_file_t* file, unsigned char* buffer, uint32_t size){
+    if (size < 2 * MAX_BYTES_64_BIT_INT + 2) return -1; // 2 numbers with each max 21 digits + 2 terminators
+    write_bufferf(buffer,size,"%d-%d",used_sectors,TOTAL_SECTORS);
+    return strlen(buffer);
 }
 
 vfs_handles_t meminfo_handles = {
@@ -87,6 +94,15 @@ vfs_handles_t uptime_handles = {
     .seek = 0,
 };
 
+vfs_handles_t diskinfo_handles = {
+    .open = 0,
+    .close = virt_file_generic_close,
+    .read = virt_file_diskinfo_read,
+    .write = 0,
+    .ioctl = 0,
+    .seek = 0,
+};
+
 void init_virt_dirs(){
     init_vector(&virt_dirs);
     init_vector(&virt_files);
@@ -96,4 +112,5 @@ void init_virt_dirs(){
     create_virt_file(sysinfo,"meminfo",&meminfo_handles,PRIV_STD);
     create_virt_file(sysinfo,"cpuinfo",&cpuinfo_handles,PRIV_STD);
     create_virt_file(sysinfo,"uptime",&uptime_handles,PRIV_STD);
+    create_virt_file(sysinfo,"diskinfo",&diskinfo_handles,PRIV_STD);
 }
