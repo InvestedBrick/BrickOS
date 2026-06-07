@@ -197,11 +197,11 @@ uint64_t gettimeofday(){
     return ret;
 }
 
-void settimeofday(uint64_t timestamp){
+void settimezone(int utc_timezone){
     asm volatile (
         "int $0x30"
         :
-        : "a"(SYS_SETTIMEOFDAY), "b"(timestamp)
+        : "a"(SYS_SETTIMEZONE), "b"(utc_timezone)
         : "memory"
     );
 }

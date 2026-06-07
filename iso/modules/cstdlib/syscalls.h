@@ -15,6 +15,7 @@ typedef struct {
 
 #include "../../../kernel/src/tables/syscall_defines.h"
 #include <stdint.h>
+#include <stdbool.h>
 /**
  * write:
  * Writes a buffer to a file
@@ -206,10 +207,11 @@ void debug(unsigned char* msg);
 uint64_t gettimeofday();
 
 /**
- * settimeofday:
- * Sets the current Unix timestamp
+ * settimezone:
+ * Sets the timezone 
+ * @param utc_timezone The Timezone based on UTC (e. g. utc_timezone=2 for UTC+2)
  * 
  * @note Calling process must have necessary permissions
  */
-void settimeofday(uint64_t timestamp);
+void settimezone(int utc_timezone);
 #endif
