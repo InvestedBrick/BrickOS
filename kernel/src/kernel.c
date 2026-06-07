@@ -174,15 +174,13 @@ void kmain()
     init_virt_dirs();
     log("Initialized virtual directories");
 
+    sys_settimezone(&global_kernel_process,1);
+    
     // Everything is now set up
     run("modules/terminal.elf",nullptr,nullptr,PRIV_STD);
     //run("modules/terminal.bin",nullptr,nullptr,PRIV_STD);
     
     run("modules/win_man.elf",nullptr,nullptr,PRIV_SPECIAL); // window manager should open dev/kb0
-
-
-    sys_settimeofday(&global_kernel_process,sys_gettimeofday() + TIMEZONE_ADJUSTMENT); //adjust for UTC+1 timezone (mine)
-
     setup_timer_switch();
     // need to manually enable since run just restores whatever was before that
     log("Shell setup complete");
