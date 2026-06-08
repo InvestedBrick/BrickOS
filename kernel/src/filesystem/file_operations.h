@@ -3,6 +3,7 @@
 #define INCLUDE_FILE_OPS
 
 #include "vfs/vfs.h"
+#include "filesystem.h"
 typedef struct {
     uint8_t flags;
     uint32_t inode_id;
@@ -14,13 +15,22 @@ typedef struct {
 
 /**
  * fs_open:
- * Opens a file and returns a file descriptor to it
+ * Opens a file and returns a generic file pointer to it
  * @param filepath The path to the file
- * @param flags flags for the file (R/W/A/C)
- * @return The file desciptor
+ * @param flags flags for the file (R/W/A/X)
+ * @return The generic file pointer
  */
 generic_file_t* fs_open(unsigned char* filepath,uint8_t flags);
 
+/**
+ * fs_open_inode:
+ * Opens a file by a given inode and returns a generic file pointer to it
+ * @param inode The inode
+ * @param flags flags for the file (R/W/A/X)
+ * @param filepath the path to the file (only necessesary to be valid when calling from fs_open)
+ * @return The generic file pointer
+ */
+generic_file_t* fs_open_inode(inode_t* inode,uint8_t flags, unsigned char* filepath);
 
 /**
  * fs_write:

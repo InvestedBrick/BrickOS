@@ -115,9 +115,7 @@ uint32_t get_sector_for_rw(inode_t* inode, uint32_t sector_idx, uint8_t is_write
     return sector;
 }
 
-generic_file_t* fs_open(unsigned char* filepath,uint8_t flags){
-    
-    inode_t* inode = get_inode_by_path(filepath);
+generic_file_t* fs_open_inode(inode_t* inode,uint8_t flags,unsigned char* filepath){
     
     user_process_t* active_proc = get_current_user_process();
     if (inode && active_proc->priv_lvl > inode->priv_lvl) return nullptr;
@@ -141,7 +139,6 @@ generic_file_t* fs_open(unsigned char* filepath,uint8_t flags){
             return nullptr;
         }
     }
-
     if ((!(inode->perms & FS_FILE_PERM_READABLE)) && (flags & FILE_FLAG_READ)) return nullptr;
     if ((!(inode->perms & FS_FILE_PERM_WRITABLE)) && (flags & FILE_FLAG_WRITE)) return nullptr;
     if ((!(inode->perms & FS_FILE_PERM_EXECUTABLE) && (flags & FILE_FLAG_EXEC))) return nullptr;
@@ -156,6 +153,11 @@ generic_file_t* fs_open(unsigned char* filepath,uint8_t flags){
     gen_file->generic_data = (void*)open_file;
     gen_file->object_id = inode->id;
     return gen_file;
+}
+
+generic_file_t* fs_open(unsigned char* filepath, uint8_t flags){
+    inode_t* inode = get_inode_by_path(filepath);
+    return fs_open_inode(inode,flags,filepath);
 }
 
 int fs_close(generic_file_t* f){
