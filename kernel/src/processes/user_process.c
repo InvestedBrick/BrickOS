@@ -116,7 +116,10 @@ Elf64_Phdr* find_lowest_responsible_phdr(user_process_t* p, uint64_t low){
 bool handle_phdr_mapping(user_process_t* p, uint64_t fault_addr){
     uint64_t aligned_fault_addr = ALIGN_DOWN(fault_addr,MEMORY_PAGE_SIZE);
     uint64_t page_top = aligned_fault_addr + MEMORY_PAGE_SIZE;
-    int fd = sys_open(p,p->process_name,FILE_FLAG_READ);
+
+    // a bit unconventional but since this is only internal it's fine
+    generic_file_t* file = fs_open_inode(p->file_inode,FILE_FLAG_READ,"");
+    int fd = assign_fd(p,file);
     
     if (fd < 0) return false;
 
@@ -298,7 +301,8 @@ uint32_t create_user_process(unsigned char* file_path,uint8_t priv_lvl, unsigned
     
     inode_t* file = get_inode_by_path(file_path);
     file->perms &= ~FS_FILE_PERM_WRITABLE;
-    
+    process->file_inode = file;
+
     uint32_t code_data_pages = CEIL_DIV(file->size,MEMORY_PAGE_SIZE) + 1; // add one safety page
     
     process->page_alloc_start = code_data_pages * MEMORY_PAGE_SIZE;
