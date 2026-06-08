@@ -5,6 +5,7 @@
 #include "../filesystem/vfs/vfs.h"
 #include "../utilities/vector.h"
 #include "../memory/memory.h"
+#include "../filesystem/filesystem.h"
 #include <elf.h>
 #include <stdbool.h>
 #define MAX_FDS 512
@@ -30,6 +31,7 @@ typedef struct user_process{
 
     Elf64_Phdr* phdrs; 
     uint32_t n_phdrs; 
+    inode_t* file_inode;
 
 } user_process_t;
 
@@ -124,6 +126,7 @@ void restore_active_proc();
  * 
  * @note does not return
  */
+__attribute__((noreturn))
 void enter_user_mode(struct thread* thread);
 
 /**
