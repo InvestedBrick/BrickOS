@@ -6,7 +6,7 @@ You can install the necessary dependancies by executing `deps.sh` (uses apt, if 
 ## Compilation && Running
 You can simply run `make run` to compile and start the OS. 
 
-![assets/screenshot.png]
+![A Screenshot](assets/screenshot.png)
 
 ## Features
 - GDT, IDT, TSS
