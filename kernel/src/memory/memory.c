@@ -235,6 +235,21 @@ void mem_map_page(uint64_t virt_addr, uint64_t phys_addr, uint32_t flags){
     }
 }
 
+void free_table_if_empty(uint64_t* lower, uint64_t* higher, uint32_t higher_idx){
+    uint8_t free = 1;
+    for(uint32_t i = 0; i < ENTRIES_PER_TABLE;i++){
+        if (lower[i] & PAGE_FLAG_PRESENT){
+            free = 0;
+            break;
+        }
+    }
+    if (free){
+        uint64_t phys = linear_virt_to_phys((uint64_t)lower);
+        higher[higher_idx] = 0;
+        pmm_free_page_frame(phys);
+    }
+}
+
 void mem_unmap_page(uint64_t virt_addr){
 
     uint64_t* prev_pml4_table = 0;
@@ -268,16 +283,10 @@ void mem_unmap_page(uint64_t virt_addr){
     mem_number_vpages--;
     invalidate(virt_addr);
 
-    uint8_t pt_empty = 1;
-    for (int i = 0; i < (ENTRIES_PER_TABLE); i++) {
-        if (pt[i] & PAGE_FLAG_PRESENT) { pt_empty = 0; break; }
-    }
-    if (pt_empty) {
-        uint64_t phys = linear_virt_to_phys((uint64_t)pt);
-        pd[pd_idx] = 0;
-        pmm_free_page_frame(phys);
-    }
-    //TODO: finish freeing for all layers
+    free_table_if_empty(pt,pd,pd_idx);
+    free_table_if_empty(pd,pdpt,pdpt_idx);
+    free_table_if_empty(pdpt,pml4,pml4_idx);
+    
 invalid_unmap:
     if (prev_pml4_table != 0){
         mem_set_current_pml4_table(prev_pml4_table);
