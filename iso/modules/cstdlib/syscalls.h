@@ -68,7 +68,7 @@ int exit(uint32_t error_code);
 
 /**
  * mmap:
- * memory region into the current process
+ * maps memory region into the current process
  * 
  * @param size The size of the memory region to allocate (Will be rounded up to the next page border)
  * @param prot The protections of the page
@@ -79,6 +79,14 @@ int exit(uint32_t error_code);
  * @return Pointer to the memory region
  */
 void* mmap(uint32_t size, uint32_t prot, uint32_t flags, uint32_t fd, uint32_t offset);
+
+/**
+ * munmap:
+ * Unmaps memory region from currecnt process
+ * @param addr The address at which to start unmapping (must be page aligned)
+ * @param size The size of the unmapping region
+ */
+void munmap(void* addr, uint64_t size);
 
 /**
  * getcwd:
