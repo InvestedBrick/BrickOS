@@ -63,15 +63,16 @@ typedef struct{
 }shared_object_t;
 
 typedef struct virt_mem_area{
-    void* addr;
-    uint32_t size;
+    uint64_t addr;
+    uint64_t size;
     uint32_t prot;
     uint32_t flags;
 
     uint32_t fd;
-    uint32_t offset;
+    uint64_t offset;
 
     shared_object_t* shrd_obj;
+    vector_t mapped_pages;
     struct virt_mem_area* next;
 
 } virt_mem_area_t;
@@ -100,6 +101,23 @@ extern vector_t shm_obj_vec;
  * @return The virt_mem_area_t to which the addr belongs
  */
 virt_mem_area_t* find_virt_mem_area(virt_mem_area_t* start,uint64_t addr);
+
+
+/**
+ * find_lowest_vma_in_range:
+ * Finds a virtual memory area from a virt_mem_area_t linked list that is the lowest intersecting vma in a specified range
+ * @param start The start of the linked list
+ * @param low The start of the range
+ * @param high The end of the range
+ */
+virt_mem_area_t* find_lowest_vma_in_range(virt_mem_area_t* start, uint64_t low, uint64_t high); 
+
+/**
+ * free_shrd_vma_obj:
+ * decrements the reference counter on a vma shared object and its shared pages. Also frees the object istself if no longer referenced
+ * @param vma The vma
+ */
+void free_shrd_vma_obj(virt_mem_area_t* vma);
 
 /**
  * init_memory:
@@ -203,6 +221,13 @@ void mem_unmap_page(uint64_t virt_addr);
  */
 void mem_map_page_in_pml4(uint64_t* pml4_table, uint64_t virt_addr, uint64_t phys_addr, uint32_t flags);
 
+/**
+ * virt_to_phys:
+ * Returns the underlying physical page for a virtual address
+ * @param virt_addr The virtual address
+ * @return The physical address or INVALID_PHYS_ADDR upon failure
+ */
+uint64_t virt_to_phys(uint64_t virt_addr);
 
 /**
  * flush_tlb:
