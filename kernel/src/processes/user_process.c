@@ -379,7 +379,7 @@ int kill_user_process(uint32_t pid){
     process->running = 0;
 
     for (uint32_t i = 0; i < MAX_FDS;i++){
-        if(!process->fd_table[i]) break;
+        if(!process->fd_table[i]) continue;
 
         sys_close(process,i);
     }
@@ -388,25 +388,8 @@ int kill_user_process(uint32_t pid){
     virt_mem_area_t* prev_vma;
     while(vma){
         
-        if (vma->shrd_obj){
-            for (unsigned int i = 0; i < vma->shrd_obj->n_pages;i++){
-                shared_page_t* shrd_page = vma->shrd_obj->shared_pages[i];
-                if (!shrd_page) continue;
-
-                shrd_page->ref_count--;
-                if (shrd_page->ref_count == 0){
-                    kfree(shrd_page);
-                    vma->shrd_obj->shared_pages[i] = nullptr;
-                }
-            }
-
-            vma->shrd_obj->ref_count--;
-
-            if (vma->shrd_obj->ref_count == 0){
-                kfree(vma->shrd_obj);
-            }
-            
-        }
+        free_shrd_vma_obj(vma); // ensures shrd_obj exists
+        vector_free(&vma->mapped_pages,true);
         prev_vma = vma;
         vma = vma->next;
         kfree(prev_vma);
