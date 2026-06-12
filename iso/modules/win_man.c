@@ -649,9 +649,8 @@ void handle_process_shudown(uint32_t pid){
     chdir("..");
     
     rmfile(pid_str);
-    
-    //TODO: munmap
-    
+    munmap(win->live_buffer,win->buffer_size);
+
     remove_window_from_list(win);
 
     // clean it up
@@ -793,10 +792,10 @@ void main(){
     screen_bytes_per_row = fb.bytes_per_row;
     screen_bytespp = fb.bpp / 8;
     if (screen_bytespp != 4) debug("WARN: expected bpp == 32");
-    dirty_sections = (section_t*)mmap((MAX_DIRTY_SECTIONS * sizeof(section_t)),PROT_READ | PROT_WRITE,MAP_ANON,0,0);
+    dirty_sections = (section_t*)mmap((MAX_DIRTY_SECTIONS * sizeof(section_t)),PROT_READ | PROT_WRITE,MAP_ANON,MAP_FD_NONE,0);
     memset(dirty_sections,0,MAX_DIRTY_SECTIONS * sizeof(section_t));
     fb0 = (unsigned char*)mmap(fb.size, PROT_READ | PROT_WRITE, MAP_SHARED, fb0_fd,0);
-    back_buffer = (unsigned char*)mmap(fb.size,PROT_READ | PROT_WRITE,MAP_ANON,0,0);
+    back_buffer = (unsigned char*)mmap(fb.size,PROT_READ | PROT_WRITE,MAP_ANON,MAP_FD_NONE,0);
     memset(back_buffer,0,fb.size);
     close(fb0_fd);
     if (!fb0) exit(4);
