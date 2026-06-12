@@ -14,7 +14,6 @@
 #include <stdbool.h>
 
 //TODO: provide actually helpful error messages
-//TODO: add munmap
 uint64_t sys_write(user_process_t* p,uint32_t fd, unsigned char* buf, uint32_t size){
     if (fd >= MAX_FDS) return SYSCALL_FAIL;
 
@@ -91,13 +90,13 @@ uint64_t sys_exit(user_process_t* p,interrupt_stack_frame_t* stack_frame){
     return 0; // will never get reached 
 }
 
-uint64_t sys_mmap(user_process_t *p, void *addr, uint32_t size,uint32_t prot, uint32_t flags, uint32_t fd, uint32_t offset){
-    if (addr == MMAP_UNSPEC_ADDR) addr = (void*)p->page_alloc_start;
-    if (addr + size >= (void*)HHDM) return SYSCALL_FAIL;
-    if (size == 0 || ((uint64_t)addr % MEMORY_PAGE_SIZE) != 0) return SYSCALL_FAIL;
+uint64_t sys_mmap(user_process_t *p, uint64_t addr, uint64_t size,uint32_t prot, uint32_t flags, uint32_t fd, uint64_t offset){
+    if (addr == MMAP_UNSPEC_ADDR) addr = p->page_alloc_start;
+    if (addr + size >= HHDM) return SYSCALL_FAIL;
+    if (size == 0 || (addr % MEMORY_PAGE_SIZE)) return SYSCALL_FAIL;
     
     if (fd < 3) fd = MAP_FD_NONE;
-
+    
     if (flags & MAP_ANONYMOUS && flags & MAP_SHARED) return SYSCALL_FAIL; // not implemented yet
     if (!(flags & MAP_ANONYMOUS)){
         // we are mapping a file
@@ -115,7 +114,8 @@ uint64_t sys_mmap(user_process_t *p, void *addr, uint32_t size,uint32_t prot, ui
     vma->flags = flags;
     vma->prot = prot;
     vma->offset = offset;
-    
+    init_vector(&vma->mapped_pages);
+
     if (flags & MAP_SHARED){
         shared_object_t* shrd_obj = find_shared_object_by_id(p->fd_table[fd]->object_id);
 
@@ -151,10 +151,113 @@ uint64_t sys_mmap(user_process_t *p, void *addr, uint32_t size,uint32_t prot, ui
     vma->next = p->vm_areas;
     p->vm_areas = vma;
 
-    p->page_alloc_start = (uint64_t)addr + size;
+    p->page_alloc_start = addr + size;
 
     // we kinda just pretend that the area is mapped and map it once we fault there
-    return (uint64_t)addr;
+    return addr;
+}
+
+uint64_t sys_munmap(user_process_t* p, uint64_t addr, uint64_t size){
+    if (addr >= HHDM) return SYSCALL_FAIL; // nice try
+    if (size == 0 || (addr % MEMORY_PAGE_SIZE)) return SYSCALL_FAIL;
+
+    uint64_t aligned_size = ALIGN_UP(size,MEMORY_PAGE_SIZE);
+    uint64_t low = addr;
+    uint64_t high = addr + aligned_size;
+    
+    while(low < high){
+        virt_mem_area_t* vma = find_lowest_vma_in_range(p->vm_areas,low,high);
+        if (!vma) break;
+
+        /* 4 cases:
+         * - remove entire vma
+         * - remove part from start
+         * - remove part from end
+         * - cut out in middle && split in two
+         */
+
+        vector_t erased_indices;
+        init_vector(&erased_indices);
+
+        // free the pages
+        for (uint32_t i = 0; i < vma->mapped_pages.size;i++){
+            uint64_t page = (uint64_t)vma->mapped_pages.data[i];
+            if (page >= low && page < high){
+                mem_unmap_page(page);
+                uint64_t phys = virt_to_phys(page);
+
+                int page_idx = ((page - vma->addr) + vma->offset) / MEMORY_PAGE_SIZE;
+                if (vma->shrd_obj && 
+                    vma->shrd_obj->n_pages > page_idx && 
+                    vma->shrd_obj->shared_pages[page_idx])
+                {
+                    shared_page_t* shrd_page = vma->shrd_obj->shared_pages[page_idx];
+                    // mapped page is shared
+                    shrd_page->ref_count--;
+                    if (shrd_page->ref_count == 0){
+                        pmm_free_page_frame(phys);
+                        kfree(shrd_page);
+                        vma->shrd_obj->shared_pages[page_idx] = nullptr;
+                    }
+                }else{
+                    pmm_free_page_frame(phys);
+                }
+                vector_append(&erased_indices,(vector_data_t)i);
+            }
+        }
+
+        for (int i = erased_indices.size - 1; i >= 0; i--){
+            vector_erase(&vma->mapped_pages,erased_indices.data[i]);
+        }
+        vector_free(&erased_indices,false);
+
+        if (vma->addr >= low){
+            // case 1 or 2
+            if (vma->addr + vma->size < high){
+                // erase whole thing
+                virt_mem_area_t* prev_vma = p->vm_areas;
+                while(prev_vma && prev_vma->next != vma) prev_vma = prev_vma->next;
+                if (prev_vma) prev_vma->next->next = vma->next;
+                else p->vm_areas = vma->next;
+
+                low = vma->addr + vma->size + 1;
+
+                kfree(vma->mapped_pages.data);
+                kfree(vma);
+            }else{
+                // cut from start
+                vma->size -= high - vma->addr;
+                vma->addr = high;
+                low = high;
+            }
+        }else{
+            // case 3 or 4
+            if (vma->addr + vma->size < high){
+                // cut from end
+                low = vma->addr + vma->size;
+                vma->size -= (vma->addr + vma->size) - low;
+            }else{
+                // cut && split
+                virt_mem_area_t* new_vma = (virt_mem_area_t*)kmalloc(sizeof(virt_mem_area_t));
+                new_vma->addr = high;
+                new_vma->size = vma->size - (high - vma->addr);
+                new_vma->flags = vma->flags;
+                new_vma->prot = vma->prot;
+                new_vma->offset = vma->offset + (high - vma->addr);
+                new_vma->shrd_obj = vma->shrd_obj;
+                
+                vma->size = (low - vma->addr);
+                
+                new_vma->next = vma->next;
+                vma->next = new_vma;
+
+                low = high;
+            }
+        }
+
+    }
+    return SYSCALL_SUCCESS;
+
 }
 
 uint64_t sys_getcwd(unsigned char* buffer, uint32_t buf_len){

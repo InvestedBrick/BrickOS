@@ -8,7 +8,7 @@
 #include "../filesystem/filesystem.h"
 
 // only internally used
-#define MMAP_UNSPEC_ADDR (void*)0x12345
+#define MMAP_UNSPEC_ADDR (uint64_t)0x12345
 
 uint64_t sys_write(user_process_t* p,uint32_t fd, unsigned char* buf, uint32_t size);
 
@@ -22,7 +22,9 @@ uint64_t sys_exit(user_process_t* p,interrupt_stack_frame_t* stack_frame);
 
 uint64_t sys_seek(user_process_t* p,uint32_t fd, uint32_t offset,uint32_t whence);
 
-uint64_t sys_mmap(user_process_t *p, void *addr, uint32_t size,uint32_t prot, uint32_t flags, uint32_t fd, uint32_t offset);
+uint64_t sys_mmap(user_process_t *p, uint64_t addr, uint64_t size,uint32_t prot, uint32_t flags, uint32_t fd, uint64_t offset);
+
+uint64_t sys_munmap(user_process_t* p, uint64_t addr, uint64_t size);
 
 uint64_t sys_getcwd(unsigned char* buffer, uint32_t buf_len);
 
