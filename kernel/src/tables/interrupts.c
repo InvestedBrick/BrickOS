@@ -121,6 +121,7 @@ void set_idt_entry(uint8_t num,uint64_t offset,uint8_t attributes){
 
 void handle_software_interrupt(interrupt_stack_frame_t* stack_frame){
     uint64_t rax = 0;
+    user_process_t* p = get_current_user_process();
     switch (stack_frame->rax)
     {
     case SYS_DEBUG:
@@ -128,31 +129,34 @@ void handle_software_interrupt(interrupt_stack_frame_t* stack_frame){
         log((unsigned char*)stack_frame->rbx);
         break;
     case SYS_EXIT: 
-        rax =  sys_exit(get_current_user_process(),stack_frame);
+        rax =  sys_exit(p,stack_frame);
         break;
     case SYS_OPEN:
-        rax =  sys_open(get_current_user_process(),(unsigned char*)stack_frame->rbx,(uint8_t)stack_frame->rcx);
+        rax =  sys_open(p,(unsigned char*)stack_frame->rbx,(uint8_t)stack_frame->rcx);
         break;
     case SYS_CLOSE:
-        rax =  sys_close(get_current_user_process(),stack_frame->rbx);
+        rax =  sys_close(p,stack_frame->rbx);
         break;
     case SYS_READ:
-        rax =  sys_read(get_current_user_process(),stack_frame->rbx,(unsigned char*)stack_frame->rcx,stack_frame->rdx);
+        rax =  sys_read(p,stack_frame->rbx,(unsigned char*)stack_frame->rcx,stack_frame->rdx);
         break;
     case SYS_WRITE:
-        rax =  sys_write(get_current_user_process(),stack_frame->rbx,(unsigned char*)stack_frame->rcx,stack_frame->rdx);
+        rax =  sys_write(p,stack_frame->rbx,(unsigned char*)stack_frame->rcx,stack_frame->rdx);
         break;
     case SYS_SEEK:
-        rax =  sys_seek(get_current_user_process(),stack_frame->rbx,stack_frame->rcx,stack_frame->rdx);
+        rax =  sys_seek(p,stack_frame->rbx,stack_frame->rcx,stack_frame->rdx);
         break;
-    case SYS_ALLOC_PAGE:
-        rax =  sys_mmap(get_current_user_process(),MMAP_UNSPEC_ADDR,stack_frame->rbx,stack_frame->rcx,stack_frame->rdx,stack_frame->rdi,stack_frame->rsi);
+    case SYS_MMAP:
+        rax =  sys_mmap(p,MMAP_UNSPEC_ADDR,stack_frame->rbx,stack_frame->rcx,stack_frame->rdx,stack_frame->rdi,stack_frame->rsi);
+        break;
+    case SYS_MUNMAP:
+        rax = sys_munmap(p,stack_frame->rbx,stack_frame->rcx);
         break;
     case SYS_GETCWD:
         rax =  sys_getcwd((unsigned char*)stack_frame->rbx, stack_frame->rcx);
         break;
     case SYS_GETDENTS:
-        rax =  sys_getdents(get_current_user_process(),stack_frame->rbx,(dirent_t*)stack_frame->rcx,stack_frame->rdx);
+        rax =  sys_getdents(p,stack_frame->rbx,(dirent_t*)stack_frame->rcx,stack_frame->rdx);
         break;
     case SYS_CHDIR:
         rax =  sys_chdir((unsigned char*)stack_frame->rbx);
@@ -164,7 +168,7 @@ void handle_software_interrupt(interrupt_stack_frame_t* stack_frame){
         rax =  sys_mknod((unsigned char*)stack_frame->rbx,(mknod_params_t*)stack_frame->rcx);
         break;
     case SYS_IOCTL:
-        rax =  sys_ioctl(get_current_user_process(),stack_frame->rbx,stack_frame->rcx,(void*)stack_frame->rdx);
+        rax =  sys_ioctl(p,stack_frame->rbx,stack_frame->rcx,(void*)stack_frame->rdx);
         break;
     case SYS_MSSLEEP:
         rax =  sys_mssleep(stack_frame,stack_frame->rbx);
@@ -173,13 +177,13 @@ void handle_software_interrupt(interrupt_stack_frame_t* stack_frame){
         rax =  sys_spawn((unsigned char*)stack_frame->rbx,(unsigned char**)stack_frame->rcx,(process_fds_init_t*)stack_frame->rdx);
         break;
     case SYS_GETPID:
-        rax =  sys_getpid(get_current_user_process()); 
+        rax =  sys_getpid(p); 
         break;   
     case SYS_GETTIMEOFDAY:
         rax =  sys_gettimeofday();
         break;
     case SYS_SETTIMEZONE:
-        rax =  sys_settimezone(get_current_user_process(),(int)stack_frame->rbx);
+        rax =  sys_settimezone(p,(int)stack_frame->rbx);
         break;
     default:
         rax = (uint64_t)SYSCALL_FAIL;
@@ -195,7 +199,7 @@ uint64_t init_new_page(virt_mem_area_t* vma,user_process_t* p,uint64_t aligned_f
     mem_map_page(USER_SCRATCH_PAGE,frame,PAGE_FLAG_WRITE | PAGE_FLAG_USER);
     
     if (vma->fd != MAP_FD_NONE){
-        uint64_t file_off = vma->offset + (aligned_fault_addr - (uint64_t)vma->addr);
+        uint64_t file_off = vma->offset + (aligned_fault_addr - vma->addr);
         sys_seek(p,vma->fd,file_off,SEEK_SET);
         sys_read(p,vma->fd,(unsigned char*)USER_SCRATCH_PAGE,MEMORY_PAGE_SIZE);
     }else{
@@ -234,10 +238,10 @@ void page_fault_handler(user_process_t* p,uint64_t fault_addr,interrupt_stack_fr
     uint64_t aligned_fault_addr = ALIGN_DOWN(fault_addr,MEMORY_PAGE_SIZE);
 
     uint64_t frame;
-
+    
     if (vma->shrd_obj){
         
-        int page_idx = ((aligned_fault_addr - (uint64_t)vma->addr) + vma->offset) / MEMORY_PAGE_SIZE;
+        int page_idx = ((aligned_fault_addr - vma->addr) + vma->offset) / MEMORY_PAGE_SIZE;
 
         if (!vma->shrd_obj->shared_pages[page_idx]){
             frame = init_new_page(vma,p,aligned_fault_addr);
@@ -249,13 +253,14 @@ void page_fault_handler(user_process_t* p,uint64_t fault_addr,interrupt_stack_fr
             frame = vma->shrd_obj->shared_pages[page_idx]->phys_addr;
             vma->shrd_obj->shared_pages[page_idx]->ref_count++;
         }
-
     }else{
         frame = init_new_page(vma,p,aligned_fault_addr);
     }
 
     int page_flags = PAGE_FLAG_USER;
     if (vma->prot & PROT_WRITE) page_flags |= PAGE_FLAG_WRITE;
+
+    vector_append(&vma->mapped_pages,(vector_data_t)aligned_fault_addr);
 
     mem_map_page(aligned_fault_addr,frame,page_flags);
     set_interrupt_status(int_status);
