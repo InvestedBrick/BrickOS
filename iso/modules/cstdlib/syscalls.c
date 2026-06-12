@@ -62,11 +62,20 @@ void* mmap(uint32_t size, uint32_t prot, uint32_t flags,
     asm volatile (
         "int $0x30"
         : "=a"(ret)
-        : "a"(SYS_ALLOC_PAGE), "b"(size), "c"(prot),
+        : "a"(SYS_MMAP), "b"(size), "c"(prot),
           "d"(flags), "D"(fd), "S"(offset)
         : "memory"
     );
     return ret;
+}
+
+void munmap(void* addr, uint64_t size){
+    asm volatile (
+        "int $0x30"
+        :
+        : "a"(SYS_MUNMAP), "b"(addr), "c"(size)
+        : "memory"
+    );
 }
 
 void getcwd(unsigned char* buffer, uint32_t size) {
