@@ -4,6 +4,7 @@
 #include "../utilities/vector.h"
 #include "../kernel_header.h"
 #include "../../limine-protocol/include/limine.h"
+#include "kmalloc.h"
 
 uint64_t total_alloced_pages;
 uint64_t total_pages;
@@ -19,13 +20,48 @@ void init_shm_obj_vector(){
 
 virt_mem_area_t* find_virt_mem_area(virt_mem_area_t* start,uint64_t addr){
     virt_mem_area_t* vma = start;
-    while(vma && !(addr >= (uint64_t)vma->addr && addr <= (uint64_t)vma->addr + vma->size)){
+    while(vma && !(addr >= vma->addr && addr <= vma->addr + vma->size)){
         vma = vma->next;
     }
 
     return vma;
 }
 
+virt_mem_area_t* find_lowest_vma_in_range(virt_mem_area_t* start, uint64_t low, uint64_t high){
+    virt_mem_area_t* lowest = nullptr;
+    uint64_t min = high;
+    virt_mem_area_t* curr = start;
+    while(curr){
+        if (((curr->addr <= low && curr->addr + curr->size > low) || 
+            (curr->addr >= low && curr->addr < high)) && curr->addr < min)
+        {
+            min = curr->addr;
+            lowest = curr;
+        }
+        curr = curr->next;
+    }
+    return lowest;
+}
+
+void free_shrd_vma_obj(virt_mem_area_t* vma){
+    if (!vma->shrd_obj) return;
+    for (unsigned int i = 0; i < vma->shrd_obj->n_pages;i++){
+        shared_page_t* shrd_page = vma->shrd_obj->shared_pages[i];
+        if (!shrd_page) continue;
+        
+        shrd_page->ref_count--;
+        if (shrd_page->ref_count == 0){
+            kfree(shrd_page);
+            vma->shrd_obj->shared_pages[i] = nullptr;
+        }
+    }
+
+    vma->shrd_obj->ref_count--;
+    
+    if (vma->shrd_obj->ref_count == 0){
+        kfree(vma->shrd_obj);
+    }
+}
 shared_object_t* find_shared_object_by_id(uint32_t unique_id){
     for (uint32_t i = 0; i < shm_obj_vec.size;i++){
         shared_object_t* shrd_obj = (shared_object_t*)shm_obj_vec.data[i];
