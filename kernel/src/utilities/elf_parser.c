@@ -42,7 +42,6 @@ void parse_elf(unsigned char* filepath){
     sys_seek(proc,fd,ehdr.e_phoff,SEEK_SET);
     n_bytes = sys_read(proc,fd,(unsigned char*)phdrs,total_phdr_size);
 
-    //TODO: munmap
     for (uint32_t i = 0; i < ehdr.e_phnum;i++){
         logf("Program header %d:",i);
         logf("  type: %d",phdrs[i].p_type);
