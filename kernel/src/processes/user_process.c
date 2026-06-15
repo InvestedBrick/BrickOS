@@ -389,7 +389,7 @@ int kill_user_process(uint32_t pid){
     while(vma){
         
         free_shrd_vma_obj(vma); // ensures shrd_obj exists
-        vector_free(&vma->mapped_pages,true);
+        vector_free(&vma->mapped_pages,false);
         prev_vma = vma;
         vma = vma->next;
         kfree(prev_vma);
