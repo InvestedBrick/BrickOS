@@ -183,8 +183,8 @@ uint64_t sys_munmap(user_process_t* p, uint64_t addr, uint64_t size){
         for (uint32_t i = 0; i < vma->mapped_pages.size;i++){
             uint64_t page = (uint64_t)vma->mapped_pages.data[i];
             if (page >= low && page < high){
-                mem_unmap_page(page);
                 uint64_t phys = virt_to_phys(page);
+                mem_unmap_page(page);
 
                 int page_idx = ((page - vma->addr) + vma->offset) / MEMORY_PAGE_SIZE;
                 if (vma->shrd_obj && 
