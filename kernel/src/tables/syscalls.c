@@ -217,7 +217,7 @@ uint64_t sys_munmap(user_process_t* p, uint64_t addr, uint64_t size){
                 // erase whole thing
                 virt_mem_area_t* prev_vma = p->vm_areas;
                 while(prev_vma && prev_vma->next != vma) prev_vma = prev_vma->next;
-                if (prev_vma) prev_vma->next->next = vma->next;
+                if (prev_vma) prev_vma->next = vma->next;
                 else p->vm_areas = vma->next;
 
                 low = vma->addr + vma->size + 1;
