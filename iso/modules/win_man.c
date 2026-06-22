@@ -52,7 +52,7 @@ typedef struct {
 
 window_t* head = 0; 
 section_t* dirty_sections = 0;
-
+uint8_t dbg = 0; 
 #define SECTION_EXPANDED_TOP 0x1
 #define SECTION_EXPANDED_LEFT 0x2
 #define SECTION_EXPANDED_BOTTOM 0x4
@@ -632,7 +632,6 @@ void composite_windows(framebuffer_t* fb){
     blit_section(&mouse_sec,fb);
     memset(dirty_section_expanded,0,sizeof(dirty_section_expanded));
     dirty_section_idx = 0;
-    
 }
 
 void handle_process_shudown(uint32_t pid){
@@ -652,13 +651,28 @@ void handle_process_shudown(uint32_t pid){
     munmap(win->live_buffer,win->buffer_size);
 
     remove_window_from_list(win);
+    
+    if (mouse.dragging_window == win){
+        mouse.dragging_window = 0;
+        mouse.left_clicked = 0;
+        mouse.tried_window = 0;
+    }
+    
 
-    // clean it up
-    if (win->section.x > 0) win->section.x--;
-    if (win->section.y > 0) win->section.y--;
-    win->section.width  += 2;
-    win->section.height += 2;
+    //ensure window decorations get cleared properly
+    if (win->section.x > 0){
+        win->section.x--;
+        win->section.width++;
+    } 
+    if (win->section.y > 0) {
+        win->section.y--;
+        win->section.height++;
+    }
+    win->section.width++;
+    win->section.height++;
+    
     add_dirty_section(win->section);
+    win->next = 0;
     free(win);
     win = 0;
     free(pid_str);
@@ -835,6 +849,7 @@ void main(){
         n_kmsg = read(k_to_wm_fd,buffer,sizeof(buffer));
         uint32_t bytes_read = 0;
         
+        dbg = 0;
         while (bytes_read < n_kmsg){
             
             win_man_msg_t* msg = (win_man_msg_t*)&buffer[bytes_read];
@@ -849,6 +864,7 @@ void main(){
                     break;
                 }
                 case DEV_WM_PROC_SHUTDOWN: {
+                    dbg = 1;
                     handle_process_shudown(msg->pid);
                     break;
                 }
