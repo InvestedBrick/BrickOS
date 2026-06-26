@@ -12,6 +12,7 @@
 #include "tables/interrupts.h"
 #include "drivers/ATA_PIO/ata.h"
 #include "processes/scheduler.h"
+#include "utilities/elf_parser.h"
 #include "filesystem/IPC/pipes.h"
 #include "filesystem/filesystem.h"
 #include "processes/user_process.h"
@@ -21,10 +22,10 @@
 #include "filesystem/file_operations.h"
 #include "drivers/PS2/ps2_controller.h"
 #include "drivers/PS2/keyboard/keyboard.h"
+#include "drivers/networking/networking.h"
 #include "filesystem/virt_files/virt_files.h"
 #include <uacpi/sleep.h>
 #include <stdint.h>
-#include "utilities/elf_parser.h"
 
 struct user_process global_kernel_process;
 extern uint8_t check_SSE();
@@ -148,6 +149,9 @@ void kmain()
     
     pci_check_all_busses();
     log("Scanned PCI busses");
+
+    setup_network_driver();
+    log("Set up network driver");
 
     save_module_binaries(limine_data.modules);
     log("Saved module binaries");
