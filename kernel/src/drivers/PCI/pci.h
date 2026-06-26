@@ -5,8 +5,25 @@
 #define PCI_CONFIG_DATA 0xcfc 
 #define PCI_DEV_DOESNT_EXIST_VENDOR_ID 0xffff
 #define PCI_HEADER_FLAG_MF (1 << 0x7)
+
+#define PCI_CLASS_MASS_STORAGE_CONTROLLER 0x1
+
+#define PCI_CLASS_NETWORK_CONTROLLER 0x2
+#define PCI_SUBCLASS_ETHERNET_CONTROLLER 0x0
+
+#define PCI_CLASS_DISPLAY_CONTROLLER 0x3
+
+#define PCI_CLASS_MULTIMEDIA_CONTROLLER 0x4
+
+#define PCI_CLASS_MEMORY_CONTROLLER 0x5
+
 #define PCI_CLASS_BRIDGE 0x6
 #define PCI_SUBCLASS_PCI_TO_PCI_BRIDGE 0x4 
+
+#define PCI_CLASS_SIMPLE_COM_CONTROLLER 0x7
+
+#define PCI_CLASS_BASE_SYSTEM_PERIPHERAL 0x8
+
 #include <stdint.h>
 
 typedef struct pci_device {
@@ -21,6 +38,8 @@ typedef struct pci_device {
     uint8_t subclass;
     uint8_t header_type;
 } pci_device_t;
+
+extern pci_device_t* pci_head;
 
 /**
  * pci_config_read_word:
