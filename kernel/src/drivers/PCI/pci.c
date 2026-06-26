@@ -29,6 +29,15 @@ void pci_config_write_dword(uint8_t bus, uint8_t dev, uint8_t func, uint8_t offs
     outl(PCI_CONFIG_DATA,config);
 }
 
+uint16_t pci_dev_read_status(pci_device_t* dev){
+    return pci_config_read_word(dev->bus,dev->dev,dev->func,0x6);
+}
+
+void pci_dev_write_command(pci_device_t* dev,uint16_t data){
+    uint16_t status = pci_dev_read_status(dev); // status is top half of dword starting at command
+    uint32_t config = ((uint32_t)status << 16) | data;
+    pci_config_write_dword(dev->bus,dev->dev,dev->func,0x4,config);  
+}
 
 uint16_t get_vendor_id(uint8_t bus, uint8_t dev, uint8_t func){
     return pci_config_read_word(bus,dev,func,0x0);

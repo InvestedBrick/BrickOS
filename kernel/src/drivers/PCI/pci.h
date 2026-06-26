@@ -3,6 +3,7 @@
 
 #define PCI_CONFIG_ADDRESS 0xcf8
 #define PCI_CONFIG_DATA 0xcfc 
+#define PCI_INTEL_VENDOR_ID 0x8086
 #define PCI_DEV_DOESNT_EXIST_VENDOR_ID 0xffff
 #define PCI_HEADER_FLAG_MF (1 << 0x7)
 
@@ -65,4 +66,20 @@ uint16_t pci_config_read_word(uint8_t bus, uint8_t dev, uint8_t func, uint8_t of
 void pci_config_write_dword(uint8_t bus, uint8_t dev, uint8_t func, uint8_t offset,uint32_t config);
 
 void pci_check_all_busses();
+
+/**
+ * pci_dev_read_status:
+ * Reads and returns the status register of a given PCI device
+ * @param dev The device
+ * @return the status register content
+ */
+uint16_t pci_dev_read_status(pci_device_t* dev);
+
+/**
+ * pci_dev_write_command:
+ * Writes to the command register of a given PCI device
+ * @param dev The device
+ * @param data The data to write
+ */
+void pci_dev_write_command(pci_device_t* dev,uint16_t data);
 #endif
