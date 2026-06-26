@@ -12,7 +12,7 @@ typedef struct {
 #define N_REGISTERED_DRIVERS 1
 
 ethernet_driver_t registered_drivers[N_REGISTERED_DRIVERS] = {
-    {.dev_id = 0x100e,.vendor_id = PCI_INTEL_VENDOR_ID,.init_driver = init_82540EM_driver}
+    {.dev_id = NETW_DEV_ID_82540EM,.vendor_id = PCI_INTEL_VENDOR_ID,.init_driver = init_82540EM_driver}
 };
 
 void setup_network_driver(){
