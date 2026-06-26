@@ -6,7 +6,7 @@
 typedef struct {
     uint16_t vendor_id;
     uint16_t dev_id;
-    void (*init_driver) ();
+    void (*init_driver) (pci_device_t*);
 }ethernet_driver_t;
 
 #define N_REGISTERED_DRIVERS 1
@@ -24,7 +24,7 @@ void setup_network_driver(){
             for (uint32_t i = 0; i < N_REGISTERED_DRIVERS;i++){
                 ethernet_driver_t driver = registered_drivers[i];
                 if (driver.dev_id == dev->device_id && driver.vendor_id == dev->vendor_id){
-                    driver.init_driver();
+                    driver.init_driver(dev);
                     found = true;
                     break;
                 }
