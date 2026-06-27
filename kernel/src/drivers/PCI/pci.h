@@ -48,11 +48,23 @@ extern pci_device_t* pci_head;
  * @param bus The bus
  * @param dev The device slot
  * @param func The device function
- * @param offset The offset into the configuration space
+ * @param offset The offset into the configuration space (must be 2 byte aligned)
  * 
  * @return The read word
  */
 uint16_t pci_config_read_word(uint8_t bus, uint8_t dev, uint8_t func, uint8_t offset);
+
+/**
+ * pci_config_read_dword:
+ * reads a dword from the configuration space of a pci device at a specified offset
+ * @param bus The bus
+ * @param dev The device slot
+ * @param func The device function
+ * @param offset The offset into the configuration space (must be 2 byte aligned)
+ * 
+ * @return The read dword
+ */
+uint32_t pci_config_read_dword(uint8_t bus, uint8_t dev, uint8_t func, uint8_t offset);
 
 /**
  * pci_config_write_dword:
@@ -82,4 +94,16 @@ uint16_t pci_dev_read_status(pci_device_t* dev);
  * @param data The data to write
  */
 void pci_dev_write_command(pci_device_t* dev,uint16_t data);
+
+
+/**
+ * pci_get_base_addr_reg_space:
+ * Returns the size of a MMIO address space defined by a given BAR
+ * @param bus The bus
+ * @param dev The device slot
+ * @param func The device function
+ * @param bar The Base Address Register ( 0 => BAR0, ...)
+ * @return The size of the address space in bytes
+ */
+uint32_t pci_get_base_addr_reg_space(uint8_t bus, uint8_t dev, uint8_t func, uint8_t bar);
 #endif
