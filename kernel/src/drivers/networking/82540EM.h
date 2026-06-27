@@ -9,8 +9,6 @@ typedef struct{
     uint64_t flash_base_addr;
     uint64_t io_reg_base_addr;
 
-    uint8_t reg_base_addr_size; // 32 or 64
-    uint8_t flash_base_addr_size; //  
 }i82540em_t;
 #define DEV_REG_CTRL_8254x      0x00000
 #define DEV_REG_STATUS_8254x    0x00008
