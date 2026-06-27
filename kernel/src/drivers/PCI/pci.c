@@ -6,7 +6,8 @@
 pci_device_t* pci_head = nullptr;
 void check_device(uint8_t bus, uint8_t dev);
 
-uint16_t pci_config_read_word(uint8_t bus, uint8_t dev, uint8_t func, uint8_t offset){
+
+uint32_t pci_config_read_dword(uint8_t bus, uint8_t dev, uint8_t func, uint8_t offset){
     uint32_t lbus  = (uint32_t)bus;
     uint32_t ldev = (uint32_t)dev;
     uint32_t lfunc = (uint32_t)func;
@@ -16,9 +17,17 @@ uint16_t pci_config_read_word(uint8_t bus, uint8_t dev, uint8_t func, uint8_t of
                                       (uint32_t)(1 << 31) );
     outl(PCI_CONFIG_ADDRESS,config_addr);
 
-    uint16_t data = (uint16_t)((inl(PCI_CONFIG_DATA) >> ((offset & 0x2) ? 16 : 0)) & 0xffff);
+    uint32_t data = inl(PCI_CONFIG_DATA);
 
     return data;
+}
+
+uint16_t pci_config_read_word(uint8_t bus, uint8_t dev, uint8_t func, uint8_t offset){
+    
+    uint32_t data32 = pci_config_read_dword(bus,dev,func,offset);
+    uint16_t data16 = (uint16_t)((data32 >> ((offset & 0x2) ? 16 : 0)) & 0xffff);
+
+    return data16;
 }
 
 void pci_config_write_dword(uint8_t bus, uint8_t dev, uint8_t func, uint8_t offset,uint32_t config){
@@ -127,4 +136,11 @@ void pci_check_all_busses(){
             check_bus(bus);
         }
     }
+}
+
+uint32_t pci_get_base_addr_reg_space(uint8_t bus, uint8_t dev, uint8_t func, uint8_t bar){
+    pci_config_write_dword(bus,dev,func,0x10 + bar * 0x4,0xffffffff);
+    uint32_t readback = pci_config_read_dword(bus,dev,func,0x10 + bar * 0x4);
+
+    return  ~(readback & 0xfffffff0) + 1;
 }
