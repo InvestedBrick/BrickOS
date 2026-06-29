@@ -139,8 +139,12 @@ void pci_check_all_busses(){
 }
 
 uint32_t pci_get_base_addr_reg_space(uint8_t bus, uint8_t dev, uint8_t func, uint8_t bar){
+   uint32_t initial = pci_config_read_dword(bus,dev,func,0x10 + bar * 0x4);
+
     pci_config_write_dword(bus,dev,func,0x10 + bar * 0x4,0xffffffff);
     uint32_t readback = pci_config_read_dword(bus,dev,func,0x10 + bar * 0x4);
 
+
+    pci_config_write_dword(bus,dev,func,0x10 + bar * 0x4,initial);
     return  ~(readback & 0xfffffff0) + 1;
 }
