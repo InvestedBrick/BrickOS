@@ -10,33 +10,50 @@ typedef struct{
     uint64_t io_reg_base_addr;
 
 }i82540em_t;
-#define DEV_REG_CTRL_8254x      0x00000
-#define DEV_REG_STATUS_8254x    0x00008
-#define DEV_REG_EECD_8254x      0x00010
-#define DEV_REG_EERD_8254x      0x00014
+#define I8254x_REG_CTRL      0x00000
+#define I8254x_REG_STATUS    0x00008
+#define I8254x_REG_EECD      0x00010
+#define I8254x_REG_EERD      0x00014
 
-#define DEV_REG_ICR_8254x       0x000C0
-#define DEV_REG_IMS_8254x       0x000D0
+#define I8254x_REG_ICR       0x000C0
+#define I8254x_REG_IMS       0x000D0
 
-#define DEV_REG_RCTL_8254x      0x00100
+#define I8254x_REG_RCTL      0x00100
 
-#define DEV_REG_RDBAL_8254x     0x02800
-#define DEV_REG_RDBAH_8254x     0x02804
-#define DEV_REG_RDLEN_8254x     0x02808
-#define DEV_REG_RDH_8254x       0x02810
-#define DEV_REG_RDT_8254x       0x02818
+#define I8254x_REG_RDBAL     0x02800
+#define I8254x_REG_RDBAH     0x02804
+#define I8254x_REG_RDLEN     0x02808
+#define I8254x_REG_RDH       0x02810
+#define I8254x_REG_RDT       0x02818
 
-#define DEV_REG_TCTL_8254x      0x00400
+#define I8254x_REG_TCTL      0x00400
 
-#define DEV_REG_TDBAL_8254x     0x03800
-#define DEV_REG_TDBAH_8254x     0x03804
-#define DEV_REG_TDLEN_8254x     0x03808
-#define DEV_REG_TDH_8254x       0x03810
-#define DEV_REG_TDT_8254x       0x03818
+#define I8254x_REG_TDBAL     0x03800
+#define I8254x_REG_TDBAH     0x03804
+#define I8254x_REG_TDLEN     0x03808
+#define I8254x_REG_TDH       0x03810
+#define I8254x_REG_TDT       0x03818
+
+#define I8254x_EERD_START (1 << 0)
+#define I8254x_EERD_DONE (1 << 4)
+
+
+#define I8254x_EECD_SK (1 << 0)
+#define I8254x_EECD_CS (1 << 1)
+#define I8254x_EECD_DI (1 << 2)
+#define I8254x_EECD_DO (1 << 3)
+
+#define I8254x_EECD_EE_PRES (1 << 8)
+#define I8254x_EECD_EE_REQ  (1 << 6)
+#define I8254x_EECD_EE_GNT (1 << 7)
+
+#define I8254x_CTRL_RESET (1 << 26)
+#define I8254x_CTRL_ASDE  (1 << 5)
+#define I8254x_CTRL_SLU   (1 << 6)
 
 /* Receive Address Registers (8-byte stride) */
-#define DEV_REG_RAL_8254x(n)    (0x05400 + ((n) * 8))
-#define DEV_REG_RAH_8254x(n)    (0x05404 + ((n) * 8))
+#define I8254x_REG_RAL(n)    (0x05400 + ((n) * 8))
+#define I8254x_REG_RAH(n)    (0x05404 + ((n) * 8))
 
 void init_82540EM_driver(pci_device_t* dev);
 #endif
