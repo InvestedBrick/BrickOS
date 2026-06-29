@@ -268,8 +268,7 @@ void page_fault_handler(user_process_t* p,uint64_t fault_addr,interrupt_stack_fr
 
 void interrupt_handler(interrupt_stack_frame_t* stack_frame) {
     
-    write_apic_register(APIC_REG_EOI,0x0);
-
+    
     interrupt_handler_t* head = int_head;
     while (head && head->int_num != stack_frame->interrupt_number) head = head->next;
     if (!head) {
@@ -277,7 +276,8 @@ void interrupt_handler(interrupt_stack_frame_t* stack_frame) {
         return;
     }
     head->handler(head->special_arg ? head->special_arg : stack_frame);
-
+    
+    write_apic_register(APIC_REG_EOI,0x0);
 }
 
 void init_idt(){
