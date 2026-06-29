@@ -149,6 +149,22 @@ void i82540em_reset(i82540em_t* nic, uint8_t* mac_addr){
 
 }
 
+void log_MAC(uint8_t* mac_addr){
+    unsigned char* mac_str = (unsigned char*)kmalloc(18);
+    mac_str[17] = 0;
+    char* hex = "0123456789abcdef";
+    for (uint32_t i = 0; i < 6;i++){
+        uint8_t byte = mac_addr[i];
+        mac_str[i * 3] = hex[byte / 16];
+        mac_str[i * 3 + 1] = hex[byte % 16];
+        if (i < 5)
+            mac_str[i * 3 + 2] = ':';
+    }
+
+    logf("MAC ADDR: %s",mac_str);
+    kfree(mac_str);
+}
+
 void init_82540EM_driver(pci_device_t* dev){
     log("FOUND THE 82540EM");
     i82540em = (i82540em_t*)kmalloc(sizeof(i82540em_t));
@@ -168,20 +184,18 @@ void init_82540EM_driver(pci_device_t* dev){
     uint8_t mac_addr[6] = {0};
     i82540em_enable_eeprom(i82540em);
     i82540em_reset(i82540em,mac_addr);
+
+    log_MAC(mac_addr);
     
-    unsigned char* mac_str = (unsigned char*)kmalloc(18);
-    mac_str[17] = 0;
-    char* hex = "0123456789abcdef";
-    for (uint32_t i = 0; i < 6;i++){
-        uint8_t byte = mac_addr[i];
-        mac_str[i * 3] = hex[byte / 16];
-        mac_str[i * 3 + 1] = hex[byte % 16];
-        if (i < 5)
-            mac_str[i * 3 + 2] = ':';
+    //NOTE: Qemu does not seem to support emulating flash memory and just moves the I/O base addr up
+    uint32_t bar = pci_config_read_dword(dev->bus,dev->dev,dev->func,curr_config_off);
+    if (bar & 0x1){
+        i82540em->io_reg_base_addr = bar & ~0x1;
     }
 
-    logf("MAC ADDR: %s",mac_str);
-    
-    i82540em->flash_base_addr = map_82540em_BAR_memory_space(i82540em,&curr_config_off);
+    uint16_t int_stuff = pci_config_read_word(dev->bus,dev->dev,dev->func,0x3c);
+    uint8_t int_line = (uint8_t)(int_stuff & 0xff);
+    uint8_t int_pin = (uint8_t)((int_stuff >> 8) & 0xff);
+    logf("int line: %x, int pin: %x",int_line,int_pin);
 
 }
