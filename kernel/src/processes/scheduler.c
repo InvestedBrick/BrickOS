@@ -11,6 +11,7 @@
 #include "../kernel_header.h"
 #include "../utilities/vector.h"
 #include <stdbool.h>
+#include "../ACPI/acpi.h"
 
 thread_t* t_queue;
 thread_t* current_thread;
@@ -153,6 +154,8 @@ void switch_task(interrupt_stack_frame_t* regs){
         set_kernel_stack(current_thread->owner_proc->kernel_stack_top);
         mem_set_current_pml4_table(current_thread->owner_proc->pml4);
     }
+    // send EOI since we cant return to interrupt_handler
+    write_apic_register(APIC_REG_EOI,0x0); 
 
     if (current_thread->exec_state == EXEC_STATE_FINALIZED){
         current_thread->exec_state = EXEC_STATE_RUNNING;
