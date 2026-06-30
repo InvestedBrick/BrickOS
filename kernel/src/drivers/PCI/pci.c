@@ -43,8 +43,8 @@ uint16_t pci_dev_read_status(pci_device_t* dev){
 }
 
 void pci_dev_write_command(pci_device_t* dev,uint16_t data){
-    uint16_t status = pci_dev_read_status(dev); // status is top half of dword starting at command
-    uint32_t config = ((uint32_t)status << 16) | data;
+    uint32_t config = pci_config_read_dword(dev->bus,dev->dev,dev->func,0x4);
+    config = (config & 0xffff0000) | data; 
     pci_config_write_dword(dev->bus,dev->dev,dev->func,0x4,config);  
 }
 
