@@ -1,10 +1,51 @@
 #include "apic.h"
 
+#include <uacpi/acpi.h>
+#include <uacpi/tables.h>
+#include <uacpi/event.h>
+#include <uacpi/utilities.h>
+#include "../utilities/util.h"
+#include "../memory/memory.h"
+#include "../memory/kmalloc.h"
+#include "../tables/interrupts.h"
+#include "../io/log.h"
+
 
 vector_t ioapics;
 vector_t int_src_overrides;
 apic_data_t lapic_data;
 bool found_lapic = false;
+
+void write_ioapic_register(uintptr_t ioapic_base,uint8_t offset, uint32_t val){
+    // select register via IOREGSEL
+    *(volatile uint32_t*)(ioapic_base) = offset;
+    // write to IOWIN
+    *(volatile uint32_t*)(ioapic_base + 0x10) = val;
+}
+
+uint32_t read_ioapic_register(uintptr_t ioapic_base,uint8_t offset){
+    *(volatile uint32_t*)(ioapic_base) = offset;
+
+    return *(volatile uint32_t*)(ioapic_base + 0x10);
+}
+
+void write_apic_register(uint32_t offset, uint32_t value){
+    *(volatile uint32_t*)(lapic_data.apic_virt_base + offset) = value;
+}
+
+uint32_t read_apic_register(uint32_t offset){
+    return *(volatile uint32_t*)(lapic_data.apic_virt_base + offset);
+}
+uint8_t ioapic_get_redir_entry_cnt(uintptr_t apic_base){
+    return (read_ioapic_register(apic_base,IOAPICVER) >> 16) + 1;
+}
+
+void dump_ioapic_info(uintptr_t apic_base){
+    uint8_t apicid = (read_ioapic_register(apic_base,IOAPICID) >> 24) & 0xf;
+    logf("IO APIC Id: %d",apicid);
+    uint8_t redir_entry_cnt = ioapic_get_redir_entry_cnt(apic_base);
+    logf("This IO APIC supports up to %d redirections",redir_entry_cnt);
+}
 
 uacpi_iteration_decision madt_callback(void* user, struct acpi_entry_hdr* hdr){
 
@@ -44,16 +85,6 @@ uacpi_iteration_decision madt_callback(void* user, struct acpi_entry_hdr* hdr){
     }
     
     return UACPI_ITERATION_DECISION_CONTINUE;
-}
-
-uint8_t ioapic_get_redir_entry_cnt(uintptr_t apic_base){
-    return (read_ioapic_register(apic_base,IOAPICVER) >> 16) + 1;
-}
-void dump_ioapic_info(uintptr_t apic_base){
-    uint8_t apicid = (read_ioapic_register(apic_base,IOAPICID) >> 24) & 0xf;
-    logf("IO APIC Id: %d",apicid);
-    uint8_t redir_entry_cnt = ioapic_get_redir_entry_cnt(apic_base);
-    logf("This IO APIC supports up to %d redirections",redir_entry_cnt);
 }
 
 struct acpi_madt_interrupt_source_override* find_int_src_override(uint8_t irq){
@@ -96,26 +127,6 @@ void discover_ioapics(){
     uacpi_table_unref(&tbl);
 }
 
-void write_ioapic_register(uintptr_t ioapic_base,uint8_t offset, uint32_t val){
-    // select register via IOREGSEL
-    *(volatile uint32_t*)(ioapic_base) = offset;
-    // write to IOWIN
-    *(volatile uint32_t*)(ioapic_base + 0x10) = val;
-}
-
-uint32_t read_ioapic_register(uintptr_t ioapic_base,uint8_t offset){
-    *(volatile uint32_t*)(ioapic_base) = offset;
-
-    return *(volatile uint32_t*)(ioapic_base + 0x10);
-}
-
-void write_apic_register(uint32_t offset, uint32_t value){
-    *(volatile uint32_t*)(lapic_data.apic_virt_base + offset) = value;
-}
-
-uint32_t read_apic_register(uint32_t offset){
-    return *(volatile uint32_t*)(lapic_data.apic_virt_base + offset);
-}
 
 uint8_t ioapic_redirect_irq(uint32_t irq){
     struct acpi_madt_ioapic* ioapic = find_responsible_ioapic(irq);

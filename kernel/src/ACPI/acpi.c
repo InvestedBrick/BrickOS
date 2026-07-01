@@ -6,9 +6,6 @@
 #include "acpi.h"
 #include "../io/log.h"
 #include "../utilities/vector.h"
-#include "../memory/memory.h"
-#include "../memory/kmalloc.h"
-#include "../utilities/util.h"
 #include "../tables/interrupts.h"
 #include "apic.h"
 

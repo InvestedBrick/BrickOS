@@ -2,13 +2,6 @@
 #define INCLUDE_APIC_H
 
 #include <stdint.h>
-#include <uacpi/acpi.h>
-#include <uacpi/tables.h>
-#include <uacpi/event.h>
-#include <uacpi/utilities.h>
-#include "../utilities/util.h"
-#include "../memory/memory.h"
-#include "../tables/interrupts.h"
 
 #define IA32_APIC_BASE_MSR 0x1B
 #define IA32_APIC_BASE_MSR_BSP 0x100 // Processor is a BSP
@@ -34,4 +27,7 @@ typedef struct {
  * Discoveres the IO APICs and sets up the LAPIC
  */
 void initialize_apics();
+
+void write_msr(uint32_t msr,uint32_t low, uint32_t high);
+void read_msr(uint32_t msr,uint32_t* low, uint32_t* high);
 #endif

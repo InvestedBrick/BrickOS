@@ -62,7 +62,4 @@ uint8_t ioapic_redirect_irq(uint32_t irq);
  */
 void acpi_shutdown();
 
-void write_msr(uint32_t msr,uint32_t low, uint32_t high);
-void read_msr(uint32_t msr,uint32_t* low, uint32_t* high);
-
 #endif
