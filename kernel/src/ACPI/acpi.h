@@ -2,25 +2,9 @@
 #ifndef INCLUDE_ACPI_H
 #define INCLUDE_ACPI_H
 
-#define IA32_APIC_BASE_MSR 0x1B
-#define IA32_APIC_BASE_MSR_BSP 0x100 // Processor is a BSP
-#define IA32_APIC_BASE_MSR_ENABLE 0x800
-
-
-#define APIC_REG_SPURIOUS_INT_VEC 0xf0
-#define APIC_REG_EOI 0xb0
-
-#define IOAPICID 0
-#define IOAPICVER 1
-#define IOAPICARB 2
-#define IOREDTBL(n) (0x10 + n * 2)
 #include <stdint.h>
 
-typedef struct {
-    void* apic_virt_base;
-    uint8_t acpi_processor_id;
-    uint8_t apic_id;
-}apic_data_t;
+
 
 /**
  * write_ioapic_register:
@@ -71,6 +55,12 @@ void init_acpi();
  * @return The interrupt vector that the IRQ was redirected to, or 0 if the redirection failed
  */
 uint8_t ioapic_redirect_irq(uint32_t irq);
+
+/**
+ * acpi_shutdown:
+ * Tries to power down the system using the ACPI
+ */
+void acpi_shutdown();
 
 void write_msr(uint32_t msr,uint32_t low, uint32_t high);
 void read_msr(uint32_t msr,uint32_t* low, uint32_t* high);
