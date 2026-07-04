@@ -4,15 +4,15 @@
 #include "../../utilities/util.h"
 #include "../../memory/kmalloc.h"
 pci_device_t* pci_head = nullptr;
-void check_device(uint8_t bus, uint8_t dev);
+void check_device(uint8_t bus, uint8_t slot);
 
 
-uint32_t pci_config_read_dword(uint8_t bus, uint8_t dev, uint8_t func, uint8_t offset){
+uint32_t pci_config_read_dword(uint8_t bus, uint8_t slot, uint8_t func, uint8_t offset){
     uint32_t lbus  = (uint32_t)bus;
-    uint32_t ldev = (uint32_t)dev;
+    uint32_t lslot = (uint32_t)slot;
     uint32_t lfunc = (uint32_t)func;
     
-    uint32_t config_addr = (uint32_t)((lbus << 16) | (ldev << 11)  |
+    uint32_t config_addr = (uint32_t)((lbus << 16) | (lslot << 11)  |
                                       (lfunc << 8) | (offset & 0xfc) |
                                       (uint32_t)(1 << 31) );
     outl(PCI_CONFIG_ADDRESS,config_addr);
@@ -22,16 +22,16 @@ uint32_t pci_config_read_dword(uint8_t bus, uint8_t dev, uint8_t func, uint8_t o
     return data;
 }
 
-uint16_t pci_config_read_word(uint8_t bus, uint8_t dev, uint8_t func, uint8_t offset){
+uint16_t pci_config_read_word(uint8_t bus, uint8_t slot, uint8_t func, uint8_t offset){
     
-    uint32_t data32 = pci_config_read_dword(bus,dev,func,offset);
+    uint32_t data32 = pci_config_read_dword(bus,slot,func,offset);
     uint16_t data16 = (uint16_t)((data32 >> ((offset & 0x2) ? 16 : 0)) & 0xffff);
 
     return data16;
 }
 
-void pci_config_write_dword(uint8_t bus, uint8_t dev, uint8_t func, uint8_t offset,uint32_t config){
-    uint32_t config_addr = (uint32_t)((bus << 16) | (dev << 11)  |
+void pci_config_write_dword(uint8_t bus, uint8_t slot, uint8_t func, uint8_t offset,uint32_t config){
+    uint32_t config_addr = (uint32_t)((bus << 16) | (slot << 11)  |
                                       (func << 8) | (offset & 0xfc) |
                                       (uint32_t)(1 << 31) );
     outl(PCI_CONFIG_ADDRESS,config_addr);
@@ -39,13 +39,13 @@ void pci_config_write_dword(uint8_t bus, uint8_t dev, uint8_t func, uint8_t offs
 }
 
 uint16_t pci_dev_read_status(pci_device_t* dev){
-    return pci_config_read_word(dev->bus,dev->dev,dev->func,0x6);
+    return pci_config_read_word(dev->bus,dev->slot,dev->func,0x6);
 }
 
 void pci_dev_write_command(pci_device_t* dev,uint16_t data){
-    uint32_t config = pci_config_read_dword(dev->bus,dev->dev,dev->func,0x4);
+    uint32_t config = pci_config_read_dword(dev->bus,dev->slot,dev->func,0x4);
     config = (config & 0xffff0000) | data; 
-    pci_config_write_dword(dev->bus,dev->dev,dev->func,0x4,config);  
+    pci_config_write_dword(dev->bus,dev->slot,dev->func,0x4,config);  
 }
 
 uint16_t get_vendor_id(uint8_t bus, uint8_t dev, uint8_t func){
@@ -67,20 +67,20 @@ uint8_t get_secondary_bus(uint8_t bus, uint8_t dev, uint8_t func){
     return (uint8_t)((pci_config_read_word(bus,dev,func,0x18) >> 0x8) & 0xff);
 }
 
-void add_pci_device(uint8_t bus, uint8_t dev, uint8_t func){
+void add_pci_device(uint8_t bus, uint8_t slot, uint8_t func){
     
     pci_device_t* device = kmalloc(sizeof(pci_device_t));
     device->next = nullptr;
     device->bus = bus;
-    device->dev = dev;
+    device->slot = slot;
     device->func = func;
-    device->device_id = get_device_id(bus,dev,func);
-    device->header_type = get_header_type(bus,dev,func);
-    device->class_code = get_class_code(bus,dev,func);
-    device->subclass = get_subclass(bus,dev,func);
-    device->vendor_id = get_vendor_id(bus,dev,func);
-    logf("Found PCI Device - Bus: %x, Dev: %x, Func: %x, Vendor ID: %x, Device ID: %x, Class: %x, Subclass: %x",
-        bus,dev,func,device->vendor_id,device->device_id,device->class_code,device->subclass);
+    device->device_id = get_device_id(bus,slot,func);
+    device->header_type = get_header_type(bus,slot,func);
+    device->class_code = get_class_code(bus,slot,func);
+    device->subclass = get_subclass(bus,slot,func);
+    device->vendor_id = get_vendor_id(bus,slot,func);
+    logf("Found PCI Device - Bus: %x, Slot : %x, Func: %x, Vendor ID: %x, Device ID: %x, Class: %x, Subclass: %x",
+        bus,slot,func,device->vendor_id,device->device_id,device->class_code,device->subclass);
 
     if (!pci_head) pci_head = device;
     else {
@@ -91,33 +91,33 @@ void add_pci_device(uint8_t bus, uint8_t dev, uint8_t func){
 }
 
 void check_bus(uint8_t bus){
-    for (uint8_t dev = 0; dev < 32; dev++){
-        check_device(bus,dev);
+    for (uint8_t slot = 0; slot < 32; slot++){
+        check_device(bus,slot);
     }
 }
 
-void check_function(uint8_t bus, uint8_t dev, uint8_t func){
-    uint8_t class = get_class_code(bus,dev,func);
-    uint8_t sub_class = get_subclass(bus,dev,func);
+void check_function(uint8_t bus, uint8_t slot, uint8_t func){
+    uint8_t class = get_class_code(bus,slot,func);
+    uint8_t sub_class = get_subclass(bus,slot,func);
     if (class == PCI_CLASS_BRIDGE && sub_class == PCI_SUBCLASS_PCI_TO_PCI_BRIDGE){
-        uint8_t secondary_bus = get_secondary_bus(bus,dev,func);
+        uint8_t secondary_bus = get_secondary_bus(bus,slot,func);
         check_bus(secondary_bus);
     }
 }
 
-void check_device(uint8_t bus, uint8_t dev){
+void check_device(uint8_t bus, uint8_t slot){
     uint8_t function = 0;
-    uint16_t vendor_id = get_vendor_id(bus,dev,function);
+    uint16_t vendor_id = get_vendor_id(bus,slot,function);
     if (vendor_id == PCI_DEV_DOESNT_EXIST_VENDOR_ID) return;
-    check_function(bus,dev,function);
-    add_pci_device(bus,dev,function);
-    uint8_t header_type = get_header_type(bus,dev,function);
+    check_function(bus,slot,function);
+    add_pci_device(bus,slot,function);
+    uint8_t header_type = get_header_type(bus,slot,function);
     if ((header_type & PCI_HEADER_FLAG_MF) != 0){
         //multifunc dev
         for (function = 1; function < 8; function++){
-            if (get_vendor_id(bus,dev,function) != PCI_DEV_DOESNT_EXIST_VENDOR_ID){
-                check_function(bus,dev,function);
-                add_pci_device(bus,dev,function);
+            if (get_vendor_id(bus,slot,function) != PCI_DEV_DOESNT_EXIST_VENDOR_ID){
+                check_function(bus,slot,function);
+                add_pci_device(bus,slot,function);
             }
         }
     }
@@ -138,13 +138,13 @@ void pci_check_all_busses(){
     }
 }
 
-uint32_t pci_get_base_addr_reg_space(uint8_t bus, uint8_t dev, uint8_t func, uint8_t bar){
-   uint32_t initial = pci_config_read_dword(bus,dev,func,0x10 + bar * 0x4);
+uint32_t pci_get_base_addr_reg_space(uint8_t bus, uint8_t slot, uint8_t func, uint8_t bar){
+   uint32_t initial = pci_config_read_dword(bus,slot,func,0x10 + bar * 0x4);
 
-    pci_config_write_dword(bus,dev,func,0x10 + bar * 0x4,0xffffffff);
-    uint32_t readback = pci_config_read_dword(bus,dev,func,0x10 + bar * 0x4);
+    pci_config_write_dword(bus,slot,func,0x10 + bar * 0x4,0xffffffff);
+    uint32_t readback = pci_config_read_dword(bus,slot,func,0x10 + bar * 0x4);
 
 
-    pci_config_write_dword(bus,dev,func,0x10 + bar * 0x4,initial);
+    pci_config_write_dword(bus,slot,func,0x10 + bar * 0x4,initial);
     return  ~(readback & 0xfffffff0) + 1;
 }

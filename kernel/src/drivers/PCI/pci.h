@@ -31,7 +31,7 @@ typedef struct pci_device {
     struct pci_device* next;
 
     uint8_t bus;
-    uint8_t dev;
+    uint8_t slot;
     uint8_t func;
     uint16_t vendor_id;
     uint16_t device_id;
@@ -46,36 +46,36 @@ extern pci_device_t* pci_head;
  * pci_config_read_word:
  * reads a word from the configuration space of a pci device at a specified offset
  * @param bus The bus
- * @param dev The device slot
+ * @param slot The device slot
  * @param func The device function
  * @param offset The offset into the configuration space (must be 2 byte aligned)
  * 
  * @return The read word
  */
-uint16_t pci_config_read_word(uint8_t bus, uint8_t dev, uint8_t func, uint8_t offset);
+uint16_t pci_config_read_word(uint8_t bus, uint8_t slot, uint8_t func, uint8_t offset);
 
 /**
  * pci_config_read_dword:
  * reads a dword from the configuration space of a pci device at a specified offset
  * @param bus The bus
- * @param dev The device slot
+ * @param slot The device slot
  * @param func The device function
  * @param offset The offset into the configuration space (must be 2 byte aligned)
  * 
  * @return The read dword
  */
-uint32_t pci_config_read_dword(uint8_t bus, uint8_t dev, uint8_t func, uint8_t offset);
+uint32_t pci_config_read_dword(uint8_t bus, uint8_t slot, uint8_t func, uint8_t offset);
 
 /**
  * pci_config_write_dword:
  * writes a dword to the configuration space if a pci device at a specified offset
  * @param bus The bus
- * @param dev The device slot
+ * @param slot The device slot
  * @param func The device function
  * @param offset The offset into the configuration space
  * @param config The value to be written
  */
-void pci_config_write_dword(uint8_t bus, uint8_t dev, uint8_t func, uint8_t offset,uint32_t config);
+void pci_config_write_dword(uint8_t bus, uint8_t slot, uint8_t func, uint8_t offset,uint32_t config);
 
 void pci_check_all_busses();
 
@@ -100,10 +100,11 @@ void pci_dev_write_command(pci_device_t* dev,uint16_t data);
  * pci_get_base_addr_reg_space:
  * Returns the size of a MMIO address space defined by a given BAR
  * @param bus The bus
- * @param dev The device slot
+ * @param slot The device slot
  * @param func The device function
  * @param bar The Base Address Register ( 0 => BAR0, ...)
  * @return The size of the address space in bytes
  */
-uint32_t pci_get_base_addr_reg_space(uint8_t bus, uint8_t dev, uint8_t func, uint8_t bar);
+uint32_t pci_get_base_addr_reg_space(uint8_t bus, uint8_t slot, uint8_t func, uint8_t bar);
+
 #endif
