@@ -10,7 +10,7 @@
 #include "../filesystem/file_operations.h"
 #include "../filesystem/filesystem.h"
 #include "../memory/kmalloc.h"
-#include "../ACPI/acpi.h"
+#include "../ACPI/apic.h"
 #include "../drivers/timer/pit.h"
 #include "../kernel_header.h"
 
@@ -301,7 +301,7 @@ void register_basic_interrupts(){
     register_irq(INT_SOFTWARE,handle_software_interrupt);
     register_irq(INT_PAGE_FAULT,page_fault_stub);
 
-    uint8_t timer_irq = ioapic_redirect_irq(0);
+    uint8_t timer_irq = ioapic_redirect_legacy_irq(0);
     register_irq(timer_irq,timer_stub);
     
 }
