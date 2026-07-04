@@ -125,7 +125,7 @@ void init_keyboard(ps2_ports_t port){
     keyboard_map_ALT_GR[57] = ' ';
 
     ps2_port_enable(port);
-    uint8_t irq = ioapic_redirect_irq(1);
+    uint8_t irq = ioapic_redirect_legacy_irq(1);
     register_irq(irq,handle_keyboard_interrupt);
 
     log("Initialized the PS/2 keyboard");

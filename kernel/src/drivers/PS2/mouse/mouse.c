@@ -42,7 +42,7 @@ void init_mouse(ps2_ports_t port){
     if (!(ps2_port_write(port,MOUSE_SAMPLE_RATE) && ps2_port_read(1) == ACK)) error("Failed to set mouse sample rate");
     if (!(ps2_port_write(port,PORT_ENABLE_DATA_REPORT) && ps2_port_read(1) == ACK)) error("Failed to enable mouse data reporting");
 
-    uint8_t irq = ioapic_redirect_irq(12);
+    uint8_t irq = ioapic_redirect_legacy_irq(12);
     register_irq(irq,handle_mouse_interrupt);
     log("Initialized the PS/2 mouse");
 }
