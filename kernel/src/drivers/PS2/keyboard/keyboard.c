@@ -4,7 +4,7 @@
 #include "../../../filesystem/vfs/vfs.h"
 #include "../ps2_controller.h"
 #include "../../../tables/interrupts.h"
-#include "../../../ACPI/acpi.h"
+#include "../../../ACPI/apic.h"
 uint8_t read_scan_code(){
     return ps2_port_read(1); 
 }

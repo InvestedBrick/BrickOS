@@ -3,7 +3,7 @@
 #include "../../../io/io.h"
 #include "../../../io/log.h"
 #include "../../../tables/interrupts.h"
-#include "../../../ACPI/acpi.h"
+#include "../../../ACPI/apic.h"
 #include "../../../filesystem/vfs/vfs.h"
 #include "../../../filesystem/devices/device_defines.h"
 #include <stdint.h>

@@ -5,43 +5,6 @@
 #include <stdint.h>
 
 
-
-/**
- * write_ioapic_register:
- * Writes a 32 bit value to an IO APIC register
- * @param apic_base The base address of the IO APIC
- * @param offset The register offset to write to
- * @param val The value to write
- */
-void write_ioapic_register(uintptr_t apic_base,uint8_t offset, uint32_t val);
-
-/**
- * read_ioapic_register:
- * Reads a 32 bit value from an IO APIC register
- * @param apic_base The base address of the IO APIC
- * @param offset The register offset to read from
- * 
- * @return The value read from the register
- */
-uint32_t read_ioapic_register(uintptr_t apic_base,uint8_t offset);
-
-/**
- * write_apic_register:
- * Writes a 32 bit value to an APIC register
- * @param offset The register offset to write to
- * @param value The value to write
- */
-void write_apic_register(uint32_t offset, uint32_t value);
-
-/**
- * read_apic_register:
- * Reads a 32 bit value from an APIC register
- * @param offset The register offset to read from
- * 
- * @return The value read from the register
- */
-uint32_t read_apic_register(uint32_t offset);
-
 /**
  * init_acpi:
  * Initializes ACPI and the APIC system

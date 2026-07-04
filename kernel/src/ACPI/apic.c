@@ -129,7 +129,7 @@ void discover_ioapics(){
     uacpi_table_unref(&tbl);
 }
 
-uacpi_iteration_callback aml_root_bridge_callback(void* user, uacpi_namespace_node* node, uint32_t max_depth){
+uacpi_iteration_decision aml_root_bridge_callback(void* user, uacpi_namespace_node* node, uint32_t max_depth){
     
     uint64_t* data = (uint64_t*)user;
     uint64_t curr_bus = 0;
