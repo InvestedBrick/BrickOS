@@ -50,6 +50,7 @@ typedef struct{
 #define I8254x_CTRL_RESET (1 << 26)
 #define I8254x_CTRL_ASDE  (1 << 5)
 #define I8254x_CTRL_SLU   (1 << 6)
+#define I8254x_CTRL_VME   (1 << 30)
 
 /* Receive Address Registers (8-byte stride) */
 #define I8254x_REG_RAL(n)    (0x05400 + ((n) * 8))

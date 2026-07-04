@@ -6,6 +6,11 @@
 #include "../../utilities/util.h"
 #include "../PCI/pci.h"
 #include "../../tables/syscalls.h"
+#include "../../ACPI/acpi.h"
+#include "../../ACPI/apic.h"
+#include <uacpi/uacpi.h>
+#include <uacpi/utilities.h>
+
 i82540em_t* i82540em = nullptr;
 
 void i82540em_mmio_reg_write(i82540em_t* nic, uint16_t reg,uint32_t val){
@@ -28,7 +33,7 @@ uint32_t i82540em_io_reg_read(i82540em_t* nic, uint16_t reg){
 
 uint64_t map_82540em_BAR_memory_space(i82540em_t* nic, uint16_t* config_off){
     pci_device_t* dev = nic->dev;
-    uint32_t bar = pci_config_read_dword(dev->bus,dev->dev,dev->func,*config_off);
+    uint32_t bar = pci_config_read_dword(dev->bus,dev->slot,dev->func,*config_off);
     logf("Bar: %x",bar);
     uint8_t bar_idx = (*config_off - 0x10) / 0x4;
     
@@ -42,13 +47,13 @@ uint64_t map_82540em_BAR_memory_space(i82540em_t* nic, uint16_t* config_off){
     uint64_t phys_base_addr = bar & 0xfffffff0;
     if (is64){
         logf("64 BIT ALERT");
-        uint32_t bar0_high = pci_config_read_dword(dev->bus,dev->dev,dev->func,*config_off);
+        uint32_t bar0_high = pci_config_read_dword(dev->bus,dev->slot,dev->func,*config_off);
         *config_off += 4;
 
         phys_base_addr |= ((uint64_t)bar0_high << 32); 
     }
 
-    uint32_t size = pci_get_base_addr_reg_space(dev->bus,dev->dev,dev->func,bar_idx);
+    uint32_t size = pci_get_base_addr_reg_space(dev->bus,dev->slot,dev->func,bar_idx);
     
     //offset map into higher half
     uint32_t n_pages = size / MEMORY_PAGE_SIZE;
@@ -127,7 +132,7 @@ void i82540em_reset(i82540em_t* nic, uint8_t* mac_addr){
     
     ctrl = i82540em_mmio_reg_read(nic,I8254x_REG_CTRL);
     ctrl |= I8254x_CTRL_ASDE | I8254x_CTRL_SLU; // auto speed detection and set Link Up
-
+    ctrl &= ~I8254x_CTRL_VME;
     i82540em_mmio_reg_write(nic,I8254x_REG_CTRL,ctrl);
 
     uint16_t b0 = i82540em_eeprom_read(nic,0);
@@ -165,12 +170,16 @@ void log_MAC(uint8_t* mac_addr){
     kfree(mac_str);
 }
 
+void i82540em_interrupt_handler(interrupt_stack_frame_t* frame){
+
+}
+
 void init_82540EM_driver(pci_device_t* dev){
     log("FOUND THE 82540EM");
     i82540em = (i82540em_t*)kmalloc(sizeof(i82540em_t));
     i82540em->dev = dev;
 
-    uint16_t cmd = pci_config_read_word(dev->bus,dev->dev,dev->func,0x4);
+    uint16_t cmd = pci_config_read_word(dev->bus,dev->slot,dev->func,0x4);
     cmd |= 0x7; // enable I/O, memspace and bus master
     pci_dev_write_command(dev,cmd);
 
@@ -188,14 +197,12 @@ void init_82540EM_driver(pci_device_t* dev){
     log_MAC(mac_addr);
     
     //NOTE: Qemu does not seem to support emulating flash memory and just moves the I/O base addr up
-    uint32_t bar = pci_config_read_dword(dev->bus,dev->dev,dev->func,curr_config_off);
+    uint32_t bar = pci_config_read_dword(dev->bus,dev->slot,dev->func,curr_config_off);
     if (bar & 0x1){
         i82540em->io_reg_base_addr = bar & ~0x1;
     }
 
-    uint16_t int_stuff = pci_config_read_word(dev->bus,dev->dev,dev->func,0x3c);
-    uint8_t int_line = (uint8_t)(int_stuff & 0xff);
-    uint8_t int_pin = (uint8_t)((int_stuff >> 8) & 0xff);
-    logf("int line: %x, int pin: %x",int_line,int_pin);
-
+    uint8_t int_pin = (pci_config_read_word(dev->bus,dev->slot,dev->func,0x3c) >> 8) & 0xff;
+    uint8_t irq = ioapic_register_pci_irq(dev,int_pin);
+    register_irq(irq,i82540em_interrupt_handler);
 }
