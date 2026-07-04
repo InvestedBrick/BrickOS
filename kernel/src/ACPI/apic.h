@@ -27,6 +27,23 @@ typedef struct {
  * Discoveres the IO APICs and sets up the LAPIC
  */
 void initialize_apics();
+/**
+ * ioapic_register_pci_irq:
+ * Finds out what IRQ the interrupt pin of a PCI device maps to in the IO APIC
+ * @param dev The device
+ * @param int_pin The interrupt pin (from the PCI config space)
+ * @return the IRQ
+ */
+uint8_t ioapic_register_pci_irq(pci_device_t* dev, uint8_t int_pin);
+
+
+/**
+ * ioapic_redirect_legacy_irq:
+ * Redirects a legacy IRQ to the APIC system by finding the responsible IO APIC and setting up the relevant redirection table entry
+ * @param irq The IRQ to redirect
+ * @return The interrupt vector that the IRQ was redirected to, or 0 if the redirection failed
+ */
+uint8_t ioapic_redirect_legacy_irq(uint32_t irq);
 
 void write_msr(uint32_t msr,uint32_t low, uint32_t high);
 void read_msr(uint32_t msr,uint32_t* low, uint32_t* high);
