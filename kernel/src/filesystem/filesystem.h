@@ -20,6 +20,7 @@
  *          101 - 117 => free sector bitmap 
  */
 
+//TODO: dont hardcode this 
 #define TOTAL_SECTORS 524288
 #define BIG_SECTOR_SECTOR_COUNT 512
 #define TOTAL_BIG_SECTORS (TOTAL_SECTORS / BIG_SECTOR_SECTOR_COUNT) //1024

@@ -79,6 +79,7 @@ extern uint64_t addressable_LBA28_sectors;
 
 #define ATA_SECTOR_SIZE 512
 
+extern uint64_t addressable_LBA28_sectors;
 /**
  * init_disk_driver:
  * Initializes the Disk driver
