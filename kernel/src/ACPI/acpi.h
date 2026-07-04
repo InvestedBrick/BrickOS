@@ -49,14 +49,6 @@ uint32_t read_apic_register(uint32_t offset);
 void init_acpi();
 
 /**
- * ioapic_redirect_irq:
- * Redirects an IRQ to the APIC system by finding the responsible IO APIC and setting up the relevant redirection table entry
- * @param irq The IRQ to redirect
- * @return The interrupt vector that the IRQ was redirected to, or 0 if the redirection failed
- */
-uint8_t ioapic_redirect_irq(uint32_t irq);
-
-/**
  * acpi_shutdown:
  * Tries to power down the system using the ACPI
  */
