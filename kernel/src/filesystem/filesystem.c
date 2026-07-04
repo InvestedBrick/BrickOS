@@ -524,18 +524,21 @@ void init_filesystem(){
     root_node->id = FS_ROOT_DIR_ID;
     root_node->type = FS_TYPE_DIR;
     root_node->priv_lvl = PRIV_STD;
+    root_node->perms = FS_FILE_PERM_NONE;
     if(!(last_read_sector[ATA_SECTOR_SIZE - 1] == FS_SECTOR_0_INIT_FLAG)){
         first_time_fs_init = 1;
         memset(root_node->data_sectors,0x0,NUM_DATA_SECTORS_PER_FILE * sizeof(uint32_t)); // no data in the root dir right now
         root_node->size = 0;
+        root_node->indirect_sector = 0;
+        root_node->d_indirect_sector = 0;
         *(uint32_t*)&last_read_sector[0x0] = root_node->id;
         *(uint32_t*)&last_read_sector[sizeof(uint32_t)] = root_node->size;
         last_read_sector[sizeof(uint32_t) * 2] = root_node->type;
-        last_read_sector[sizeof(uint32_t) * 2 + sizeof(uint8_t)] = root_node->priv_lvl;
-        last_read_sector[sizeof(uint32_t) * 2 + sizeof(uint8_t) * 2] = 0;
-        last_read_sector[sizeof(uint32_t) * 2 + sizeof(uint8_t) * 3] = 0;
-        *(uint32_t*)&last_read_sector[sizeof(uint32_t) * 3] = 0; // singly indirect sector
-        *(uint32_t*)&last_read_sector[sizeof(uint32_t) * 4] = 0; // doubly indirect sector
+        last_read_sector[sizeof(uint32_t) * 2 + sizeof(uint8_t)] = root_node->perms;
+        last_read_sector[sizeof(uint32_t) * 2 + sizeof(uint8_t) * 2] = root_node->priv_lvl;
+        last_read_sector[sizeof(uint32_t) * 2 + sizeof(uint8_t) * 3] = 0; // unused flag 3
+        *(uint32_t*)&last_read_sector[sizeof(uint32_t) * 3] = root_node->indirect_sector; 
+        *(uint32_t*)&last_read_sector[sizeof(uint32_t) * 4] = root_node->d_indirect_sector; 
         memset(&last_read_sector[sizeof(uint32_t) * 5],0x0,NUM_DATA_SECTORS_PER_FILE * sizeof(uint32_t));
         last_read_sector[ATA_SECTOR_SIZE - 1] = FS_SECTOR_0_INIT_FLAG;
         write_sectors(ATA_PRIMARY_BUS_IO,1,last_read_sector,0); 
