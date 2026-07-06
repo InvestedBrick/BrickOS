@@ -170,8 +170,167 @@ void log_MAC(uint8_t* mac_addr){
     kfree(mac_str);
 }
 
-void i82540em_interrupt_handler(interrupt_stack_frame_t* frame){
+void netstack_recv_packet(void* data, uint64_t len){
+    kfree(data);
+}
 
+void i8254x_recv_packets(i82540em_t* nic){
+
+    while(nic->rx_ring[nic->rx_next].status & I8254x_RX_STAT_DD){
+        i8254x_rx_descriptor_t* rx_desc = &nic->rx_ring[nic->rx_next];
+        if (!nic->accumulating){
+            nic->start_idx = nic->rx_next;
+            nic->total_size = 0;
+            nic->accumulating = 1;
+        }
+
+        nic->total_size += rx_desc->len;
+        if (rx_desc->status & I8254x_RX_STAT_EOP){
+            void* data_buffer = kmalloc(nic->total_size);
+            uint32_t write_off = 0;
+            uint32_t idx = nic->start_idx;
+            while (1){
+                i8254x_rx_descriptor_t* desc = &nic->rx_ring[idx];
+                uint64_t buff_virt = map_somewhere_rw(desc->buff_addr);
+                memcpy((void*)((uint64_t)data_buffer + write_off),(void*)buff_virt,desc->len);
+                mem_unmap_page(buff_virt);
+                write_off += desc->len;
+                uint8_t status = desc->status;
+                desc->status = 0;
+                idx = (idx + 1) % I8254x_N_RX_DESCRS;
+                if (status & I8254x_RX_STAT_EOP) break;
+            }
+            nic->accumulating = 0;
+            nic->total_size = 0;
+            netstack_recv_packet(data_buffer,write_off);
+        }
+
+        nic->rx_next = (nic->rx_next + 1) % I8254x_N_RX_DESCRS;
+        
+    }
+
+    uint32_t tail = (nic->rx_next == 0) ? I8254x_N_RX_DESCRS - 1 : nic->rx_next - 1;
+    i82540em_mmio_reg_write(nic,I8254x_REG_RDT,tail);
+}
+
+void i8254x_send_packet(i82540em_t* nic, void* data, uint64_t len,bool EOP){
+    uint32_t tx_tail = i82540em_mmio_reg_read(nic,I8254x_REG_TDT);
+    i8254x_tx_descriptor_t* tx_desc = &nic->tx_ring[tx_tail];
+
+    // allocate buffer (cleaned up in int handler)
+    uint64_t buff_phys = pmm_alloc_page_frame();
+    uint64_t buff_virt = map_somewhere_rw(buff_phys);
+    memcpy((void*)buff_virt,data,len);
+    mem_unmap_page(buff_virt);
+    tx_desc->buff_addr = buff_phys;
+    tx_desc->len = len;
+    tx_desc->status = 0;
+
+    tx_desc->cmd = I8254x_TX_CMD_RS;
+    if (EOP) tx_desc->cmd |= I8254x_TX_CMD_EOP | I8254x_TX_CMD_IFCS;
+
+
+    tx_tail = (tx_tail + 1) % I8254x_N_TX_DESCRS;
+    i82540em_mmio_reg_write(nic,I8254x_REG_TDT,tx_tail);
+}
+
+uint64_t i8254x_send(i82540em_t* nic, void* data, uint64_t len){
+    uint64_t sent = 0;
+    while (sent < len){
+        int to_send = min(len - sent, MEMORY_PAGE_SIZE);
+        i8254x_send_packet(nic,(void*)((uint64_t)data + sent),to_send,to_send == (len - sent));
+        sent += to_send;
+    }
+    return sent;
+}
+
+void i8254x_interrupt_handler(interrupt_stack_frame_t* frame){
+    uint32_t icr = i82540em_mmio_reg_read(i82540em,I8254x_REG_ICR);
+    if (icr & I8254x_IMS_RXT0){
+        //packet recieved
+        log("82540EM RX interrupt");
+        i8254x_recv_packets(i82540em);
+    }
+
+    if (icr & I8254x_IMS_LSC){
+        //packet recieved
+        log("82540EM Link Status interrupt");
+        if (i82540em_mmio_reg_read(i82540em,I8254x_REG_STATUS) & I8254x_STATUS_LU){
+            log("Link is up");
+        } else {
+            log("Link is down");
+        }
+    }
+
+    // cleanup TX buffers
+    while (i82540em->tx_cleanup != i82540em_mmio_reg_read(i82540em,I8254x_REG_TDT)){
+        i8254x_tx_descriptor_t* tx_desc = &i82540em->tx_ring[i82540em->tx_cleanup];
+        if (!(tx_desc->status & I8254x_TX_STAT_DD)) break;
+
+        pmm_free_page_frame(tx_desc->buff_addr);
+        tx_desc->status = 0;
+        tx_desc->cmd = 0;
+        i82540em->tx_cleanup = (i82540em->tx_cleanup + 1) % I8254x_N_TX_DESCRS;
+    }
+
+}
+void i82540em_rx_setup(i82540em_t* nic){
+    uint32_t rx_ring_sz = I8254x_N_RX_DESCRS * sizeof(i8254x_rx_descriptor_t);
+    if (rx_ring_sz > MEMORY_PAGE_SIZE) {
+        errorf("RX ring too large; TODO: implement multi-page phys allocator");
+        return;
+    }
+
+    uint64_t rx_ring_phys = pmm_alloc_page_frame();
+    nic->rx_ring = (i8254x_rx_descriptor_t*)map_somewhere_rw(rx_ring_phys);
+    for (uint32_t i = 0; i < I8254x_N_RX_DESCRS;i++){
+        uint64_t buff_phys = pmm_alloc_page_frame();
+        nic->rx_ring[i].buff_addr = buff_phys;
+    }
+
+    i82540em_mmio_reg_write(nic,I8254x_REG_RDBAL,(uint32_t)(rx_ring_phys & 0xffffffff));
+    i82540em_mmio_reg_write(nic,I8254x_REG_RDBAH,(uint32_t)(rx_ring_phys >> 32));
+    i82540em_mmio_reg_write(nic,I8254x_REG_RDLEN,rx_ring_sz);
+    i82540em_mmio_reg_write(nic,I8254x_REG_RDH,0);
+    i82540em_mmio_reg_write(nic,I8254x_REG_RDT,I8254x_N_RX_DESCRS - 1);
+    nic->rx_next = 0;
+    nic->accumulating = 0;
+    nic->total_size = 0;
+    nic->start_idx = 0;
+
+    uint32_t rx_ctrl = I8254x_RCTL_EN | I8254x_RCTL_LPE | I8254x_RCTL_BAM | I8254x_RCTL_BSEX | I8254x_RCTL_BSIZE_4096;
+    i82540em_mmio_reg_write(nic,I8254x_REG_RCTL,rx_ctrl);
+}
+
+void i82540em_tx_setup(i82540em_t* nic){
+    uint32_t tx_ring_sz = I8254x_N_TX_DESCRS * sizeof(i8254x_tx_descriptor_t);
+    if (tx_ring_sz > MEMORY_PAGE_SIZE) {
+        errorf("TX ring too large; TODO: implement multi-page phys allocator");
+        return;
+    }
+    uint64_t tx_ring_phys = pmm_alloc_page_frame();
+    nic->tx_ring = (i8254x_tx_descriptor_t*)map_somewhere_rw(tx_ring_phys);
+
+    i82540em_mmio_reg_write(nic,I8254x_REG_TDBAL,(uint32_t)(tx_ring_phys & 0xffffffff));
+    i82540em_mmio_reg_write(nic,I8254x_REG_TDBAH,(uint32_t)(tx_ring_phys >> 32));
+    i82540em_mmio_reg_write(nic,I8254x_REG_TDLEN,tx_ring_sz);
+    i82540em_mmio_reg_write(nic,I8254x_REG_TDH,0);
+    i82540em_mmio_reg_write(nic,I8254x_REG_TDT,0);
+    nic->tx_cleanup = 0;
+    
+    uint32_t tx_ctrl = I8254x_TCTL_EN |  I8254x_TCTL_PSP;
+    i82540em_mmio_reg_write(nic,I8254x_REG_TCTL,tx_ctrl);
+
+
+}
+
+void i8254x_enable_interrupts(i82540em_t* nic){
+    uint32_t ims = I8254x_IMS_RXT0 | I8254x_IMS_RXO | I8254x_IMS_LSC;
+    i82540em_mmio_reg_write(nic,I8254x_REG_IMS,ims);
+}
+
+void i8254x_disable_interrupts(i82540em_t* nic){
+    i82540em_mmio_reg_write(nic,I8254x_REG_IMS,0);
 }
 
 void init_82540EM_driver(pci_device_t* dev){
@@ -202,7 +361,10 @@ void init_82540EM_driver(pci_device_t* dev){
         i82540em->io_reg_base_addr = bar & ~0x1;
     }
 
+    i82540em_tx_setup(i82540em);
+    i82540em_rx_setup(i82540em);
+
     uint8_t int_pin = (pci_config_read_word(dev->bus,dev->slot,dev->func,0x3c) >> 8) & 0xff;
     uint8_t irq = ioapic_register_pci_irq(dev,int_pin);
-    register_irq(irq,i82540em_interrupt_handler);
+    register_irq(irq,i8254x_interrupt_handler);
 }
