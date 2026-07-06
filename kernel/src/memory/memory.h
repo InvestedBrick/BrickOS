@@ -10,10 +10,13 @@
 #define N_PML4_TABLES 256 
 #define MEMORY_PAGE_SIZE 0x1000
 
-#define HHDM                     (limine_data.hhdm) 
-#define KERNEL_MALLOC_START      (HHDM + 0xd0000000) 
-#define KERNEL_MALLOC_END        (HHDM + 0xf0000000) 
-#define TEMP_KERNEL_COPY_ADDR    (KERNEL_MALLOC_END + MEMORY_PAGE_SIZE)
+#define HHDM                      (limine_data.hhdm) 
+#define KERNEL_MALLOC_START       (HHDM + 0xd0000000) 
+#define KERNEL_MALLOC_END         (HHDM + 0xf0000000) 
+#define TEMP_KERNEL_COPY_ADDR     (KERNEL_MALLOC_END + MEMORY_PAGE_SIZE)
+#define KERNEL_DYNAMIC_MAP_BITMAP (TEMP_KERNEL_COPY_ADDR + MEMORY_PAGE_SIZE)
+#define KERNEL_DYNAMIC_MAP_START  (KERNEL_DYNAMIC_MAP_BITMAP + MEMORY_PAGE_SIZE)
+#define KERNEL_DYNAMIC_MAP_END    (KERNEL_DYNAMIC_MAP_START + MEMORY_PAGE_SIZE * (MEMORY_PAGE_SIZE + 1))
 #define MAGIC_SCHED_FAULT_ADDR   0x5ffffffff000
 
 #define KERNEL_SHARED_MAPPING_IDX 256
@@ -235,6 +238,17 @@ uint64_t virt_to_phys(uint64_t virt_addr);
  */
 void flush_tlb();
 
+/**
+ * map_somewhere_rw:
+ * Maps a physical page to somewhere as RW and returns the virtual address
+ * 
+ * Useful when you don't really care where exactly in memory something is but need to map a page aligned phys page
+ * 
+ * The returned address can just be freed with mem_unmap_page
+ * @param phys The physical address of the page
+ * @return The virtual address
+ */
+uint64_t map_somewhere_rw(uint64_t phys);
 
 void parse_and_log_limine_memory_mapping();
 #endif

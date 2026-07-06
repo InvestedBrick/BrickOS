@@ -14,6 +14,7 @@ static uint8_t* memory_bitmap;
 vector_t shm_obj_vec;
 static uint64_t* kernel_pml4;
 
+void free_dynamic_mapping(uint64_t virt);
 void init_shm_obj_vector(){
     init_vector(&shm_obj_vec);
 }
@@ -291,11 +292,13 @@ void mem_unmap_page(uint64_t virt_addr){
     uint64_t* prev_pml4_table = 0;
 
     if (virt_addr >= HHDM){ // if we are in kernel memory
+        free_dynamic_mapping(virt_addr); // checks if address is in range
         prev_pml4_table = mem_get_current_pml4_table(); // switch to the kernel memory page
         if (prev_pml4_table != kernel_pml4){
             mem_set_current_pml4_table(kernel_pml4);
         }
     }
+
     
     uint32_t pml4_idx = PML4E(virt_addr);
     uint32_t pdpt_idx = PDPTE(virt_addr);
@@ -379,6 +382,11 @@ void init_memory(){
     kernel_pml4 = (uint64_t*)(pml4_phys + HHDM);
     
     pmm_init(pair.first,pair.first + pair.second);
+
+    // map the bitmap page for the map_somewhere function
+    uint64_t phys = pmm_alloc_page_frame();
+    mem_map_page(KERNEL_DYNAMIC_MAP_BITMAP,phys,PAGE_FLAG_WRITE);
+    memset((void*)KERNEL_DYNAMIC_MAP_BITMAP,0x0,MEMORY_PAGE_SIZE);
 }
 
 void parse_and_log_limine_memory_mapping(){
@@ -391,3 +399,27 @@ void parse_and_log_limine_memory_mapping(){
     }
 }
 
+uint64_t map_somewhere_rw(uint64_t phys){
+    uint64_t virt_addr;
+    for (uint32_t i = 0; i < MEMORY_PAGE_SIZE;i++){
+        uint8_t page_used = *(uint8_t*)(KERNEL_DYNAMIC_MAP_BITMAP + i);
+        if (page_used == 0){
+            *(uint8_t*)(KERNEL_DYNAMIC_MAP_BITMAP + i) = 1;
+            virt_addr = KERNEL_DYNAMIC_MAP_START + i * MEMORY_PAGE_SIZE;
+            mem_map_page(virt_addr,phys,PAGE_FLAG_WRITE);
+            return virt_addr;
+        }
+    }
+
+    
+    return 0;
+    
+}
+
+void free_dynamic_mapping(uint64_t virt){
+    uint64_t virt_addr = virt & ~(MEMORY_PAGE_SIZE - 1);
+    if (virt_addr < KERNEL_DYNAMIC_MAP_START || virt_addr > KERNEL_DYNAMIC_MAP_END) return;
+
+    uint32_t index = (virt_addr - KERNEL_DYNAMIC_MAP_START) / MEMORY_PAGE_SIZE;
+    *(uint8_t*)(KERNEL_DYNAMIC_MAP_BITMAP + index) = 0;
+}
