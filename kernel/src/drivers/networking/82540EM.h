@@ -2,12 +2,50 @@
 #define INCLUDE_82540EM_H
 #include "../PCI/pci.h"
 
+typedef struct {
+    uint64_t buff_addr; // phys addr
+    uint16_t len;
+    uint8_t cso;
+    uint8_t cmd;
+    uint8_t status;
+    uint8_t css;
+    uint16_t special;
+}__attribute__((packed)) i8254x_tx_descriptor_t;
+
+typedef struct {
+    uint64_t buff_addr; // phys addr
+    uint16_t len;
+    uint16_t pcs; // packet checksum, only used on 82544gc/el
+    uint8_t status;
+    uint8_t errors;
+    uint16_t special; // only used on 82544gc/el
+}__attribute__((packed)) i8254x_rx_descriptor_t;
+
+
+// needs to be multiple of 8, each descriptor gets a buffer of one page
+#define I8254x_N_TX_DESCRS 16
+
+#define I8254x_N_RX_DESCRS 32
+
 typedef struct{
     pci_device_t* dev;
 
     uint64_t reg_base_addr;
     uint64_t flash_base_addr;
     uint64_t io_reg_base_addr;
+
+    i8254x_tx_descriptor_t* tx_ring;
+    i8254x_rx_descriptor_t* rx_ring;
+
+    // RX vars
+    uint32_t rx_next; 
+    uint8_t accumulating;
+    uint64_t total_size;
+    uint32_t start_idx;
+    
+
+    // TX vars
+    uint32_t tx_cleanup; // index responsible to clean up physically allocated memory buffers for TX
 
 }i82540em_t;
 #define I8254x_REG_CTRL      0x00000
@@ -45,12 +83,35 @@ typedef struct{
 
 #define I8254x_EECD_EE_PRES (1 << 8)
 #define I8254x_EECD_EE_REQ  (1 << 6)
-#define I8254x_EECD_EE_GNT (1 << 7)
+#define I8254x_EECD_EE_GNT  (1 << 7)
 
 #define I8254x_CTRL_RESET (1 << 26)
 #define I8254x_CTRL_ASDE  (1 << 5)
 #define I8254x_CTRL_SLU   (1 << 6)
 #define I8254x_CTRL_VME   (1 << 30)
+
+#define I8254x_TCTL_EN  (1 << 1)
+#define I8254x_TCTL_PSP (1 << 3)
+
+#define I8254x_RCTL_EN         (1 << 1)
+#define I8254x_RCTL_LPE        (1 << 5)
+#define I8254x_RCTL_BAM        (1 << 15)
+#define I8254x_RCTL_BSEX       (1 << 25)
+#define I8254x_RCTL_BSIZE_4096 (0b11 << 16)
+
+#define I8254x_IMS_LSC  (1 << 2)
+#define I8254x_IMS_RXO  (1 << 6)
+#define I8254x_IMS_RXT0 (1 << 7)
+
+#define I8254x_STATUS_LU  (1 << 1)
+
+#define I8254x_TX_CMD_EOP  (1 << 0)
+#define I8254x_TX_CMD_IFCS (1 << 1)
+#define I8254x_TX_CMD_RS   (1 << 3)
+
+#define I8254x_TX_STAT_DD   (1 << 0)
+#define I8254x_RX_STAT_DD   (1 << 0)
+#define I8254x_RX_STAT_EOP  (1 << 1)
 
 /* Receive Address Registers (8-byte stride) */
 #define I8254x_REG_RAL(n)    (0x05400 + ((n) * 8))
