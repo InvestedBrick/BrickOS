@@ -11,7 +11,7 @@
 #include "../kernel_header.h"
 #include "../utilities/vector.h"
 #include <stdbool.h>
-#include "../ACPI/acpi.h"
+#include "../ACPI/apic.h"
 
 thread_t* t_queue;
 thread_t* current_thread;
