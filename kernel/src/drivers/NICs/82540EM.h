@@ -1,6 +1,7 @@
 #ifndef INCLUDE_82540EM_H
 #define INCLUDE_82540EM_H
 #include "../PCI/pci.h"
+#include "../../networking/networking.h"
 
 typedef struct {
     uint64_t buff_addr; // phys addr
@@ -28,10 +29,6 @@ typedef struct {
 #define I8254x_N_RX_DESCRS 32
 
 typedef struct{
-    pci_device_t* dev;
-
-    uint8_t mac_addr[6];
-
     uint64_t reg_base_addr;
     uint64_t flash_base_addr;
     uint64_t io_reg_base_addr;
@@ -121,7 +118,7 @@ typedef struct{
 #define I8254x_REG_RAL(n)    (0x05400 + ((n) * 8))
 #define I8254x_REG_RAH(n)    (0x05404 + ((n) * 8))
 
-void init_82540EM_driver(pci_device_t* dev);
+generic_nic_driver_t* init_82540EM_driver(pci_device_t* dev);
 
 uint64_t i8254x_send(void* data, uint64_t len);
 #endif
