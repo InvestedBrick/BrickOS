@@ -5,6 +5,8 @@
 #define ETHERTYPE_IPv4 0x0800
 #define ETHERTYPE_IPv6 0x86dd
 
+#define ETH_HDR_RET_SUCCESS 0x0
+#define ETH_HDR_RET_DATA_OVERFLOW 0x1
 typedef struct {
     uint8_t dst_mac[6];
     uint8_t src_mac[6];
