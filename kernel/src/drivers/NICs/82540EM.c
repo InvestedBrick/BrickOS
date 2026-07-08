@@ -33,7 +33,7 @@ uint32_t i82540em_io_reg_read(i82540em_t* nic, uint16_t reg){
     return inl(nic->io_reg_base_addr + 0x4);
 }
 
-uint64_t map_82540em_BAR_memory_space(i82540em_t* nic, uint16_t* config_off){
+uint64_t map_82540em_BAR_memory_space(generic_nic_driver_t* nic, uint16_t* config_off){
     pci_device_t* dev = nic->dev;
     uint32_t bar = pci_config_read_dword(dev->bus,dev->slot,dev->func,*config_off);
     uint8_t bar_idx = (*config_off - 0x10) / 0x4;
@@ -336,10 +336,13 @@ void i8254x_disable_interrupts(i82540em_t* nic){
     i82540em_mmio_reg_write(nic,I8254x_REG_IMS,0);
 }
 
-void init_82540EM_driver(pci_device_t* dev){
+generic_nic_driver_t* init_82540EM_driver(pci_device_t* dev){
     log("FOUND THE 82540EM");
+    
+    generic_nic_driver_t* gen_driver = (generic_nic_driver_t*)kmalloc(sizeof(generic_nic_driver_t));
+    gen_driver->dev = dev;
     i82540em = (i82540em_t*)kmalloc(sizeof(i82540em_t));
-    i82540em->dev = dev;
+    gen_driver->send = i8254x_send;
 
     uint16_t cmd = pci_config_read_word(dev->bus,dev->slot,dev->func,0x4);
     cmd |= 0x7; // enable I/O, memspace and bus master
@@ -348,13 +351,13 @@ void init_82540EM_driver(pci_device_t* dev){
     uint16_t curr_config_off = 0x10; // BAR0 offset
 
     // Memory register base address
-    i82540em->reg_base_addr = map_82540em_BAR_memory_space(i82540em,&curr_config_off);
+    i82540em->reg_base_addr = map_82540em_BAR_memory_space(gen_driver,&curr_config_off);
 
 
     i82540em_enable_eeprom(i82540em);
-    i82540em_reset(i82540em,i82540em->mac_addr);
+    i82540em_reset(i82540em,gen_driver->mac_addr);
 
-    log_MAC(i82540em->mac_addr);
+    log_MAC(gen_driver->mac_addr);
     
     //NOTE: Qemu does not seem to support emulating flash memory and just moves the I/O base addr up
     uint32_t bar = pci_config_read_dword(dev->bus,dev->slot,dev->func,curr_config_off);
@@ -368,4 +371,6 @@ void init_82540EM_driver(pci_device_t* dev){
     uint8_t int_pin = (pci_config_read_word(dev->bus,dev->slot,dev->func,0x3c) >> 8) & 0xff;
     uint8_t irq = ioapic_register_pci_irq(dev,int_pin);
     register_irq(irq,i8254x_interrupt_handler);
+
+    return gen_driver;
 }
