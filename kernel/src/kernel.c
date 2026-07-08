@@ -15,6 +15,7 @@
 #include "utilities/elf_parser.h"
 #include "filesystem/IPC/pipes.h"
 #include "filesystem/filesystem.h"
+#include "networking/networking.h"
 #include "processes/user_process.h"
 #include "modules/module_handler.h"
 #include "filesystem/devices/devs.h"
@@ -22,7 +23,6 @@
 #include "filesystem/file_operations.h"
 #include "drivers/PS2/ps2_controller.h"
 #include "drivers/PS2/keyboard/keyboard.h"
-#include "drivers/networking/networking.h"
 #include "filesystem/virt_files/virt_files.h"
 #include <stdint.h>
 
