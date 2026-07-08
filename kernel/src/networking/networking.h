@@ -7,9 +7,16 @@
 #define ARP_OP_REPLY_MAC 0x2
 
 
+#include "../drivers/PCI/pci.h"
 #include <stdint.h>
 
+typedef struct {
+    pci_device_t* dev;
+    uint8_t mac_addr[6];
+    uint64_t (*send)(void*,uint64_t);
+}generic_nic_driver_t;
 
+extern generic_nic_driver_t* nic_driver;
 typedef struct {
     uint16_t htype;
     uint16_t ptype;
@@ -63,4 +70,6 @@ typedef struct {
 #define NETW_DEV_ID_82540EM 0x100e
 void setup_network_driver();
 
+uint16_t switch_endian16(uint16_t nb);
+uint32_t switch_endian32(uint32_t nb);
 #endif

@@ -7,12 +7,14 @@
 typedef struct {
     uint16_t vendor_id;
     uint16_t dev_id;
-    void (*init_driver) (pci_device_t*);
-}ethernet_driver_t;
+    generic_nic_driver_t* (*init_driver) (pci_device_t*);
+}driver_dev_t;
+
+generic_nic_driver_t* nic_driver;
 
 #define N_REGISTERED_DRIVERS 1
 
-ethernet_driver_t registered_drivers[N_REGISTERED_DRIVERS] = {
+driver_dev_t registered_drivers[N_REGISTERED_DRIVERS] = {
     {.dev_id = NETW_DEV_ID_82540EM,.vendor_id = PCI_INTEL_VENDOR_ID,.init_driver = init_82540EM_driver}
 };
 
@@ -21,7 +23,7 @@ uint16_t switch_endian16(uint16_t nb) {
 }
    
 uint32_t switch_endian32(uint32_t nb) {
-    return ((nb>>24)&0xff)     |
+    return ((nb>>24)&0xff)      |
            ((nb<<8)&0xff0000)   |
            ((nb>>8)&0xff00)     |
            ((nb<<24)&0xff000000);
@@ -34,9 +36,9 @@ void setup_network_driver(){
          && dev->subclass == PCI_SUBCLASS_ETHERNET_CONTROLLER){
             bool found = false;
             for (uint32_t i = 0; i < N_REGISTERED_DRIVERS;i++){
-                ethernet_driver_t driver = registered_drivers[i];
+                driver_dev_t driver = registered_drivers[i];
                 if (driver.dev_id == dev->device_id && driver.vendor_id == dev->vendor_id){
-                    driver.init_driver(dev);
+                    nic_driver = driver.init_driver(dev);
                     found = true;
                     break;
                 }
