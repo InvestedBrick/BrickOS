@@ -120,5 +120,5 @@ typedef struct{
 
 generic_nic_driver_t* init_82540EM_driver(pci_device_t* dev);
 
-uint64_t i8254x_send(void* data, uint64_t len);
+uint32_t i8254x_send(void* data, uint32_t len);
 #endif

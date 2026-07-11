@@ -237,10 +237,10 @@ void i8254x_send_packet(i82540em_t* nic, void* data, uint64_t len,bool EOP){
     i82540em_mmio_reg_write(nic,I8254x_REG_TDT,tx_tail);
 }
 
-uint64_t i8254x_send(void* data, uint64_t len){
+uint32_t i8254x_send(void* data, uint32_t len){
     uint64_t sent = 0;
     while (sent < len){
-        int to_send = min(len - sent, MEMORY_PAGE_SIZE);
+        uint64_t to_send = min(len - sent, MEMORY_PAGE_SIZE);
         i8254x_send_packet(i82540em,(void*)((uint64_t)data + sent),to_send,to_send == (len - sent));
         sent += to_send;
     }
