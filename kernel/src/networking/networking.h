@@ -1,33 +1,26 @@
 #ifndef INCLUDE_NETWORKING_H
 #define INCLUDE_NETWORKING_H
 
-#define ARP_HTYPE_ETH 0x1
-#define ARP_PTYPE_IPV4 0x0800
-#define ARP_OP_REQ_MAC 0x1
-#define ARP_OP_REPLY_MAC 0x2
-
+#define IP_ADDR_UNASSIGNED 0x0
 
 #include "../drivers/PCI/pci.h"
+#include "arp.h"
 #include <stdint.h>
 
 typedef struct {
     pci_device_t* dev;
     uint8_t mac_addr[6];
-    uint64_t (*send)(void*,uint64_t);
+
+    uint32_t ip_addr;
+    uint32_t netmask;
+    uint32_t gateway;
+
+    arp_mac_cache_t* arp_cache_head; 
+
+    uint32_t (*send)(void*,uint32_t);
 }generic_nic_driver_t;
 
 extern generic_nic_driver_t* nic_driver;
-typedef struct {
-    uint16_t htype;
-    uint16_t ptype;
-    uint8_t hlen; // 6
-    uint8_t plen; // 4
-    uint16_t opcode;
-    uint8_t src_mac[6];
-    uint32_t src_ip;
-    uint8_t dst_mac[6];
-    uint32_t dst_ip;
-}__attribute__((packed)) arp_header_t;
 
 typedef struct {
     uint8_t version_ihl; // 4 bits version, 4 bits IHL

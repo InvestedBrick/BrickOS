@@ -2,6 +2,7 @@
 #include "../io/log.h"
 #include "../drivers/NICs/82540EM.h"
 #include "../drivers/PCI/pci.h"
+#include "../utilities/util.h"
 #include <stdbool.h>
 
 typedef struct {
@@ -48,5 +49,8 @@ void setup_network_driver(){
         }
         dev = dev->next;
     }
+
+    nic_driver->ip_addr = IP_ADDR_UNASSIGNED;
+    nic_driver->arp_cache_head = nullptr;
     
 }
