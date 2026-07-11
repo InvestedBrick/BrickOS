@@ -96,7 +96,8 @@ run: $(ISO)
     -cdrom $(ISO) \
     -m 512M \
     -vga qxl \
-	-netdev user,id=net0 -device e1000,netdev=net0
+	-netdev user,id=net0 \
+	-device e1000,netdev=net0
 clean:
 	rm -f $(ASM_OBJS) $(C_OBJS) $(TARGET) $(ISO)
 	rm -rf limine
