@@ -155,23 +155,6 @@ void i82540em_reset(i82540em_t* nic, uint8_t* mac_addr){
 
 }
 
-void log_MAC(uint8_t* mac_addr){
-    unsigned char* mac_str = (unsigned char*)kmalloc(18);
-    mac_str[17] = 0;
-    char* hex = "0123456789abcdef";
-    for (uint32_t i = 0; i < 6;i++){
-        uint8_t byte = mac_addr[i];
-        mac_str[i * 3] = hex[byte / 16];
-        mac_str[i * 3 + 1] = hex[byte % 16];
-        if (i < 5)
-            mac_str[i * 3 + 2] = ':';
-    }
-
-    logf("MAC ADDR: %s",mac_str);
-    kfree(mac_str);
-}
-
-
 void i8254x_recv_packets(i82540em_t* nic){
 
     while(nic->rx_ring[nic->rx_next].status & I8254x_RX_STAT_DD){
@@ -200,7 +183,6 @@ void i8254x_recv_packets(i82540em_t* nic){
             }
             nic->accumulating = 0;
             nic->total_size = 0;
-            logf("NETSTACK: Recieved packet of size %d",write_off);
             ethernet_handle_packet(data_buffer,write_off);
         }
 
@@ -313,6 +295,11 @@ void i82540em_tx_setup(i82540em_t* nic){
     }
     uint64_t tx_ring_phys = pmm_alloc_page_frame();
     nic->tx_ring = (i8254x_tx_descriptor_t*)map_somewhere_rw(tx_ring_phys);
+    memset((void*)nic->tx_ring,0x0,tx_ring_sz);
+
+    for (uint32_t i = 0; i < I8254x_N_TX_DESCRS;i++){
+        nic->tx_ring[i].status |= I8254x_TX_STAT_DD;
+    }
 
     i82540em_mmio_reg_write(nic,I8254x_REG_TDBAL,(uint32_t)(tx_ring_phys & 0xffffffff));
     i82540em_mmio_reg_write(nic,I8254x_REG_TDBAH,(uint32_t)(tx_ring_phys >> 32));
@@ -367,6 +354,8 @@ generic_nic_driver_t* init_82540EM_driver(pci_device_t* dev){
 
     i82540em_tx_setup(i82540em);
     i82540em_rx_setup(i82540em);
+    
+    i8254x_enable_interrupts(i82540em);
 
     uint8_t int_pin = (pci_config_read_word(dev->bus,dev->slot,dev->func,0x3c) >> 8) & 0xff;
     uint8_t irq = ioapic_register_pci_irq(dev,int_pin);
