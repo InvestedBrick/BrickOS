@@ -3,6 +3,7 @@
 #include "../drivers/NICs/82540EM.h"
 #include "../drivers/PCI/pci.h"
 #include "../utilities/util.h"
+#include "arp.h"
 #include <stdbool.h>
 
 typedef struct {
@@ -49,8 +50,9 @@ void setup_network_driver(){
         }
         dev = dev->next;
     }
-
-    nic_driver->ip_addr = IP_ADDR_UNASSIGNED;
+    logf("set up NIC driver");
+    nic_driver->ip_addr = IP_TESTING;
+    nic_driver->netmask = NETMASK_DEFAULT;
     nic_driver->arp_cache_head = nullptr;
-    
+    arp_send_request(0xc0a86401);
 }

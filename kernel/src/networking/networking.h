@@ -2,6 +2,8 @@
 #define INCLUDE_NETWORKING_H
 
 #define IP_ADDR_UNASSIGNED 0x0
+#define IP_TESTING 0xc0a86402
+#define NETMASK_DEFAULT 0xffffff00
 
 #include "../drivers/PCI/pci.h"
 #include "arp.h"
