@@ -125,3 +125,30 @@ uint64_t min(uint64_t a, uint64_t b){
 uint64_t max(int64_t a, int64_t b){
     return a > b ? a : b;
 }
+
+unsigned char* ipv4_to_str(uint32_t ip_addr){
+    unsigned char* buffer = (unsigned char*)kmalloc(16);
+    write_bufferf(buffer,16,"%d.%d.%d.%d",  
+        (ip_addr >> 24) & 0xFF,
+        (ip_addr >> 16) & 0xFF,
+        (ip_addr >> 8) & 0xFF,
+        ip_addr & 0xFF
+    );
+    return buffer;
+}
+
+void log_MAC(uint8_t* mac_addr){
+    unsigned char* mac_str = (unsigned char*)kmalloc(18);
+    mac_str[17] = 0;
+    char* hex = "0123456789abcdef";
+    for (uint32_t i = 0; i < 6;i++){
+        uint8_t byte = mac_addr[i];
+        mac_str[i * 3] = hex[byte / 16];
+        mac_str[i * 3 + 1] = hex[byte % 16];
+        if (i < 5)
+            mac_str[i * 3 + 2] = ':';
+    }
+
+    logf("MAC ADDR: %s",mac_str);
+    kfree(mac_str);
+}

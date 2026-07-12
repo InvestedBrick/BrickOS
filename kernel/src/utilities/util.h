@@ -159,6 +159,21 @@ bool shared_address_remove(vector_t* vec, void* addr);
  */
 int memcmp(const void* ptr1, const void* ptr2, size_t num);
 
+/**
+ *  ipv4_to_str:
+ *  Converts an IPv4 address from a 32-bit integer (little endian) to a string representation
+ * @param ip_addr The IPv4 address as a 32-bit integer
+ * @return A pointer to a null-terminated string representing the IPv4 address in dotted-decimal notation 
+ */
+unsigned char* ipv4_to_str(uint32_t ip_addr);
+
+
+/**
+ * log_MAC:
+ * Logs the MAC address in a human-readable format
+ * @param mac_addr A pointer to the MAC address (6 bytes)
+ */
+void log_MAC(uint8_t* mac_addr);
 
 uint64_t min(uint64_t a, uint64_t b);
 uint64_t max(int64_t a, int64_t b);
