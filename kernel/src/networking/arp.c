@@ -67,6 +67,10 @@ cleanup:
 void arp_cache_mac(arp_header_t* arp_hdr){
     arp_mac_cache_t* cache = (arp_mac_cache_t*)kmalloc(sizeof(arp_mac_cache_t));
     cache->ip_addr = switch_endian32(arp_hdr->src_ip);
+    unsigned char* ip_addr_str = ipv4_to_str(cache->ip_addr);
+    logf("ARP: Caching MAC for IP %s",ip_addr_str);
+    log_MAC(arp_hdr->src_mac);
+    kfree(ip_addr_str);
     memcpy(cache->mac,arp_hdr->src_mac,sizeof(cache->mac));
 
     arp_mac_cache_t* head = nic_driver->arp_cache_head;
