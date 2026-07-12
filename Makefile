@@ -96,7 +96,7 @@ run: $(ISO)
     -cdrom $(ISO) \
     -m 512M \
     -vga qxl \
-	-netdev user,id=net0 \
+	-netdev tap,id=net0,ifname=tap0,script=no,downscript=no \
 	-device e1000,netdev=net0
 clean:
 	rm -f $(ASM_OBJS) $(C_OBJS) $(TARGET) $(ISO)
