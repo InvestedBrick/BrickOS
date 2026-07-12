@@ -118,7 +118,21 @@ typedef struct{
 #define I8254x_REG_RAL(n)    (0x05400 + ((n) * 8))
 #define I8254x_REG_RAH(n)    (0x05404 + ((n) * 8))
 
+/**
+ * init_82540EM_driver:
+ * Initializes the 82540EM NIC driver
+ * @param dev A pointer to the PCI device structure for the 82540EM NIC
+ * @return A pointer to the initialized generic NIC driver structure
+ */
 generic_nic_driver_t* init_82540EM_driver(pci_device_t* dev);
 
+/**
+ * i8254x_send:
+ * Sends data through the 82540EM NIC
+ * @param data A pointer to the data to be sent
+ * @param len The length of the data in bytes
+ * @return The number of bytes sent
+ */
 uint32_t i8254x_send(void* data, uint32_t len);
+
 #endif
