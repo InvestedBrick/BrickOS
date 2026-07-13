@@ -24,19 +24,6 @@ typedef struct {
 
 extern generic_nic_driver_t* nic_driver;
 
-typedef struct {
-    uint8_t version_ihl; // 4 bits version, 4 bits IHL
-    uint8_t dscp_ecn; // 6 bits DSCP, 2 bits ECN
-    uint16_t total_length;
-    uint16_t identification;
-    uint16_t flags_fragment_offset; // 3 bits flags, 13 bits fragment offset
-    uint8_t ttl;
-    uint8_t protocol;
-    uint16_t header_checksum;
-    uint32_t src_ip;
-    uint32_t dst_ip;
-}__attribute__((packed)) ipv4_header_t;
-
 typedef struct{
     uint16_t src_port;
     uint16_t dst_port;
