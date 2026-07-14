@@ -13,6 +13,7 @@
 
 #define ARP_HDR_RET_SUCCESS 0x0
 #define ARP_HDR_RET_DATA_OVERFLOW 0x1
+#define ARP_HDR_RET_NO_ROUTE 0x2
 
 typedef struct {
     uint16_t htype;
@@ -35,6 +36,7 @@ typedef struct arp_mac_cache {
 /**
  * arp_add_header:
  * Adds an ARP header to a ethernet packet by prepending to previous headers
+ * @param iface The network interface
  * @param data The packet buffer pointer
  * @param write_off A pointer to a write offset into the buffer (should be just above where the header will be added)
  * @param opcode The ARP opcode to specify (request or reply)
@@ -43,7 +45,7 @@ typedef struct arp_mac_cache {
  * 
  * @return ARP_HDR_RET_SUCCESS on success, an error otherwise
  */
-uint8_t arp_add_header(uint8_t* data, uint32_t* write_off,uint16_t opcode, uint8_t* dst_mac,uint32_t dst_ip);
+uint8_t arp_add_header(net_interface_t* iface,uint8_t* data, uint32_t* write_off,uint16_t opcode, uint8_t* dst_mac,uint32_t dst_ip);
 
 /**
  * arp_send_request:
