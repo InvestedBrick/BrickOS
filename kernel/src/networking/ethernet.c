@@ -4,6 +4,7 @@
 #include "../utilities/util.h"
 #include "../io/log.h"
 #include "arp.h"
+#include "ip.h"
 
 uint8_t packet_designated_for_this_machine(ethernet_header_t* eth_hdr){
     uint8_t broadcast_mac[6] = {0xff,0xff,0xff,0xff,0xff,0xff};
@@ -26,7 +27,7 @@ void ethernet_handle_packet(uint8_t* data, uint32_t len){
         arp_handle_packet(data,write_off,len);
         break;
     case ETHERTYPE_IPv4:
-
+        ip_handle_packet(data,write_off,len);
         break;
     case ETHERTYPE_IPv6:
 
