@@ -16,7 +16,7 @@ You can simply run `make run` to compile and start the OS.
 - userspace processes, scheduler, syscall interface...
 - ACPI support through uACPI
 - PCI support
-- PS/2 keyboard and mouse driver, ATA disk driver
+- PS/2 keyboard and mouse driver, ATA disk driver, 82540em NIC driver
 - custom filesytem that supports files of up to ~8MB
 - devices, virtual files, IPC
 - custom userspace window manager
