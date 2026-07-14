@@ -10,7 +10,8 @@ uint8_t packet_designated_for_this_machine(ethernet_header_t* eth_hdr){
     uint8_t broadcast_mac[6] = {0xff,0xff,0xff,0xff,0xff,0xff};
     if (memcmp(eth_hdr->dst_mac,broadcast_mac,sizeof(broadcast_mac)) == 0) return 1;
 
-    if (memcmp(eth_hdr->dst_mac,nic_driver->mac_addr,sizeof(eth_hdr->dst_mac)) == 0) return 1;
+    net_interface_t* iface = routing_table.routes[0].iface; // entry 0 is eth0 -> has NIC MAC
+    if (memcmp(eth_hdr->dst_mac,iface->mac_addr,sizeof(eth_hdr->dst_mac)) == 0) return 1;
 
     return 0;
 }
@@ -40,12 +41,12 @@ cleanup:
     kfree(data);
 }
 
-uint8_t ethernet_add_header(uint8_t* data, uint32_t* write_off,uint8_t* dst_mac,uint16_t ethertype){
+uint8_t ethernet_add_header(net_interface_t* iface,uint8_t* data, uint32_t* write_off,uint8_t* dst_mac,uint16_t ethertype){
     if (*write_off <  sizeof(ethernet_header_t)) return ETH_HDR_RET_DATA_OVERFLOW;
 
     ethernet_header_t* hdr = (ethernet_header_t*)(data + *write_off - sizeof(ethernet_header_t));
 
-    memcpy(hdr->src_mac,nic_driver->mac_addr,sizeof(hdr->src_mac));
+    memcpy(hdr->src_mac,iface->mac_addr,sizeof(hdr->src_mac));
     memcpy(hdr->dst_mac,dst_mac,sizeof(hdr->dst_mac));
 
     hdr->type = switch_endian16(ethertype);
