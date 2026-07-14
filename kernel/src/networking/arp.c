@@ -3,6 +3,7 @@
 #include "networking.h"
 #include "../memory/kmalloc.h"
 #include "../utilities/util.h"
+#include "../processes/scheduler.h"
 #include "ethernet.h"
 
 uint8_t arp_add_header(uint8_t* data, uint32_t* write_off,uint16_t opcode, uint8_t* dst_mac,uint32_t dst_ip){
@@ -82,13 +83,32 @@ void arp_cache_mac(arp_header_t* arp_hdr){
     }
 }
 
-uint8_t arp_cache_contains_ip(uint32_t ip_addr){
+arp_mac_cache_t* arp_cache_contains_ip(uint32_t ip_addr){
     arp_mac_cache_t* head = nic_driver->arp_cache_head;
     while(head){
-        if (head->ip_addr == ip_addr) return 1;
+        if (head->ip_addr == ip_addr) return head;
         head = head->next;
     }
-    return 0;
+    return nullptr;
+}
+
+void arp_lookup(uint32_t ip_addr,uint8_t* mac_out){
+    arp_mac_cache_t* cache = arp_cache_contains_ip(ip_addr);
+    if (cache) {
+        memcpy(mac_out,cache->mac,sizeof(cache->mac));
+        return;
+    }
+    arp_send_request(ip_addr);
+
+    while(1) {
+        cache = arp_cache_contains_ip(ip_addr);
+        if (cache) break;
+
+        invoke_scheduler();
+    }
+
+    memcpy(mac_out,cache->mac,sizeof(cache->mac));
+
 }
 
 void arp_handle_packet(uint8_t* data, uint32_t write_off, uint32_t total_len){

@@ -61,4 +61,12 @@ void arp_send_request(uint32_t dst_ip);
  * @param total_len The total length of the packet
  */
 void arp_handle_packet(uint8_t* data, uint32_t write_off, uint32_t total_len);
+
+/**
+ * arp_lookup:
+ * Looks up the MAC address for a given IP address in the ARP cache. If not found, sends an ARP request and waits for a response.
+ * @param ip_addr The IP address to look up
+ * @param mac_out A pointer to a uint8_t[6] array where the MAC address will be stored if found
+ */
+void arp_lookup(uint32_t ip_addr,uint8_t* mac_out);
 #endif
