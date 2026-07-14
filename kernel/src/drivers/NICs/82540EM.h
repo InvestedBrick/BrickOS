@@ -121,10 +121,10 @@ typedef struct{
 /**
  * init_82540EM_driver:
  * Initializes the 82540EM NIC driver
+ * @param iface A pointer to the network interface structure
  * @param dev A pointer to the PCI device structure for the 82540EM NIC
- * @return A pointer to the initialized generic NIC driver structure
  */
-generic_nic_driver_t* init_82540EM_driver(pci_device_t* dev);
+void init_82540EM_driver(net_interface_t* iface, pci_device_t* dev);
 
 /**
  * i8254x_send:
