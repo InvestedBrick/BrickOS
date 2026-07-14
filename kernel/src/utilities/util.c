@@ -137,6 +137,44 @@ unsigned char* ipv4_to_str(uint32_t ip_addr){
     return buffer;
 }
 
+uint32_t ipv4_to_uint32(unsigned char* str){
+    uint32_t parts[4] = {0};
+    uint32_t value = 0;
+    int part = 0;
+
+    while (*str){
+        if (*str >= '0' && *str <= '9'){
+            value = value * 10 + (*str - '0');
+
+            if (value > 255)
+                return 0;
+
+            str++;
+        }
+        else if (*str == '.'){
+            if (part >= 3)
+                return 0;
+
+            parts[part++] = value;
+            value = 0;
+            str++;
+        }
+        else{
+            return 0;
+        }
+    }
+
+    if (part != 3)
+        return 0;
+
+    parts[3] = value;
+
+    return (parts[0] << 24) |
+           (parts[1] << 16) |
+           (parts[2] << 8)  |
+            parts[3];
+}
+
 void log_MAC(uint8_t* mac_addr){
     unsigned char* mac_str = (unsigned char*)kmalloc(18);
     mac_str[17] = 0;
