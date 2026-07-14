@@ -54,4 +54,13 @@ void setup_network_driver();
 
 uint16_t switch_endian16(uint16_t nb);
 uint32_t switch_endian32(uint32_t nb);
+
+/**
+ * compute_checksum:
+ * Computes the 16 bit checksum over some data / header. Returns the checksum in host byte order.
+ * @hdr: pointer to the data / header to compute the checksum over
+ * @len: length of the data / header in bytes
+ * Returns: the computed checksum in host byte order
+ */
+uint16_t compute_checksum(uint8_t* hdr,uint32_t len);
 #endif

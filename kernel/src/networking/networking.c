@@ -56,3 +56,18 @@ void setup_network_driver(){
     nic_driver->arp_cache_head = nullptr;
     arp_send_request(0xc0a86401);
 }
+
+uint16_t compute_checksum(uint8_t* hdr,uint32_t len){
+    uint32_t sum = 0;
+    for (uint32_t i = 0; i < len; i+= 2){
+        uint16_t word = hdr[i];
+        if (i+1 < len) word |= hdr[i+1]<<8;
+        sum += word;
+    }
+
+    while(sum >> 16){
+        sum = (sum & 0xffff) + (sum >> 16);
+    }
+
+    return (uint16_t)~sum;
+}
