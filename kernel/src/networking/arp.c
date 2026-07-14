@@ -35,7 +35,7 @@ void arp_send_request(uint32_t dst_ip){
     uint32_t write_off = total_size;
 
     route_t* route = route_lookup(dst_ip);
-    if (!route) return ARP_HDR_RET_NO_ROUTE;
+    if (!route) goto cleanup;
 
     uint8_t ret = arp_add_header(route->iface,data,&write_off,ARP_OP_REQ_MAC,nullptr,dst_ip);
     if (ret != ARP_HDR_RET_SUCCESS) {warnf("Failed to add ARP header to ARP request (ERR: %x)",ret); goto cleanup;}
@@ -58,7 +58,7 @@ void arp_send_response(arp_header_t* arp_hdr){
     uint32_t dst_ip = switch_endian32(arp_hdr->src_ip);
 
     route_t* route = route_lookup(dst_ip);
-    if (!route) return ARP_HDR_RET_NO_ROUTE;
+    if (!route) goto cleanup;
 
     uint8_t ret = arp_add_header(route->iface,data,&write_off,ARP_OP_REPLY_MAC,arp_hdr->src_mac,dst_ip);
     if (ret != ARP_HDR_RET_SUCCESS) {warnf("Failed to add ARP header to ARP response (ERR: %x)",ret); goto cleanup;}
@@ -77,7 +77,10 @@ void arp_cache_mac(arp_header_t* arp_hdr){
     cache->ip_addr = switch_endian32(arp_hdr->src_ip);
 
     route_t* route = route_lookup(cache->ip_addr);
-    if (!route) return ARP_HDR_RET_NO_ROUTE;
+    if (!route) {
+        warn("Failed to cache mac, no route found");
+        return;
+    }
 
     unsigned char* ip_addr_str = ipv4_to_str(cache->ip_addr);
     logf("ARP: Caching MAC for IP %s",ip_addr_str);
@@ -97,7 +100,7 @@ void arp_cache_mac(arp_header_t* arp_hdr){
 arp_mac_cache_t* arp_cache_contains_ip(uint32_t ip_addr){
 
     route_t* route = route_lookup(ip_addr);
-    if (!route) return ARP_HDR_RET_NO_ROUTE;
+    if (!route) return nullptr;
 
     arp_mac_cache_t* head = route->iface->arp_cache_head;
     while(head){

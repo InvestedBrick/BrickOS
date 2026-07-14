@@ -1,7 +1,11 @@
 #ifndef INCLUDE_ARP_H
 #define INCLUDE_ARP_H
 
+#include "networking.h"
 #include <stdint.h>
+
+struct net_interface;
+typedef struct net_interface net_interface_t;
 
 #define ARP_HTYPE_ETH 0x1
 #define ARP_PTYPE_IPv4 0x0800
