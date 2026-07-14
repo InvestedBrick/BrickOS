@@ -3,26 +3,47 @@
 
 #define IP_ADDR_UNASSIGNED 0x0
 #define IP_TESTING 0xc0a86402
+#define ROUTER_IP 0xc0a80001
 #define NETMASK_DEFAULT 0xffffff00
+
+#define DEFAULT_MTU 1500
+#define MAX_ROUTING_TABLE_ENTRIES 10
 
 #include "../drivers/PCI/pci.h"
 #include "arp.h"
 #include <stdint.h>
 
-typedef struct {
-    pci_device_t* dev;
-    uint8_t mac_addr[6];
+struct arp_mac_cache;
+typedef struct arp_mac_cache arp_mac_cache_t;
 
+typedef struct net_interface {
+    char name[16];
+    uint8_t mac_addr[6];
+    
     uint32_t ip_addr;
     uint32_t netmask;
-    uint32_t gateway;
-
-    arp_mac_cache_t* arp_cache_head; 
-
+    
+    uint32_t mtu;
+    
+    struct arp_mac_cache* arp_cache_head;
     uint32_t (*send)(void*,uint32_t);
-}generic_nic_driver_t;
 
-extern generic_nic_driver_t* nic_driver;
+}net_interface_t;
+
+typedef struct {
+    uint32_t network;
+    uint32_t netmask;
+    uint32_t gateway;
+    net_interface_t* iface;
+    
+}route_t;
+
+typedef struct {
+    route_t routes[MAX_ROUTING_TABLE_ENTRIES];
+    uint32_t n_routes;
+}routing_table_t;
+
+extern routing_table_t routing_table;
 
 typedef struct{
     uint16_t src_port;
