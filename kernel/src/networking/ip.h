@@ -4,16 +4,9 @@
 #include <stdint.h>
 #define IP_VERSION_4 0x4
 
-
-/**
- * type of service:
- * 0            2   3          4           5       6    7 
- * [ precedence | delay | throughput | relibility| 0 | 0 ]
- */
-
-#define IP_TOS_DELAY_LOW       (1 << 3)
-#define IP_TOS_THROUGHPUT_HIGH (1 << 4)
-#define IP_TOS_RELIBILITY_HIGH (1 << 5)
+#define IP_TOS_DELAY_LOW        (1 << 3)
+#define IP_TOS_THROUGHPUT_HIGH  (1 << 4)
+#define IP_TOS_RELIABILITY_HIGH (1 << 5)
 
 #define IP_TOS_PREC_ROUTINE         0b000
 #define IP_TOS_PREC_PRIORITY        0b001
@@ -25,8 +18,10 @@
 #define IP_TOS_PREC_NETWORK_CONTROL 0b111
 
 
-#define IP_FLAGS_DONT_FRAGMENT  (1 << 1)
-#define IP_FLAGS_MORE_FRAGMENTS (1 << 2)
+#define IP_FLAGS_DONT_FRAGMENT  (1 << 14)
+#define IP_FLAGS_MORE_FRAGMENTS (1 << 13)
+
+#define IP_TTL_MAX 255
 
 // fragment offset is measured in units of 8 bytes to where the fragment belongs
 
@@ -48,6 +43,8 @@ typedef struct {
     uint32_t dst_ip;
 }__attribute__((packed)) ipv4_header_t;
 
+#define IP_HDR_DEFAULT_SIZE sizeof(ipv4_header_t)
+
 #define IP_HDR_RET_SUCCESS 0x0
 #define IP_HDR_RET_DATA_OVERFLOW 0x1
 
@@ -62,10 +59,11 @@ typedef struct {
  * @param ttl The time to live to specify
  * @param id The identification number to specify
  * @param df Whether to set the "Don't Fragment" flag (1) or not (0)
+ * @param post_hdr_data_len The length of the data that will follow the IP header (used to calculate total length)
  * 
  * @return IP_HDR_RET_SUCCESS on success, an error otherwise
  */
-uint8_t ip_add_header(uint8_t* data, uint32_t* write_off,uint32_t dst_addr,uint8_t prot, uint8_t tos, uint8_t ttl,uint16_t id,uint8_t df);
+uint8_t ip_add_header(uint8_t* data, uint32_t* write_off,uint32_t dst_addr,uint8_t prot, uint8_t tos, uint8_t ttl,uint16_t id,uint8_t df,uint32_t post_hdr_data_len);
 
 /**
  * ip_handle_packet:
