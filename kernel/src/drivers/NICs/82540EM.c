@@ -233,7 +233,6 @@ void i8254x_interrupt_handler(interrupt_stack_frame_t* frame){
     uint32_t icr = i82540em_mmio_reg_read(i82540em,I8254x_REG_ICR);
     if (icr & I8254x_IMS_RXT0){
         //packet recieved
-        log("82540EM RX interrupt");
         i8254x_recv_packets(i82540em);
     }
 
@@ -325,7 +324,7 @@ void i8254x_disable_interrupts(i82540em_t* nic){
 
 void init_82540EM_driver(net_interface_t* iface, pci_device_t* dev){
     log("FOUND THE 82540EM");
-    
+
     iface->mtu = DEFAULT_MTU;
     i82540em = (i82540em_t*)kmalloc(sizeof(i82540em_t));
     iface->send = i8254x_send;
