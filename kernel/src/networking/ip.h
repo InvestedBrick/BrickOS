@@ -2,6 +2,8 @@
 #define INCLUDE_IP_H
 
 #include <stdint.h>
+#include "networking.h"
+
 #define IP_VERSION_4 0x4
 
 #define IP_TOS_DELAY_LOW        (1 << 3)
@@ -17,6 +19,10 @@
 #define IP_TOS_PREC_INTERNETWORK    0b110
 #define IP_TOS_PREC_NETWORK_CONTROL 0b111
 
+// routine with no special requests
+#define IP_TOS_DEFAULT 0x0
+
+#define IP_MAY_FRAGMENT 0x0
 
 #define IP_FLAGS_DONT_FRAGMENT  (1 << 14)
 #define IP_FLAGS_MORE_FRAGMENTS (1 << 13)
@@ -25,9 +31,10 @@
 
 // fragment offset is measured in units of 8 bytes to where the fragment belongs
 
-#define IP_PROTOCOL_ICMP 0x1
-#define IP_PROTOCOL_TCP 0x6
-#define IP_PROTOCOL_UDP 0x11
+#define IP_PROTOCOL_ICMP 1
+#define IP_PROTOCOL_TCP  6
+#define IP_PROTOCOL_UDP  11
+#define IP_PROTOCOL_RAW  254
 
 #define IP_OPTION_TYPE_END 0
 typedef struct {
@@ -47,10 +54,17 @@ typedef struct {
 
 #define IP_HDR_RET_SUCCESS 0x0
 #define IP_HDR_RET_DATA_OVERFLOW 0x1
+#define IP_HDR_RET_NO_ROUTE 0x2
 
+#define IP_SEND_RET_SUCCESS 0x0
+#define IP_SEND_RET_NO_ROUTE 0x1
+#define IP_SEND_RET_MTU_OVERSTEP 0x2 
+#define IP_SEND_RET_IP_HDR_FAILED 0x3
+#define IP_SEND_RET_ETH_HDR_FAILED 0x4
 /**
  * ip_add_header:
  * Adds an IP header to a ethernet packet by prepending to previous headers
+ * @param iface The network interface
  * @param data The packet buffer pointer
  * @param write_off A pointer to a write offset into the buffer (should be just above where the header will be added)
  * @param dst_addr The destination IP address to specify
@@ -63,7 +77,7 @@ typedef struct {
  * 
  * @return IP_HDR_RET_SUCCESS on success, an error otherwise
  */
-uint8_t ip_add_header(uint8_t* data, uint32_t* write_off,uint32_t dst_addr,uint8_t prot, uint8_t tos, uint8_t ttl,uint16_t id,uint8_t df,uint32_t post_hdr_data_len);
+uint8_t ip_add_header(net_interface_t* iface,uint8_t* data, uint32_t* write_off,uint32_t dst_addr,uint8_t prot, uint8_t tos, uint8_t ttl,uint16_t id,uint8_t df,uint32_t post_hdr_data_len);
 
 /**
  * ip_handle_packet:
@@ -73,4 +87,13 @@ uint8_t ip_add_header(uint8_t* data, uint32_t* write_off,uint32_t dst_addr,uint8
  * @param total_len The total length of the packet
  */
 void ip_handle_packet(uint8_t* data, uint32_t write_off, uint32_t total_len);
+
+/**
+ * route_lookup:
+ * Looks up the routing table for a route to the specified destination IP address
+ * @param dst_ip The destination IP address to look up
+ * @return A pointer to the route_t structure for the route, or nullptr if no route is found
+ */
+route_t* route_lookup(uint32_t dst_ip);
+
 #endif
