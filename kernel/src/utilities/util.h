@@ -167,6 +167,14 @@ int memcmp(const void* ptr1, const void* ptr2, size_t num);
  */
 unsigned char* ipv4_to_str(uint32_t ip_addr);
 
+/**
+ * ipv4_to_uint32:
+ * converts an ipv4 address string (format "a.b.c.d") into a uint32_t 
+ * @param str The address string
+ * @return The converted address
+ */
+uint32_t ipv4_to_uint32(unsigned char* str);
+
 
 /**
  * log_MAC:
