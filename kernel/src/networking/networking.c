@@ -5,6 +5,8 @@
 #include "../utilities/util.h"
 #include "../memory/kmalloc.h"
 #include "arp.h"
+#include "ip.h"
+#include "../tables/interrupts.h"
 #include <stdbool.h>
 
 routing_table_t routing_table;
@@ -47,6 +49,8 @@ void setup_network_driver(){
     net_interface_t* eth0 = (net_interface_t*)kmalloc(sizeof(net_interface_t));
     memcpy(eth0->name,"eth0",5);
     routing_table.n_routes = 0;
+
+    register_timer_callback(ipv4_timer_callback,1000); // callback every second
 
     pci_device_t* dev = pci_head;
     while(dev){
