@@ -37,8 +37,8 @@ typedef struct {
 }sleeping_thread_t;
 
 #define TASK_SWITCH_DELAY_MS 10
-#define TASK_SWITCH_TICKS ((TASK_SWITCH_DELAY_MS * DESIRED_STANDARD_FREQ) / 1000)
-
+#define MS_TO_TICKS(ms) (((ms) * DESIRED_STANDARD_FREQ) / 1000)
+#define TASK_SWITCH_TICKS MS_TO_TICKS(TASK_SWITCH_DELAY_MS)
 
 /**
  * init_scheduler:
