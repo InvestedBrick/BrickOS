@@ -27,6 +27,9 @@
 #define IP_FLAGS_DONT_FRAGMENT  (1 << 14)
 #define IP_FLAGS_MORE_FRAGMENTS (1 << 13)
 
+#define IP_FRAG_OFF_MASK 0x1fff
+
+#define IPv4_MAX_PACKET_SIZE 65535
 #define IP_TTL_MAX 255
 
 // fragment offset is measured in units of 8 bytes to where the fragment belongs
@@ -37,6 +40,9 @@
 #define IP_PROTOCOL_RAW  254
 
 #define IP_OPTION_TYPE_END 0
+
+// 15 secs for the whole packet to arrive
+#define IP_PACKET_TIMEOUT 15
 typedef struct {
     uint8_t version_ihl; // 4 bits version, 4 bits internet header length (in 32 bit words)
     uint8_t type_of_service;
@@ -49,6 +55,23 @@ typedef struct {
     uint32_t src_ip;
     uint32_t dst_ip;
 }__attribute__((packed)) ipv4_header_t;
+
+typedef struct ipv4_packet_part{
+    uint8_t no_more_frags;
+    uint16_t ident;
+    uint16_t frag_offset;
+    uint16_t data_len; // without header
+    uint8_t* data;
+
+    struct ipv4_packet_part* next;
+}ipv4_packet_part_t;
+
+typedef struct ipv4_ll_link {
+    ipv4_packet_part_t* start;
+    uint8_t timeout;
+
+    struct ipv4_ll_link* next;
+}ipv4_ll_link_t;
 
 #define IP_HDR_DEFAULT_SIZE sizeof(ipv4_header_t)
 
@@ -95,5 +118,7 @@ void ip_handle_packet(uint8_t* data, uint32_t write_off, uint32_t total_len);
  * @return A pointer to the route_t structure for the route, or nullptr if no route is found
  */
 route_t* route_lookup(uint32_t dst_ip);
+
+void ipv4_timer_callback();
 
 #endif
