@@ -51,6 +51,7 @@ void setup_network_driver(){
     routing_table.n_routes = 0;
 
     register_timer_callback(ipv4_timer_callback,1000); // callback every second
+    register_timer_callback(arp_timer_callback,1000);
 
     pci_device_t* dev = pci_head;
     while(dev){
