@@ -7,6 +7,53 @@
 #include "ip.h"
 #include "ethernet.h"
 
+//TODO: synchronise interrupt sensitive parts with mutexes
+void decrement_and_cleanup_arp_cache(net_interface_t* iface) {
+    arp_mac_cache_t dummy;
+    dummy.next = iface->arp_cache_head;
+    arp_mac_cache_t* curr = &dummy;
+
+    while (curr->next) {
+        if (curr->next->timeout > 0) curr->next->timeout--;
+
+        if (curr->next->timeout == 0) {
+            arp_mac_cache_t* to_del = curr->next;
+            curr->next = curr->next->next;
+            kfree(to_del);
+        } else {
+            curr = curr->next;
+        }
+    }
+
+    iface->arp_cache_head = dummy.next;
+}
+
+void arp_timer_callback(){
+    // called once a second
+    uint64_t* seen_arr = (uint64_t*)kmalloc(routing_table.n_routes * sizeof(uint64_t));
+    if (!seen_arr) return;
+    
+    memset(seen_arr,0x0,routing_table.n_routes * sizeof(uint64_t));
+    uint32_t seen_idx = 0;
+    for (uint32_t i = 0; i < routing_table.n_routes;i++){
+        route_t* route = &routing_table.routes[i];
+        uint8_t seen = 0;
+        for (uint32_t j = 0; j < seen_idx; j++){
+            if (seen_arr[j] == (uint64_t)route->iface) seen = 1; 
+        }
+        if (!seen){
+            seen_arr[seen_idx++] = (uint64_t)route->iface;
+        }
+    }
+    
+    for (uint32_t i = 0; i < seen_idx; i++){
+        net_interface_t* iface = (net_interface_t*)seen_arr[i];
+        decrement_and_cleanup_arp_cache(iface);
+
+    }
+    kfree(seen_arr);
+}
+
 uint8_t arp_add_header(net_interface_t* iface,uint8_t* data, uint32_t* write_off,uint16_t opcode, uint8_t* dst_mac,uint32_t dst_ip){
     if (*write_off < sizeof (arp_header_t)) return ARP_HDR_RET_DATA_OVERFLOW;
 
@@ -75,9 +122,12 @@ cleanup:
 void arp_cache_mac(arp_header_t* arp_hdr){
     arp_mac_cache_t* cache = (arp_mac_cache_t*)kmalloc(sizeof(arp_mac_cache_t));
     cache->ip_addr = switch_endian32(arp_hdr->src_ip);
-
+    cache->next = nullptr;
+    cache->timeout = ARP_CACHE_TIMEOUT;
+    
     route_t* route = route_lookup(cache->ip_addr);
     if (!route) {
+        kfree(cache);
         warn("Failed to cache mac, no route found");
         return;
     }

@@ -19,6 +19,8 @@ typedef struct net_interface net_interface_t;
 #define ARP_HDR_RET_DATA_OVERFLOW 0x1
 #define ARP_HDR_RET_NO_ROUTE 0x2
 
+#define ARP_CACHE_TIMEOUT 30
+
 typedef struct {
     uint16_t htype;
     uint16_t ptype;
@@ -33,6 +35,8 @@ typedef struct {
 
 typedef struct arp_mac_cache {
     uint32_t ip_addr;
+    uint16_t timeout;
+    
     uint8_t mac[6];
     struct arp_mac_cache* next;
 } arp_mac_cache_t;
@@ -75,4 +79,6 @@ void arp_handle_packet(uint8_t* data, uint32_t write_off, uint32_t total_len);
  * @param mac_out A pointer to a uint8_t[6] array where the MAC address will be stored if found
  */
 void arp_lookup(uint32_t ip_addr,uint8_t* mac_out);
+
+void arp_timer_callback();
 #endif
