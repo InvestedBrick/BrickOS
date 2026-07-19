@@ -17,6 +17,7 @@
 #include "../tables/syscall_defines.h"
 #include "../filesystem/devices/devs.h"
 #include "scheduler.h"
+#include "../tables/timer_callbacks.h"
 #include "../utilities/elf_parser.h"
 vector_t user_process_vector;
 static uint8_t pid_used[MAX_PIDS] = {0};
@@ -228,7 +229,7 @@ void setup_arguments(user_process_t* proc,unsigned char* argv[]){
     sp &= ~0xfull;
     sp -= sizeof(void*); // proper stack align
     
-    main_thread->init_user_rsp = sp;
+    main_thread->init_rsp = sp;
     main_thread->regs.rdi = argc;
     main_thread->regs.rsi = argv_ptr;
     
@@ -420,9 +421,23 @@ void enter_user_mode(struct thread* thread){
         "iretq\n\t"
         :
         : "r"(thread->init_user_ss),
-          "r"(thread->init_user_rsp),
+          "r"(thread->init_rsp),
           "r"(thread->regs.rflags),
           "r"(thread->regs.cs),
+          "r"(thread->regs.rip)
+        : "memory"
+    );
+
+    __builtin_unreachable();
+}
+
+__attribute__((noreturn))
+void enter_kernel_thread(struct thread* thread){
+    asm volatile(
+        "mov %0, %%rsp\n\t"
+        "jmp *%1\n\t"
+        :
+        : "r"(thread->init_rsp),
           "r"(thread->regs.rip)
         : "memory"
     );

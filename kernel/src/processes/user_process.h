@@ -130,6 +130,13 @@ __attribute__((noreturn))
 void enter_user_mode(struct thread* thread);
 
 /**
+ * enter_kernel_thread:
+ * Like enter_user_mode but just sets up the stack for the kernel thread and jumps to the function
+ */
+__attribute__((noreturn))
+void enter_kernel_thread(struct thread* thread); 
+
+/**
  * find_responsible_phdr:
  * Finds the phdr that corresponds to a virtual memory address for a process
  * @param p The process
