@@ -58,6 +58,7 @@ void create_kernel_process(uint64_t stack_top){
     memset(global_kernel_process.main_thread,0x0,sizeof(thread_t));
     global_kernel_process.main_thread->tid = get_pid();
     global_kernel_process.main_thread->owner_proc = &global_kernel_process;
+    global_kernel_process.main_thread->exec_state = EXEC_STATE_DONT_SCHEDULE;
 
     vector_append(&user_process_vector,(vector_data_t)&global_kernel_process);
 
