@@ -17,6 +17,10 @@
 #define KERNEL_DYNAMIC_MAP_BITMAP (TEMP_KERNEL_COPY_ADDR + MEMORY_PAGE_SIZE)
 #define KERNEL_DYNAMIC_MAP_START  (KERNEL_DYNAMIC_MAP_BITMAP + MEMORY_PAGE_SIZE)
 #define KERNEL_DYNAMIC_MAP_END    (KERNEL_DYNAMIC_MAP_START + MEMORY_PAGE_SIZE * (MEMORY_PAGE_SIZE + 1))
+
+/**
+ * @important This magic address is only allowed to be used in the invoke_scheduler function
+ */
 #define MAGIC_SCHED_FAULT_ADDR   0x5ffffffff000
 
 #define KERNEL_SHARED_MAPPING_IDX 256
