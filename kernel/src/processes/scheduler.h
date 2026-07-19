@@ -13,17 +13,22 @@
 #define EXEC_STATE_SLEEPING 0x3
 #define EXEC_STATE_DEAD 0x4
 #define EXEC_STATE_FINALIZED 0x5
+#define EXEC_STATE_DONT_SCHEDULE 0x6
+
+#define KERNEL_THREAD_CREAT_SUCCESS 0x0
+#define KERNEL_THREAD_CREAT_FAILURE 0x1
 
 typedef struct thread{
     uint32_t tid;
     uint8_t exec_state;
     bool expect_sched_fault;
+    uint64_t sched_resume_rip; 
 
     interrupt_stack_frame_t regs;
 
     struct user_process* owner_proc; 
     uint64_t kernel_rsp; 
-    uint64_t init_user_rsp;
+    uint64_t init_rsp;
     uint64_t init_user_ss;
     inode_t* active_dir;
 
@@ -31,14 +36,21 @@ typedef struct thread{
     struct thread* next_proc_thread;
 } thread_t;
 
-typedef struct {
+typedef struct sleeping_thread {
     thread_t* thread;
     uint64_t wakeup_tick; 
+
+    struct sleeping_thread* next;
 }sleeping_thread_t;
 
 #define TASK_SWITCH_DELAY_MS 10
 #define MS_TO_TICKS(ms) (((ms) * DESIRED_STANDARD_FREQ) / 1000)
 #define TASK_SWITCH_TICKS MS_TO_TICKS(TASK_SWITCH_DELAY_MS)
+
+#define THREAD_ETERNAL_SLEEP (uint64_t)-1
+
+// magic return label from invoke_scheduler
+extern char sched_fault_fixup[];
 
 /**
  * init_scheduler:
@@ -87,11 +99,26 @@ void manage_sleeping_threads();
  * @param th The thread to send to sleep
  * @param sleep_ticks The number of ticks to make the thread sleep
  */
-void add_sleeping_thread(thread_t* thread,uint32_t sleep_ticks);
+void add_sleeping_thread(thread_t* thread,uint64_t sleep_ticks);
+
+/**
+ * wakeup_thread:
+ * Manually awakes a sleeping thread
+ * @param thread The sleeping thread to awake
+ */
+void wakeup_thread(thread_t* thread);
 
 /**
  * invoke_scheduler:
  * invokes the scheduler to try and switch to another thread than the current one
  */
 void invoke_scheduler();
+
+/**
+ * create_kernel_worker_thread.
+ * creates a kernel worker thread that will starts its executation as the specified function
+ * @param entry_func A function pointer to the entry function
+ * @return The created kernel thread if sucess, otherwise nullptr
+ */
+thread_t* create_kernel_worker_thread(void (*entry_func)());
 #endif

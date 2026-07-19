@@ -12,50 +12,94 @@
 #include "../utilities/vector.h"
 #include <stdbool.h>
 #include "../ACPI/apic.h"
+#include "../tables/timer_callbacks.h"
 
 thread_t* t_queue;
 thread_t* current_thread;
 uint8_t first_switch = 1;
-vector_t sleeping_threads;
+sleeping_thread_t* sleeping_thread_head;
 extern uint32_t stack_top;
 
 void invoke_scheduler(){
     if (!get_interrupt_status()) return;
 
-    volatile uint8_t _drop = *(uint8_t *)(MAGIC_SCHED_FAULT_ADDR);
-    (void)(_drop);
+    thread_t* curr_thread = get_current_thread();
+    curr_thread->expect_sched_fault = true;
+    asm volatile(
+        ".global sched_fault_ip\n\t"
+        ".global sched_fault_fixup\n\t"
+        "sched_fault_ip:\n\t"
+        "movb (%0), %%al\n\t"
+        "sched_fault_fixup:\n\t"
+        : : "r"((uint64_t)MAGIC_SCHED_FAULT_ADDR) : "al"
+    );
 }
 
-void add_sleeping_thread(thread_t* thread,uint32_t sleep_ticks){
+void add_sleeping_thread(thread_t* thread, uint64_t sleep_ticks){
     sleeping_thread_t* sleepy_thread = (sleeping_thread_t*)kmalloc(sizeof(sleeping_thread_t));
     thread->exec_state = EXEC_STATE_SLEEPING;
     sleepy_thread->thread = thread;
-    sleepy_thread->wakeup_tick = ticks + sleep_ticks;
+    if (sleep_ticks == THREAD_ETERNAL_SLEEP) 
+        sleepy_thread->wakeup_tick = THREAD_ETERNAL_SLEEP;
+    else
+        sleepy_thread->wakeup_tick = ticks + sleep_ticks;
 
-    vector_append(&sleeping_threads,(vector_data_t)sleepy_thread);
+    sleepy_thread->next = sleeping_thread_head;
+    sleeping_thread_head = sleepy_thread;
 }
 
-void remove_sleeping_thread(sleeping_thread_t* sleepy_thread){
-    vector_erase_item(&sleeping_threads,(uint64_t)sleepy_thread);
+void remove_sleeping_thread_with_prev(sleeping_thread_t* prev, sleeping_thread_t* sleepy_thread){
+    if (prev == nullptr) {
+        sleeping_thread_head = sleepy_thread->next;
+    }else {
+        prev->next = sleepy_thread->next;
+    }
     kfree(sleepy_thread);
 }
 
-void manage_sleeping_threads(){
-    sleeping_thread_t* awoken_threads[256];
-    memset(awoken_threads,0,sizeof(awoken_threads));
-    uint32_t waked_up_procs_idx = 0;
+void remove_sleeping_thread(sleeping_thread_t* sleepy_thread){
+    sleeping_thread_t* prev = nullptr;
+    sleeping_thread_t* curr = sleeping_thread_head;
 
-    for (uint32_t i = 0; i < sleeping_threads.size;i++){
-        sleeping_thread_t* sleepy_thread = (sleeping_thread_t*)sleeping_threads.data[i];
-        if (sleepy_thread->wakeup_tick <= ticks){
-            sleepy_thread->thread->exec_state = EXEC_STATE_RUNNING;
-            awoken_threads[waked_up_procs_idx] = sleepy_thread;
-            waked_up_procs_idx++; 
+    while (curr != nullptr) {
+        if (curr == sleepy_thread) {
+            remove_sleeping_thread_with_prev(prev, curr);
+            return;
         }
+        prev = curr;
+        curr = curr->next;
     }
+}
 
-    for (uint32_t i = 0; i < waked_up_procs_idx; i++){
-        remove_sleeping_thread(awoken_threads[i]);
+void wakeup_thread(thread_t* thread){
+    if (thread->exec_state != EXEC_STATE_SLEEPING) return;
+
+    sleeping_thread_t* curr = sleeping_thread_head;
+    while(curr){
+        if (curr->thread == thread) {
+            remove_sleeping_thread(curr);
+            thread->exec_state = EXEC_STATE_RUNNING;
+            break;
+        }
+        curr = curr->next;
+    }
+}
+
+void manage_sleeping_threads(){
+    sleeping_thread_t* prev = nullptr;
+    sleeping_thread_t* curr = sleeping_thread_head;
+
+    while (curr != nullptr) {
+        sleeping_thread_t* next = curr->next;
+
+        if (curr->wakeup_tick <= ticks) {
+            curr->thread->exec_state = EXEC_STATE_RUNNING;
+            remove_sleeping_thread_with_prev(prev, curr);
+        } else {
+            prev = curr;
+        }
+
+        curr = next;
     }
 }
 
@@ -64,9 +108,13 @@ thread_t* get_current_thread(){
 }
 
 void init_scheduler(){
-    init_vector(&sleeping_threads);
     t_queue = global_kernel_process.main_thread;
     current_thread = t_queue;
+
+    // timer callbacks
+    kworker_timer_callbacks = create_kernel_worker_thread(kthread_worker_timer_callbacks);
+
+    init_vector(&timer_callbacks_vec);
 }
 
 thread_t* get_thread_by_tid(uint32_t tid){
@@ -78,39 +126,72 @@ thread_t* get_thread_by_tid(uint32_t tid){
     return 0;
 }
 
-int add_thread(struct user_process* usr_proc){
+thread_t* create_thread(user_process_t* owner_proc){
     if (!t_queue) {
         error("Process queue not initialized");
-        return -1;
+        return nullptr;
     }
     thread_t* thread = (thread_t*)kmalloc(sizeof(thread_t));
     memset(thread,0x0,sizeof(thread_t));
     thread->expect_sched_fault = false;
     thread->next = 0;
+    
     int tid = get_pid(); // need to put it here so that compiler does not generate weird opcode for some reason
+    if (tid == -1) {error("Failed to assign thread id"); return nullptr;}
+    
     thread->next_proc_thread = 0;
-
-    if (tid == -1) {error("Failed to assign thread id"); return -1;}
     thread->tid = tid;
-    thread->owner_proc = usr_proc;
+    thread->owner_proc = owner_proc;
     thread->exec_state = EXEC_STATE_INIT;
     thread->active_dir = current_thread->active_dir;
+
+    return thread;
+}
+
+void enqueue_thread(thread_t* thread){
     // add to main thread queue
     thread_t* last = t_queue;
+
+    user_process_t* owner_proc = thread->owner_proc;
 
     while(last->next) {last = last->next;}
     last->next = thread;
 
     // add to user process thread queue
-    if (!usr_proc->main_thread) {usr_proc->main_thread = thread;}
+    if (!owner_proc->main_thread) {owner_proc->main_thread = thread;}
     else{
-        last = usr_proc->main_thread;
+        last = owner_proc->main_thread;
         while(last->next_proc_thread) {last = last->next_proc_thread;}
         last->next_proc_thread = thread; 
     }
+}
+
+int add_thread(struct user_process* usr_proc){
+
+    thread_t* thread = create_thread(usr_proc);
+    if (!thread) return -1;
+
+    enqueue_thread(thread);
 
     return thread->tid;
 
+}
+
+thread_t* create_kernel_worker_thread(void (*entry_func)()){
+    thread_t* kthread  = create_thread(&global_kernel_process);
+    if (!kthread) return nullptr;
+
+    memset(&kthread->regs,0x0,sizeof(kthread->regs));
+
+    kthread->regs.rip = (uint64_t)entry_func;
+    uint64_t phys = pmm_alloc_page_frame();
+    kthread->init_rsp = map_somewhere_rw(phys) + MEMORY_PAGE_SIZE; // one page, use it wisely
+
+    enqueue_thread(kthread);
+
+    kthread->exec_state = EXEC_STATE_FINALIZED;
+
+    return kthread;
 }
 
 thread_t* find_schedule_candidate(){
@@ -159,9 +240,13 @@ void switch_task(interrupt_stack_frame_t* regs){
 
     if (current_thread->exec_state == EXEC_STATE_FINALIZED){
         current_thread->exec_state = EXEC_STATE_RUNNING;
-        enter_user_mode(current_thread); // does not return
+        if (current_thread->owner_proc->process_id == global_kernel_process.process_id){
+            enter_kernel_thread(current_thread); // does not return
+        }else{
+            enter_user_mode(current_thread); // does not return
+        }
     }
-    
+       
     asm volatile( "mov %0, %%rsp\n\t"
                   "jmp return_from_interrupt\n\t"
                   : : "r"(current_thread->kernel_rsp) 
@@ -191,6 +276,10 @@ void remove_thread(thread_t* thread){
 
     while(before_thread->next_proc_thread && before_thread->next_proc_thread != thread) before_thread = before_thread->next_proc_thread;
     before_thread->next_proc_thread = thread->next_proc_thread;
+
+    if (thread->owner_proc->process_id == global_kernel_process.process_id){
+        mem_unmap_page(thread->init_rsp - MEMORY_PAGE_SIZE);
+    }
 
     kfree(thread);
 }
