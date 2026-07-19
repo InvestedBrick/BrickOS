@@ -13,6 +13,7 @@
 #include "../ACPI/apic.h"
 #include "../drivers/timer/pit.h"
 #include "../kernel_header.h"
+#include "timer_callbacks.h"
 
 void page_fault_handler(user_process_t* p,uint64_t fault_addr,interrupt_stack_frame_t* stack_frame);
 
@@ -23,8 +24,6 @@ static int enabled_idt[IDT_MAX_ENTRIES] = {0};
 extern void* idt_code_table[];
 
 static idt_t idt;
-
-timer_callback_t* timer_callback_head;
 
 uint64_t ticks = 0;
 uint64_t current_timestamp = 0;
@@ -89,19 +88,6 @@ void unregister_irq(uint32_t int_num){
     kfree(to_delete);
 }
 
-void handle_timer_callbacks(){
-    timer_callback_t* head = timer_callback_head;
-    while(head){
-        head->running_ticks++;
-        if (head->running_ticks >= head->period_ticks){
-            head->running_ticks = 0;
-            head->callback(); //TODO: offload work to schedulable kernel thread
-        }
-
-        head = head->next;
-    } 
-}
-
 void timer_stub(interrupt_stack_frame_t* stack_frame){
     ticks++;
     current_timestamp = limine_data.boot_time + CEIL_DIV((ticks << 32),timer_freq) + timezone_adjustment;
@@ -113,56 +99,13 @@ void timer_stub(interrupt_stack_frame_t* stack_frame){
     }
 }
 
-void register_timer_callback(void (*callback)(),uint32_t period_ms){
-    uint8_t status = get_interrupt_status();
-    disable_interrupts();
-   
-    timer_callback_t* cb = (timer_callback_t*)kmalloc(sizeof(timer_callback_t));
-    cb->callback = callback;
-    cb->period_ticks = MS_TO_TICKS(period_ms);
-    cb->running_ticks = 0;
-    cb->next = nullptr;
-    
-    if (!timer_callback_head) timer_callback_head = cb;
-    else{
-        timer_callback_t* prev = timer_callback_head;
-        while(prev->next) prev = prev->next;
-        prev->next = cb;
-    }
-
-    set_interrupt_status(status);
-}
-
-void unregister_timer_callback(void (*callback)()){
-    uint8_t status = get_interrupt_status();
-    disable_interrupts();
-
-    if (!timer_callback_head) return;
-
-    timer_callback_t* curr = timer_callback_head;
-    if (timer_callback_head->callback == callback){
-        timer_callback_head = timer_callback_head->next;
-        kfree(curr);
-        return;
-    }
-
-    while(curr->next && curr->next->callback != callback) curr = curr->next;
-
-    if (curr->next){
-        timer_callback_t* to_del = curr->next;
-        curr->next = to_del->next;
-        kfree(to_del);
-    }
-
-    set_interrupt_status(status);
-}
-
 void page_fault_stub(interrupt_stack_frame_t* stack_frame){
     uint64_t cr2;
     asm volatile ("mov %%cr2, %0" : "=r"(cr2));
     thread_t* curr_thread = get_current_thread();
     if (cr2 == MAGIC_SCHED_FAULT_ADDR && curr_thread->expect_sched_fault){
         curr_thread->expect_sched_fault = false;
+        stack_frame->rip = (uint64_t)sched_fault_fixup; // return label after the drop to here
         switch_task(stack_frame); // does not return
     }
     page_fault_handler(get_current_user_process(),cr2,stack_frame);
