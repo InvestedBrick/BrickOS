@@ -6,7 +6,7 @@
 #include "../memory/kmalloc.h"
 #include "arp.h"
 #include "ip.h"
-#include "../tables/interrupts.h"
+#include "../tables/timer_callbacks.h"
 #include <stdbool.h>
 
 routing_table_t routing_table;
