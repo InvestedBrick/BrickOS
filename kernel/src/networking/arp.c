@@ -9,6 +9,7 @@
 
 //TODO: synchronise interrupt sensitive parts with mutexes
 void decrement_and_cleanup_arp_cache(net_interface_t* iface) {
+    mutex_wait(&iface->mac_cache_mutex,TIMEOUT_INF);
     arp_mac_cache_t dummy;
     dummy.next = iface->arp_cache_head;
     arp_mac_cache_t* curr = &dummy;
@@ -26,6 +27,7 @@ void decrement_and_cleanup_arp_cache(net_interface_t* iface) {
     }
 
     iface->arp_cache_head = dummy.next;
+    mutex_signal(&iface->mac_cache_mutex);
 }
 
 void arp_timer_callback(){
@@ -131,6 +133,7 @@ void arp_cache_mac(arp_header_t* arp_hdr){
         warn("Failed to cache mac, no route found");
         return;
     }
+    mutex_wait(&route->iface->mac_cache_mutex,TIMEOUT_INF);
 
     unsigned char* ip_addr_str = ipv4_to_str(cache->ip_addr);
     logf("ARP: Caching MAC for IP %s",ip_addr_str);
@@ -145,38 +148,63 @@ void arp_cache_mac(arp_header_t* arp_hdr){
         while(head->next) head = head->next;
         head->next = cache;
     }
+
+    mutex_signal(&route->iface->mac_cache_mutex);
 }
+
+arp_mac_cache_t* arp_cache_contains_ip_locked(net_interface_t* iface, uint32_t ip_addr){
+    arp_mac_cache_t* head = iface->arp_cache_head;
+    while(head){
+        if (head->ip_addr == ip_addr) return head;
+        head = head->next;
+    }
+
+    return nullptr;
+}
+
 
 arp_mac_cache_t* arp_cache_contains_ip(uint32_t ip_addr){
 
     route_t* route = route_lookup(ip_addr);
     if (!route) return nullptr;
 
-    arp_mac_cache_t* head = route->iface->arp_cache_head;
-    while(head){
-        if (head->ip_addr == ip_addr) return head;
-        head = head->next;
-    }
-    return nullptr;
+    mutex_wait(&route->iface->mac_cache_mutex,TIMEOUT_INF);
+    arp_mac_cache_t* result = arp_cache_contains_ip_locked(route->iface,ip_addr);
+    mutex_signal(&route->iface->mac_cache_mutex);
+
+    return result; 
+
+    
 }
 
 void arp_lookup(uint32_t ip_addr,uint8_t* mac_out){
-    arp_mac_cache_t* cache = arp_cache_contains_ip(ip_addr);
+    route_t* route = route_lookup(ip_addr);
+    if (!route) return;
+
+    mutex_wait(&route->iface->mac_cache_mutex,TIMEOUT_INF);
+
+    arp_mac_cache_t* cache = arp_cache_contains_ip_locked(route->iface,ip_addr);
     if (cache) {
         memcpy(mac_out,cache->mac,sizeof(cache->mac));
+        mutex_signal(&route->iface->mac_cache_mutex);
         return;
     }
+    mutex_signal(&route->iface->mac_cache_mutex);
+
     arp_send_request(ip_addr);
 
     while(1) {
-        cache = arp_cache_contains_ip(ip_addr);
-        if (cache) break;
+        mutex_wait(&route->iface->mac_cache_mutex,TIMEOUT_INF);
+        cache = arp_cache_contains_ip_locked(route->iface,ip_addr);
+        if (cache) {
+            memcpy(mac_out,cache->mac,sizeof(cache->mac));
+            mutex_signal(&route->iface->mac_cache_mutex);
+            return;
+        }
+        mutex_signal(&route->iface->mac_cache_mutex);
 
         invoke_scheduler();
     }
-
-    memcpy(mac_out,cache->mac,sizeof(cache->mac));
-
 }
 
 void arp_handle_packet(uint8_t* data, uint32_t write_off, uint32_t total_len){
