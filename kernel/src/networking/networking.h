@@ -10,6 +10,7 @@
 #define MAX_ROUTING_TABLE_ENTRIES 10
 
 #include "../drivers/PCI/pci.h"
+#include "../processes/spinlocks.h"
 #include "arp.h"
 #include <stdint.h>
 
@@ -26,6 +27,7 @@ typedef struct net_interface {
     uint32_t mtu;
     
     struct arp_mac_cache* arp_cache_head;
+    mutex_t mac_cache_mutex; 
     uint32_t (*send)(void*,uint32_t);
 
 }net_interface_t;
