@@ -48,6 +48,7 @@ void register_route(net_interface_t* iface, uint32_t network, uint32_t netmask, 
 void setup_network_driver(){
     net_interface_t* eth0 = (net_interface_t*)kmalloc(sizeof(net_interface_t));
     memcpy(eth0->name,"eth0",5);
+    mutex_init(&eth0->mac_cache_mutex);
     routing_table.n_routes = 0;
 
     register_timer_callback(ipv4_timer_callback,1000); // callback every second
