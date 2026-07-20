@@ -9,8 +9,13 @@
 
 static atomic_uint_fast16_t ip_id;
 ipv4_ll_link_t* packet_ll_origin = nullptr;
+mutex_t ip_ll_mutex;
 
-ipv4_ll_link_t* find_ipv4_packet_start_link(uint16_t ident){
+uint64_t create_packet_part_ident(uint32_t src_ip, uint16_t ident, uint8_t protocol){
+    return ((uint64_t)src_ip | ((uint64_t)ident << 32) | ((uint64_t)protocol << 48));
+}
+
+ipv4_ll_link_t* find_ipv4_packet_start_link(uint64_t ident){
     ipv4_ll_link_t* curr = packet_ll_origin;
     while(curr && curr->start && curr->start->ident != ident) curr = curr->next;
 
@@ -44,6 +49,7 @@ void abort_reassembly(ipv4_packet_part_t* part){
 
 void ipv4_timer_callback(){
     // called every second
+    mutex_wait(&ip_ll_mutex,TIMOUT_INF);
     ipv4_ll_link_t* head = packet_ll_origin;
     while(head){
         ipv4_ll_link_t* to_del = nullptr;
@@ -52,9 +58,12 @@ void ipv4_timer_callback(){
             to_del = head;
         }
         head = head->next;
-        if (to_del)
+        if (to_del){
             abort_reassembly(to_del->start);
+            
+        }
     }
+    mutex_signal(&ip_ll_mutex);
 }
 
 route_t* route_lookup(uint32_t dst_ip){
@@ -107,6 +116,7 @@ uint8_t ipv4_packet_complete(ipv4_packet_part_t* part){
     while(curr){
         if (curr->frag_offset * 8 != expected_offset) return 0; // no perfect tiling
         expected_offset += curr->data_len; 
+        last = curr; 
         curr = curr->next;
     }
     
@@ -239,8 +249,22 @@ uint32_t unify_ip_packet(ipv4_packet_part_t* part, uint8_t** out_data){
     return total_packet_size;
 }
 
-void hand_ip_packet_along(uint8_t* data, uint32_t len){
-    /**TODO: */
+void hand_ip_packet_along(uint8_t* data, uint32_t len,uint8_t protocol){
+    switch (protocol)
+    {
+    case IP_PROTOCOL_ICMP:
+        /* code */
+        break;
+    case IP_PROTOCOL_TCP:
+        break;
+    case IP_PROTOCOL_UDP:
+        break;
+    case IP_PROTOCOL_RAW:
+        break;
+    default:
+        warnf("recieved unhandled protocol (%d)", protocol);
+        break;
+    }
 }
 
 void ip_handle_packet(uint8_t* data, uint32_t write_off, uint32_t total_len) {
@@ -277,28 +301,35 @@ void ip_handle_packet(uint8_t* data, uint32_t write_off, uint32_t total_len) {
 
     if (!(flags_frag_off & IP_FLAGS_MORE_FRAGMENTS) && frag_off == 0){
         // unfragmented packet
-        hand_ip_packet_along(data + hdr_len + write_off,post_hdr_data_len);
+        hand_ip_packet_along(data + write_off + hdr_len,post_hdr_data_len,ipv4_hdr->protocol);
     }else{
         //fragmented
 
         ipv4_packet_part_t* part = (ipv4_packet_part_t*)kmalloc(sizeof(ipv4_packet_part_t));
         uint8_t* post_hdr_data = (uint8_t*)kmalloc(post_hdr_data_len);
-        memcpy(post_hdr_data,(void*)(data + hdr_len + write_off), post_hdr_data_len);
-        part->ident = ident;
+        memcpy(post_hdr_data,(void*)(data + write_off + hdr_len), post_hdr_data_len);
+        uint32_t src_ip = switch_endian32(ipv4_hdr->src_ip);
+        part->ident = create_packet_part_ident(src_ip,ident,ipv4_hdr->protocol);
         part->data_len = post_hdr_data_len;
         part->data = post_hdr_data;
+        part->protocol = ipv4_hdr->protocol;
 
         part->frag_offset = frag_off;
         part->no_more_frags = (flags_frag_off & IP_FLAGS_MORE_FRAGMENTS) == 0;
 
         part->next = nullptr;
+        
+        mutex_wait(&ip_ll_mutex,TIMOUT_INF);
         insert_ipv4_packet_part(part);
 
         if (ipv4_packet_complete(part)){
             uint8_t* out_data;
             uint32_t len = unify_ip_packet(part,&out_data);
-            hand_ip_packet_along(out_data,len);
+            hand_ip_packet_along(out_data,len,part->protocol);
+            kfree(out_data); // can be freed here since was allocated in unify_ip_packet
         }
+        mutex_signal(&ip_ll_mutex);
+
 
     }
 
