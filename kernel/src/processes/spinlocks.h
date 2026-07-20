@@ -17,7 +17,7 @@ typedef struct {
     bool free;
 }mutex_t;
 
-#define TIMOUT_INF (uint32_t)-1
+#define TIMEOUT_INF (uint32_t)-1
 
 /**
  * spinlock_aquire:

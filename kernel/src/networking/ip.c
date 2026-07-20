@@ -49,7 +49,7 @@ void abort_reassembly(ipv4_packet_part_t* part){
 
 void ipv4_timer_callback(){
     // called every second
-    mutex_wait(&ip_ll_mutex,TIMOUT_INF);
+    mutex_wait(&ip_ll_mutex,TIMEOUT_INF);
     ipv4_ll_link_t* head = packet_ll_origin;
     while(head){
         ipv4_ll_link_t* to_del = nullptr;
@@ -319,7 +319,7 @@ void ip_handle_packet(uint8_t* data, uint32_t write_off, uint32_t total_len) {
 
         part->next = nullptr;
         
-        mutex_wait(&ip_ll_mutex,TIMOUT_INF);
+        mutex_wait(&ip_ll_mutex,TIMEOUT_INF);
         insert_ipv4_packet_part(part);
 
         if (ipv4_packet_complete(part)){
