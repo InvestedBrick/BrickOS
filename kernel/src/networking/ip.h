@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include "networking.h"
+#include "../processes/spinlocks.h"
 
 #define IP_VERSION_4 0x4
 
@@ -58,9 +59,10 @@ typedef struct {
 
 typedef struct ipv4_packet_part{
     uint8_t no_more_frags;
-    uint16_t ident;
+    uint64_t ident;
     uint16_t frag_offset;
     uint16_t data_len; // without header
+    uint8_t protocol;
     uint8_t* data;
 
     struct ipv4_packet_part* next;
@@ -72,6 +74,8 @@ typedef struct ipv4_ll_link {
 
     struct ipv4_ll_link* next;
 }ipv4_ll_link_t;
+
+extern mutex_t ip_ll_mutex;
 
 #define IP_HDR_DEFAULT_SIZE sizeof(ipv4_header_t)
 
