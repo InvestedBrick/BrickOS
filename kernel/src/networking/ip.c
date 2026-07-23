@@ -5,6 +5,7 @@
 #include "../utilities/util.h"
 #include "../io/log.h"
 #include "../tables/interrupts.h"
+#include "icmp.h"
 #include <stdatomic.h>
 
 static atomic_uint_fast16_t ip_id;
@@ -151,12 +152,17 @@ uint8_t ip_add_header(net_interface_t* iface,uint8_t* data, uint32_t* write_off,
     return IP_HDR_RET_SUCCESS;
 }
 
-uint8_t send_ip_packet(uint8_t* data, uint32_t len, uint32_t dst_ip){
-    
+uint8_t send_ip_based_packet(uint8_t* usr_data, uint32_t usr_data_len, uint32_t dst_ip, uint8_t higher_prot, void* higher_prot_data){
     route_t* route = route_lookup(dst_ip);
     if (!route) return IP_SEND_RET_NO_ROUTE;
 
-    if (len + IP_HDR_DEFAULT_SIZE > route->iface->mtu) return IP_SEND_RET_MTU_OVERSTEP;
+    uint32_t total_hdr_len = sizeof(ethernet_header_t) + sizeof(ipv4_header_t);
+    if (higher_prot == IP_PROTOCOL_ICMP) {
+        icmp_send_data_t* icmp_send = (icmp_send_data_t*)higher_prot_data;
+        total_hdr_len += sizeof(icmp_header_t);
+        total_hdr_len += icmp_send->extra_payload_len;
+    }
+    if (usr_data_len + total_hdr_len > route->iface->mtu) return IP_SEND_RET_MTU_OVERSTEP;
 
     uint32_t next_hop = 0;
 
@@ -169,22 +175,42 @@ uint8_t send_ip_packet(uint8_t* data, uint32_t len, uint32_t dst_ip){
 
     arp_lookup(next_hop,dst_mac);
 
-    uint32_t total_header_len = sizeof(ipv4_header_t) + sizeof(ethernet_header_t);
-    uint32_t write_off = total_header_len;
-    uint8_t* data_buf = (uint8_t*)kmalloc(total_header_len + len);
+    uint32_t write_off = total_hdr_len;
+    uint8_t* data_buf = (uint8_t*)kmalloc(total_hdr_len + usr_data_len);
 
     uint16_t id = atomic_fetch_add(&ip_id,1);
+    
+    uint32_t post_hdr_len = usr_data_len;
+    uint8_t ret = 0;
+    if (higher_prot == IP_PROTOCOL_ICMP){
+        icmp_send_data_t* icmp_send = (icmp_send_data_t*)higher_prot_data;
+        post_hdr_len += sizeof(icmp_header_t) + icmp_send->extra_payload_len;
 
-    uint8_t ret = ip_add_header(route->iface,
+        ret = icmp_add_hdr(data_buf,
+                           &write_off,
+                           icmp_send->icmp_type,
+                           icmp_send->icmp_code,
+                           icmp_send->may_be_used,
+                           icmp_send->extra_payload,
+                           icmp_send->extra_payload_len);
+
+        if (ret != ICMP_HDR_RET_SUCCESS) {
+            warnf("Fialed to add ICMP header to IP based packet (ERR:%x)",ret);
+            kfree(data_buf);
+            return IP_SEND_RET_ICMP_HDR_FAILED;
+        }
+    }
+
+    ret = ip_add_header(route->iface,
                                 data_buf,
                                 &write_off,
                                 dst_ip,
-                                IP_PROTOCOL_RAW,
+                                higher_prot,
                                 IP_TOS_DEFAULT,
                                 IP_TTL_MAX,
                                 id,
                                 IP_MAY_FRAGMENT,
-                                len);
+                                post_hdr_len);
     if (ret != IP_HDR_RET_SUCCESS) {
         warnf("Failed to add IP header to IP packet (ERR: %x)",ret);
         kfree(data_buf);
@@ -202,14 +228,24 @@ uint8_t send_ip_packet(uint8_t* data, uint32_t len, uint32_t dst_ip){
         return IP_SEND_RET_ETH_HDR_FAILED;
     }
 
+    if (usr_data){
+        memcpy(&data_buf[total_hdr_len],usr_data,usr_data_len);
+    }
 
-    memcpy(&data_buf[total_header_len],data,len);
-
-    route->iface->send(data_buf,total_header_len + len); // buffer gets distributed into pages and memcpied, so freeing after send is fine
-
+    route->iface->send(data_buf,total_hdr_len + usr_data_len); // buffer gets distributed into pages and memcpied, so freeing after send is fine
+    
     kfree(data_buf);
 
     return IP_SEND_RET_SUCCESS;
+}
+
+uint8_t send_ip_packet(uint8_t* data, uint32_t len, uint32_t dst_ip){
+
+    return send_ip_based_packet(data,
+                                len,
+                                dst_ip,
+                                IP_PROTOCOL_RAW,
+                                nullptr);
 }
 
 uint32_t unify_ip_packet(ipv4_packet_part_t* part, uint8_t** out_data){
@@ -249,11 +285,11 @@ uint32_t unify_ip_packet(ipv4_packet_part_t* part, uint8_t** out_data){
     return total_packet_size;
 }
 
-void hand_ip_packet_along(uint8_t* data, uint32_t len,uint8_t protocol){
+void hand_ip_packet_along(uint8_t* data, uint32_t len,uint8_t protocol, uint32_t src_ip){
     switch (protocol)
     {
     case IP_PROTOCOL_ICMP:
-        /* code */
+        icmp_handle_packet(data,len,src_ip);
         break;
     case IP_PROTOCOL_TCP:
         break;
@@ -298,17 +334,17 @@ void ip_handle_packet(uint8_t* data, uint32_t write_off, uint32_t total_len) {
     uint16_t frag_off = flags_frag_off & IP_FRAG_OFF_MASK;
 
     if (frag_off * 8 + post_hdr_data_len > IPv4_MAX_PACKET_SIZE) return;
-
+    
+    uint32_t src_ip = switch_endian32(ipv4_hdr->src_ip);
     if (!(flags_frag_off & IP_FLAGS_MORE_FRAGMENTS) && frag_off == 0){
         // unfragmented packet
-        hand_ip_packet_along(data + write_off + hdr_len,post_hdr_data_len,ipv4_hdr->protocol);
+        hand_ip_packet_along(data + write_off + hdr_len,post_hdr_data_len,ipv4_hdr->protocol, src_ip);
     }else{
         //fragmented
 
         ipv4_packet_part_t* part = (ipv4_packet_part_t*)kmalloc(sizeof(ipv4_packet_part_t));
         uint8_t* post_hdr_data = (uint8_t*)kmalloc(post_hdr_data_len);
         memcpy(post_hdr_data,(void*)(data + write_off + hdr_len), post_hdr_data_len);
-        uint32_t src_ip = switch_endian32(ipv4_hdr->src_ip);
         part->ident = create_packet_part_ident(src_ip,ident,ipv4_hdr->protocol);
         part->data_len = post_hdr_data_len;
         part->data = post_hdr_data;
@@ -325,7 +361,7 @@ void ip_handle_packet(uint8_t* data, uint32_t write_off, uint32_t total_len) {
         if (ipv4_packet_complete(part)){
             uint8_t* out_data;
             uint32_t len = unify_ip_packet(part,&out_data);
-            hand_ip_packet_along(out_data,len,part->protocol);
+            hand_ip_packet_along(out_data,len,part->protocol,src_ip);
             kfree(out_data); // can be freed here since was allocated in unify_ip_packet
         }
         mutex_signal(&ip_ll_mutex);
