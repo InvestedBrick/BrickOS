@@ -7,7 +7,6 @@
 #include "ip.h"
 #include "ethernet.h"
 
-//TODO: synchronise interrupt sensitive parts with mutexes
 void decrement_and_cleanup_arp_cache(net_interface_t* iface) {
     mutex_wait(&iface->mac_cache_mutex,TIMEOUT_INF);
     arp_mac_cache_t dummy;
