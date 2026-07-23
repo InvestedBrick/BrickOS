@@ -18,3 +18,14 @@ plan:
     [X] background image
     [ ] networking
     [?] better fileystem
+
+networking:
+    [X] NIC driver
+    [X] Ethernet
+    [X] ARP
+    [X] IP
+    [ ] ICMP
+    [ ] UDP
+    [ ] DHCP
+    [ ] TCP
+    [ ] Userspace API
