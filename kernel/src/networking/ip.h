@@ -88,6 +88,7 @@ extern mutex_t ip_ll_mutex;
 #define IP_SEND_RET_MTU_OVERSTEP 0x2 
 #define IP_SEND_RET_IP_HDR_FAILED 0x3
 #define IP_SEND_RET_ETH_HDR_FAILED 0x4
+#define IP_SEND_RET_ICMP_HDR_FAILED 0x5
 /**
  * ip_add_header:
  * Adds an IP header to a ethernet packet by prepending to previous headers
@@ -124,5 +125,17 @@ void ip_handle_packet(uint8_t* data, uint32_t write_off, uint32_t total_len);
 route_t* route_lookup(uint32_t dst_ip);
 
 void ipv4_timer_callback();
+
+/**
+ * send_ip_based_packet:
+ * Sends an IP based packet (raw IP, UDP, TCP, ICMP ...) to a designated ip address
+ * @param usr_data The user data to send
+ * @param usr_data_len The length of the user data
+ * @param dst_ip The destination IPv4 address
+ * @param higher_prot The IP_PROTOCOL_* higher protocol
+ * @param higher_prot_data A pointer to a protocol specific struct for additonal data
+ * @return IP_SEND_RET_SUCCESS upon success, otherwise an error (see IP_SEND_RET_*) 
+ */
+uint8_t send_ip_based_packet(uint8_t* usr_data, uint32_t usr_data_len, uint32_t dst_ip, uint8_t higher_prot, void* higher_prot_data);
 
 #endif
