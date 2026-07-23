@@ -14,6 +14,9 @@
 #define ICMP_TYPE_INFO_REQ_MSG 15
 #define ICMP_TYPE_INFO_REPLY_MSG 16
 
+#define ICMP_HDR_RET_SUCCESS 0x0
+#define ICMP_HDR_RET_DATA_OVERFLOW 0x1
+#define ICMP_HDR_RET_INVALID_TYPE 0x2
 
 typedef struct {
     uint8_t icmp_type;
@@ -35,9 +38,9 @@ typedef struct {
 typedef struct {
     uint16_t time_stmp_ident;
     uint16_t time_stmp_seq;
-    uint32_t originate_timstmp;
-    uint32_t recv_timstmp;
-    uint32_t transmit_timstmp;
+    uint32_t originate_timestmp;
+    uint32_t recv_timestmp;
+    uint32_t transmit_timestmp;
 }icmp_timestamp_t;
 
 typedef struct {
@@ -48,13 +51,46 @@ typedef struct {
     uint32_t gateway_ip_addr;
 }icmp_redir_t;
 
-void icmp_handle_packet(uint8_t* data, uint32_t len);
+
+typedef struct{
+    uint8_t icmp_type;
+    uint8_t icmp_code;
+
+    uint32_t may_be_used;
+
+    uint8_t* extra_payload;
+    uint32_t extra_payload_len;
+}icmp_send_data_t;
+
+
+/**
+ * icmp_handle_packet:
+ * Reads the ICMP header of a packet and takes action depending on the type
+ * @param data The data starting at the icmp header
+ * @param len The length of the header + any extra payloads
+ * @param src_ip The IPv4 address of the message source
+ */
+void icmp_handle_packet(uint8_t* data, uint32_t len, uint32_t src_ip);
+
+/**
+ * icmp_add_hdr:
+ * Adds an ICMP header and additional payloads to a packet
+ * @param data The packet buffer
+ * @param write_off A pointer to the write offset
+ * @param icmp_type The ICMP type
+ * @param icmp_code The ICMP code
+ * @param may_be_used_dword The 32 bit dword that may contain additonal data (assumed to be (upper_16 << 16 | lower_16 ))
+ * @param extra_payload The optional extra payload after the actual header for e. g. echo messages
+ * @param extra_payload_len The length of the extra payload 
+ */
+uint8_t icmp_add_hdr(uint8_t* data, uint32_t* write_off, uint8_t icmp_type, uint8_t icmp_code, uint32_t may_be_used_dword, uint8_t* extra_payload, uint32_t extra_payload_len);
+
 
 void icmp_handle_echo_reply(icmp_header_t* icmp_hdr, uint32_t total_len);
 void icmp_handle_dest_unreachable(icmp_header_t* icmp_hdr, uint32_t total_len);
 void icmp_handle_source_quench(icmp_header_t* icmp_hdr, uint32_t total_len);
 void icmp_handle_redirect(icmp_header_t* icmp_hdr, uint32_t total_len);
-void icmp_handle_echo_request(icmp_header_t* icmp_hdr, uint32_t total_len);
+void icmp_handle_echo_request(icmp_header_t* icmp_hdr, uint32_t total_len, uint32_t src_ip);
 void icmp_handle_time_exceeded(icmp_header_t* icmp_hdr, uint32_t total_len);
 void icmp_handle_parameter_problem(icmp_header_t* icmp_hdr, uint32_t total_len);
 void icmp_handle_timestamp(icmp_header_t* icmp_hdr, uint32_t total_len);
