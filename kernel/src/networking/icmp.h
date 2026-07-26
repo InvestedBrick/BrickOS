@@ -18,6 +18,12 @@
 #define ICMP_HDR_RET_DATA_OVERFLOW 0x1
 #define ICMP_HDR_RET_INVALID_TYPE 0x2
 
+#define ICMP_REDIR_NETWORK 0
+#define ICMP_REDIR_TOS_NETWORK 2
+
+#define ICMP_REDIR_HOST 1
+#define ICMP_REDIR_TOS_HOST 3
+
 typedef struct {
     uint8_t icmp_type;
     uint8_t icmp_code;
