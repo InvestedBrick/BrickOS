@@ -86,4 +86,14 @@ uint32_t switch_endian32(uint32_t nb);
  * Returns: the computed checksum in host byte order
  */
 uint16_t compute_checksum(uint8_t* hdr,uint32_t len);
+
+/**
+ * update_or_insert_route:
+ * Tries to update an entry in the routing table and inserts new one if not found
+ * @param iface The interface to be assigned to the route
+ * @param network The network of the route
+ * @param netmask The netmask for the route
+ * @param gateway THe gateway to be assigned to the route
+ */
+void update_or_insert_route(net_interface_t* iface, uint32_t network, uint32_t netmask, uint32_t gateway);
 #endif

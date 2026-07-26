@@ -45,6 +45,18 @@ void register_route(net_interface_t* iface, uint32_t network, uint32_t netmask, 
     new_route->iface = iface;
     routing_table.n_routes++;
 }
+
+void update_or_insert_route(net_interface_t* iface, uint32_t network, uint32_t netmask, uint32_t gateway) {
+    for (uint32_t i = 0; i < routing_table.n_routes; i++) {
+        route_t* r = &routing_table.routes[i];
+        if (r->network == network && r->netmask == netmask) {
+            r->gateway = gateway;
+            r->iface = iface;
+            return;
+        }
+    }
+    register_route(iface, network, netmask, gateway);
+}
 void setup_network_driver(){
     net_interface_t* eth0 = (net_interface_t*)kmalloc(sizeof(net_interface_t));
     memcpy(eth0->name,"eth0",5);
@@ -78,7 +90,7 @@ void setup_network_driver(){
     }
     logf("set up NIC driver");
     register_route(eth0,IP_TESTING & NETMASK_DEFAULT,NETMASK_DEFAULT,0); // route for local network
-    register_route(eth0,0,0,ROUTER_IP); // default route (needs to be last in the routing table)
+    register_route(eth0,0,0,ROUTER_IP); // default route 
 
     uint32_t ip = ipv4_to_uint32("192.168.100.1"); 
     arp_send_request(ip);

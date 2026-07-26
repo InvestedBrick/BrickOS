@@ -68,11 +68,16 @@ void ipv4_timer_callback(){
 }
 
 route_t* route_lookup(uint32_t dst_ip){
+    route_t* best = nullptr;
     for (uint32_t i = 0; i < routing_table.n_routes;i++){
-        route_t* route = &routing_table.routes[i];
-        if ((dst_ip & route->netmask) == (route->network & route->netmask)) return route;
+        route_t* r = &routing_table.routes[i];
+        if ((dst_ip & r->netmask) == r->network){
+            if (!best || r->netmask > best->netmask){
+                best = r;
+            }
+        }
     }
-    return nullptr;
+    return best;
 }
 
 void insert_ipv4_packet_part(ipv4_packet_part_t* part){
