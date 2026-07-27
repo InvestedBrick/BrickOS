@@ -102,6 +102,7 @@ void create_virt_file(inode_t* parent_dir,unsigned char* name,vfs_handles_t* han
     virt_file_t* virt_file_struct = (virt_file_t*)kmalloc(sizeof(virt_file_t));
     virt_file_struct->inode_id = virt_file->id;
     virt_file_struct->gen_file = (generic_file_t*)kmalloc(sizeof(generic_file_t));
+    virt_file_struct->gen_file->type = FS_TYPE_VIRT_FILE;
     virt_file_struct->gen_file->ops = handles;
     virt_file_struct->gen_file->generic_data = nullptr;
     virt_file_struct->gen_file->object_id = virt_file->id;

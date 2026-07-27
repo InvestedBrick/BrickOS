@@ -75,6 +75,7 @@ void create_device(unsigned char* name,vfs_handles_t* handles, void* gen_data,vo
 
     dev->inode_id = node->id;
     dev->gen_file = (generic_file_t*)kmalloc(sizeof(generic_file_t));
+    dev->gen_file->type = FILE_TYPE_DEVICE;
     dev->gen_file->generic_data = gen_data;
     dev->gen_file->ops = handles;
     dev->gen_file->object_id = node->id;

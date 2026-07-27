@@ -149,6 +149,7 @@ generic_file_t* fs_open_inode(inode_t* inode,uint8_t flags,unsigned char* filepa
     open_file->rw_pointer = 0;
 
     generic_file_t* gen_file = (generic_file_t*)kmalloc(sizeof(generic_file_t)); 
+    gen_file->type = FILE_TYPE_REGULAR;
     gen_file->ops = &fs_ops;
     gen_file->generic_data = (void*)open_file;
     gen_file->object_id = inode->id;

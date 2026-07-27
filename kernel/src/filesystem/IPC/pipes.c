@@ -145,6 +145,7 @@ generic_file_t* open_pipe(inode_t* inode,uint32_t flags){
     }
 
     generic_file_t* gen_file = (generic_file_t*)kmalloc(sizeof(generic_file_t));
+    gen_file->type = FILE_TYPE_PIPE;
     gen_file->generic_data = (void*)pipe;
     gen_file->ops = &pipe_handlers;
     gen_file->object_id = inode->id;
