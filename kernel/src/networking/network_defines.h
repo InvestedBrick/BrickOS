@@ -20,6 +20,9 @@ typedef enum {
     SOCKET_UNUSED,
 }socket_domain_e;
 
+#define INADDR_LOOPBACK 0x7f000001
+#define INADDR_ANY      0x00000000
+
 typedef struct {
     uint16_t inet_family;
     uint16_t inet_port;
