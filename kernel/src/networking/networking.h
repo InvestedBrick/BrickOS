@@ -12,10 +12,17 @@
 #include "../drivers/PCI/pci.h"
 #include "../processes/spinlocks.h"
 #include "arp.h"
+#include "udp.h"
 #include <stdint.h>
 
 struct arp_mac_cache;
 typedef struct arp_mac_cache arp_mac_cache_t;
+
+struct udp_header;
+typedef struct udp_header udp_header_t;
+
+struct pseudo_ip_hdr;
+typedef struct pseudo_ip_hdr pseudo_ip_hdr_t;
 
 typedef struct net_interface {
     char name[16];

@@ -95,7 +95,7 @@ uint8_t icmp_add_hdr(uint8_t* data, uint32_t* write_off, uint8_t icmp_type, uint
 void icmp_handle_echo_reply(icmp_header_t* icmp_hdr, uint32_t total_len);
 void icmp_handle_dest_unreachable(icmp_header_t* icmp_hdr, uint32_t total_len);
 void icmp_handle_source_quench(icmp_header_t* icmp_hdr, uint32_t total_len);
-void icmp_handle_redirect(icmp_header_t* icmp_hdr, uint32_t total_len);
+void icmp_handle_redirect(icmp_header_t* icmp_hdr, uint32_t total_len,uint32_t src_ip);
 void icmp_handle_echo_request(icmp_header_t* icmp_hdr, uint32_t total_len, uint32_t src_ip);
 void icmp_handle_time_exceeded(icmp_header_t* icmp_hdr, uint32_t total_len);
 void icmp_handle_parameter_problem(icmp_header_t* icmp_hdr, uint32_t total_len);

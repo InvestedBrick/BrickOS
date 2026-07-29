@@ -2,6 +2,7 @@
 #include "userspace_api/socket.h"
 #include "networking.h"
 #include "ip.h"
+#include "../filesystem/vfs/vfs.h"
 
 int udp_bind(socket_t* sock, sockaddr_t* addr, uint32_t len){
 

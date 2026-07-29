@@ -2,7 +2,13 @@
 #define INCLUDE_UDP_H
 
 #include <stdint.h>
-typedef struct{
+
+#include "networking.h"
+
+struct net_interface;
+typedef struct net_interface net_interface_t;
+
+typedef struct udp_header{
     uint16_t src_port;
     uint16_t dst_port;
     uint16_t length; // len of hdr + following data
@@ -10,7 +16,7 @@ typedef struct{
 }__attribute__((packed)) udp_header_t;
 
 // used for checksum
-typedef struct {
+typedef struct pseudo_ip_hdr{
     uint32_t src_addr;
     uint32_t dst_addr;
     uint8_t zero;
