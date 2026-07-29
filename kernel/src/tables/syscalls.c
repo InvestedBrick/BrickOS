@@ -11,6 +11,7 @@
 #include "../filesystem/fsutil.h"
 #include "../filesystem/filesystem.h"
 #include "../memory/kmalloc.h"
+#include "../networking/userspace_api/socket.h"
 #include <stdbool.h>
 
 //TODO: provide actually helpful error messages
@@ -418,4 +419,35 @@ uint64_t sys_settimezone(user_process_t* p,int utc_timezone){
 uint64_t sys_clone(user_process_t* p,int (*fn)(void*),void* stack,int flags, void* arg){
     // TODO:
     return (uint64_t)0;
+}
+
+uint64_t sys_socket(user_process_t* p, uint32_t domain, uint32_t sock_type, uint32_t protocol){
+
+    if (domain >= SOCKET_UNUSED) return SYSCALL_FAIL;
+    if (sock_type >= SOCKET_TYPE_UNUSED) return SYSCALL_FAIL;
+    // protocol unused for now since it can be determined from domain and sock_type
+
+
+    socket_t* sock = (socket_t*)kmalloc(sizeof(socket_t));
+    sock->sock_type = (socket_type_e)sock_type;
+    sock->sock_state = SOCKET_UNCONNECTED;
+    if (init_socket_ops(sock,(socket_domain_e)domain,sock->sock_type) != SOCKET_OPS_INIT_SUCCESS) {
+        kfree(sock);
+        return SYSCALL_FAIL;
+    }
+
+    if (init_protocol_specific_socket(sock,(socket_domain_e)domain, sock->sock_type) != SOCKET_PROT_SOCK_SUCCESS){
+        kfree(sock);
+        return SYSCALL_FAIL;
+    }
+
+    generic_file_t* file = (generic_file_t*)kmalloc(sizeof(generic_file_t));
+    file->type = FILE_TYPE_SOCKET;
+    file->generic_data = sock;
+    file->ops = &socket_handles;
+    file->object_id = 0; // only used for mmap rn and you cant really map against a socket yet
+
+    int fd = assign_fd(p,file);
+    return fd;
+
 }
