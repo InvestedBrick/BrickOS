@@ -47,13 +47,6 @@ typedef struct {
 
 extern routing_table_t routing_table;
 
-typedef struct{
-    uint16_t src_port;
-    uint16_t dst_port;
-    uint16_t length;
-    uint16_t checksum;
-}__attribute__((packed)) udp_header_t;
-
 typedef struct {
     uint8_t op_code;
     uint8_t htype;
@@ -81,11 +74,22 @@ uint32_t switch_endian32(uint32_t nb);
 /**
  * compute_checksum:
  * Computes the 16 bit checksum over some data / header. Returns the checksum in host byte order.
- * @hdr: pointer to the data / header to compute the checksum over
- * @len: length of the data / header in bytes
+ * @param hdr pointer to the data / header to compute the checksum over
+ * @param len length of the data / header in bytes
  * Returns: the computed checksum in host byte order
  */
 uint16_t compute_checksum(uint8_t* hdr,uint32_t len);
+
+/**
+ * compute_udp_checksum:
+ * computes the 16 bit checksum for udp header, the associated pseudo ip header and the following data
+ * @param udp_hdr A pointer to the UDP header with checksum = 0
+ * @param pseudo_ip_header The filled out (network byte order) pseudo ip header needed for udp checksum
+ * @param data The data following the UDP header
+ * @param data_len The length of the data following the UDP header
+ * @return the computed checksum in host byte order
+ */
+uint16_t compute_udp_checksum(udp_header_t* udp_hdr, pseudo_ip_hdr_t* pseudo_ip_hdr, uint8_t* data, uint32_t data_len);
 
 /**
  * update_or_insert_route:
