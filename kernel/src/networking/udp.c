@@ -25,7 +25,7 @@ int udp_recvfrom(socket_t* sock, void* buf, uint32_t buf_len, uint32_t flags, so
     return 0;
 }
 
-void init_sock_queue(){
+void init_udp_sock_queue(){
     mutex_init(&sock_queue_lock);
 }
 
@@ -71,7 +71,7 @@ void remove_socket(udp_socket_t* sock){
 
 }
 
-udp_socket_t* init_udp_socket(uint32_t ip_addr, uint16_t port, user_process_t* owner_proc){
+udp_socket_t* init_udp_socket(uint32_t ip_addr, uint16_t port){
     udp_socket_t* sock = (udp_socket_t*)kmalloc(sizeof(udp_socket_t));
     mutex_init(&sock->lock);
     sock->next = nullptr;
@@ -79,7 +79,7 @@ udp_socket_t* init_udp_socket(uint32_t ip_addr, uint16_t port, user_process_t* o
     sock->wait_queue = nullptr;
     sock->ip_addr = ip_addr;
     sock->port = port;
-    sock->owner_proc = owner_proc;
+    sock->owner_proc = get_current_user_process();;
 
     insert_socket(sock);
 
