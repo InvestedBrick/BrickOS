@@ -6,6 +6,7 @@
 #include "../memory/kmalloc.h"
 #include "arp.h"
 #include "ip.h"
+#include "udp.h"
 #include "../tables/timer_callbacks.h"
 #include <stdbool.h>
 
@@ -96,17 +97,38 @@ void setup_network_driver(){
     arp_send_request(ip);
 }
 
-uint16_t compute_checksum(uint8_t* hdr,uint32_t len){
-    uint32_t sum = 0;
-    for (uint32_t i = 0; i < len; i+= 2){
-        uint16_t word = hdr[i];
-        if (i+1 < len) word |= hdr[i+1]<<8;
+uint32_t checksum_accumulate(uint8_t* data, size_t len, uint32_t sum) {
+    for (uint32_t i = 0; i < len; i += 2) {
+        uint16_t word = (data[i] << 8);
+        if (i + 1 < len) word |= data[i + 1];
         sum += word;
     }
+    return sum;
+}
 
+uint16_t checksum_finalise(uint32_t sum){
     while(sum >> 16){
         sum = (sum & 0xffff) + (sum >> 16);
     }
 
-    return (uint16_t)~sum;
+    uint16_t result = (uint16_t)~sum;
+
+    if (result == 0) result = 0xffff;
+
+    return result;
+}
+
+uint16_t compute_checksum(uint8_t* hdr,uint32_t len){
+    uint32_t sum = checksum_accumulate(hdr,len,0);
+
+    return checksum_finalise(sum);
+}
+
+uint16_t compute_udp_checksum(udp_header_t* udp_hdr, pseudo_ip_hdr_t* pseudo_ip_hdr, uint8_t* data, uint32_t data_len){
+    uint32_t sum = 0;
+    sum = checksum_accumulate((uint8_t*)udp_hdr,sizeof(udp_header_t),sum);
+    sum = checksum_accumulate((uint8_t*)pseudo_ip_hdr,sizeof(pseudo_ip_hdr_t),sum);
+    sum = checksum_accumulate((uint8_t*)data,data_len,sum);
+
+    return checksum_finalise(sum);
 }
