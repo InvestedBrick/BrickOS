@@ -12,6 +12,10 @@ static atomic_uint_fast16_t ip_id;
 ipv4_ll_link_t* packet_ll_origin = nullptr;
 mutex_t ip_ll_mutex;
 
+void init_ip_linked_lists(){
+    mutex_init(&ip_ll_mutex);
+}
+
 uint64_t create_packet_part_ident(uint32_t src_ip, uint16_t ident, uint8_t protocol){
     return ((uint64_t)src_ip | ((uint64_t)ident << 32) | ((uint64_t)protocol << 48));
 }

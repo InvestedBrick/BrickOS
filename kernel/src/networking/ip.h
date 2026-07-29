@@ -75,7 +75,7 @@ typedef struct ipv4_ll_link {
     struct ipv4_ll_link* next;
 }ipv4_ll_link_t;
 
-extern mutex_t ip_ll_mutex;
+void init_ip_linked_lists();
 
 #define IP_HDR_DEFAULT_SIZE sizeof(ipv4_header_t)
 
