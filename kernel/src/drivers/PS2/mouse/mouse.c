@@ -63,7 +63,7 @@ int mouse_read(generic_file_t* f, unsigned char* buffer, uint32_t size){
 }
 
 vfs_handles_t mouse_ops = {
-    .open = 0,
+    
     .close = 0,
     .read = mouse_read,
     .write = 0,

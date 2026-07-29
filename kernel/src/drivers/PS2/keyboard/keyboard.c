@@ -46,7 +46,7 @@ int kb_read(generic_file_t* f, unsigned char* buffer, uint32_t size){
 
 vfs_handles_t kb_ops = {
   .close = 0,
-  .open = 0,
+  
   .read = kb_read,
   .write = 0,
   .seek = 0,
