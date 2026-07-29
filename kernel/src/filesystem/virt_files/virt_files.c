@@ -68,7 +68,7 @@ int virt_file_diskinfo_read(generic_file_t* file, unsigned char* buffer, uint32_
 }
 
 vfs_handles_t meminfo_handles = {
-    .open = 0,
+    
     .close = virt_file_generic_close,
     .read = virt_file_meminfo_read,
     .write = 0,
@@ -77,7 +77,7 @@ vfs_handles_t meminfo_handles = {
 };
 
 vfs_handles_t cpuinfo_handles = {
-    .open = 0,
+    
     .close = virt_file_generic_close,
     .read = virt_file_cpuinfo_read,
     .write = 0,
@@ -86,7 +86,7 @@ vfs_handles_t cpuinfo_handles = {
 };
 
 vfs_handles_t uptime_handles = {
-    .open = 0,
+    
     .close = virt_file_generic_close,
     .read = virt_file_uptime_read,
     .write = 0,
@@ -95,7 +95,7 @@ vfs_handles_t uptime_handles = {
 };
 
 vfs_handles_t diskinfo_handles = {
-    .open = 0,
+    
     .close = virt_file_generic_close,
     .read = virt_file_diskinfo_read,
     .write = 0,

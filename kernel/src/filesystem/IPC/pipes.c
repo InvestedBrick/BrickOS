@@ -105,7 +105,7 @@ int pipe_close(generic_file_t* file){
 }
 
 vfs_handles_t pipe_handlers = {
-    .open = 0,
+    
     .read = pipe_read,
     .write = pipe_write,
     .close = pipe_close,

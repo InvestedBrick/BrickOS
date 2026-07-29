@@ -101,7 +101,7 @@ int dev_generic_close(generic_file_t* file){
 }
 
 vfs_handles_t dev_null = {
-    .open = 0,
+    
     .close = dev_generic_close,
     .read = dev_null_read,
     .write = dev_null_write,
@@ -128,7 +128,7 @@ int dev_fb0_ioctl(generic_file_t* file, uint32_t cmd,void* arg){
 }
 
 vfs_handles_t dev_fb0 = {
-    .open = 0,
+    
     .close = dev_generic_close,
     .read = 0,
     .write = 0, // we only write to a mapped fb
@@ -260,7 +260,7 @@ int dev_wm_ioctl(generic_file_t* file, uint32_t cmd,void* arg){
 }
 
 vfs_handles_t dev_wm = {
-    .open = 0,
+    
     .close = dev_generic_close,
     .read = 0,
     .write = 0,

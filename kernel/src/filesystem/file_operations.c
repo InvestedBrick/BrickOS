@@ -13,7 +13,6 @@
 #include "../io/log.h"
 #include "../tables/syscall_defines.h"
 vfs_handles_t fs_ops = {
-    .open = fs_open,
     .close = fs_close,
     .write = fs_write,
     .read = fs_read,

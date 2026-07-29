@@ -14,7 +14,6 @@ typedef enum {
 } file_type_e;
 
 typedef struct{
-    generic_file_t* (*open)(unsigned char* filepath, uint8_t flags);
     int (*read)(generic_file_t* file,unsigned char* buffer, uint32_t size);  
     int (*write)(generic_file_t* file,unsigned char* buffer, uint32_t size);
     int (*close)(generic_file_t* file); 
