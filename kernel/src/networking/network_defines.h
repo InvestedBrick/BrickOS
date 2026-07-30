@@ -28,11 +28,11 @@ typedef struct {
     uint16_t inet_port;
     uint32_t inet_addr;
     uint8_t pad[8]; // to make it castable to sockaddr_t
-}in_sockaddr_t;
+}__attribute__((packed)) in_sockaddr_t;
 
 typedef struct {
-    inet_family_e inet_family;
+    uint16_t inet_family;
     uint8_t sa_data[14];
-}sockaddr_t;
+}__attribute__((packed)) sockaddr_t;
 
 #endif
