@@ -20,6 +20,7 @@ typedef struct socket{
     socket_type_e sock_type;
     proto_handles_t* proto_ops;
     void* prot_sock; // protocol specific socket for managing queues etc
+    void (*cleanup_prot_sock)(void*);
 }socket_t;
 
 #define SOCKET_OPS_INIT_SUCCESS 0x0
