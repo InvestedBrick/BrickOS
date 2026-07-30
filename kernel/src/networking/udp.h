@@ -7,10 +7,14 @@
 #include "../processes/user_process.h"
 #include "../processes/spinlocks.h"
 #include "../processes/scheduler.h"
+#include "userspace_api/socket.h"
 
 struct net_interface;
 typedef struct net_interface net_interface_t;
 
+#define UDP_RET_FAIL -1
+
+extern proto_handles_t udp_proto_handles;
 typedef struct udp_header{
     uint16_t src_port;
     uint16_t dst_port;
@@ -79,10 +83,24 @@ uint8_t udp_add_header(net_interface_t* iface, uint8_t* data, uint32_t* write_of
 
 /**
  * init_udp_socket:
- * creates and initialises an UDP socket
- * @param ip_addr The IPv4 address that should be associated with this socket (may also be INADDR_ANY)
- * @param port The port associated with this socket
- * @return The udp socket to assign as the "prot_sock" in a socket_t struct
+ * creates and initialises an UDP socket without a ip address or port (needs to be set by bind())
  */
-udp_socket_t* init_udp_socket(uint32_t ip_addr, uint16_t port);
+udp_socket_t* init_udp_socket();
+
+/**
+ * udp_handle_packet:
+ * extracts the UDP header from a packet, validates the checksum and forwards the data to the respective socket
+ * @param data The data starting with the UDP header
+ * @param len The total length of the data (headers + payload)
+ * @param src_ip The source IPv4 address of the packet
+ * @param dst_ip The destination IPv4 address (one of the hosts IP addresses)
+ */
+void udp_handle_packet(uint8_t* data, uint32_t len, uint32_t src_ip, uint32_t dst_ip);
+
+/**
+ * cleanup_udp_socket:
+ * frees all data associated with the udp socket
+ * @param sock_ptr A pointer to a udp_socket_t*
+ */
+void cleanup_udp_socket(void* sock_ptr);
 #endif
