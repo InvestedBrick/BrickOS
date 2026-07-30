@@ -451,3 +451,15 @@ uint64_t sys_socket(user_process_t* p, uint32_t domain, uint32_t sock_type, uint
     return fd;
 
 }
+
+uint64_t sys_bind(user_process_t* p, uint32_t fd, sockaddr_t* sock_addr, uint32_t sock_addr_len){
+    if (fd > MAX_FDS) return SYSCALL_FAIL;
+
+    generic_file_t* file = p->fd_table[fd];
+    if (!file || file->type != FILE_TYPE_SOCKET || !file->generic_data) return SYSCALL_FAIL;
+
+    socket_t* sock = (socket_t*)file->generic_data;
+    if (!sock->prot_sock || !sock->proto_ops || !sock->proto_ops->bind) return SYSCALL_FAIL;
+
+    return sock->proto_ops->bind(sock,sock_addr,sock_addr_len);
+}

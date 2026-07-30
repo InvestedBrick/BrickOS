@@ -6,6 +6,7 @@
 #include "interrupts.h"
 #include "syscall_defines.h"
 #include "../filesystem/filesystem.h"
+#include "../networking/network_defines.h"
 
 // only internally used
 #define MMAP_UNSPEC_ADDR (uint64_t)0x12345
@@ -47,4 +48,8 @@ uint64_t sys_getpid(user_process_t* p);
 uint64_t sys_gettimeofday();
 
 uint64_t sys_settimezone(user_process_t* p,int utc_timezone);
+
+uint64_t sys_socket(user_process_t* p, uint32_t domain, uint32_t sock_type, uint32_t protocol);
+
+uint64_t sys_bind(user_process_t* p, uint32_t fd, sockaddr_t* sock_addr, uint32_t sock_addr_len);
 #endif
