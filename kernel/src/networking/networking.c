@@ -113,8 +113,6 @@ uint16_t checksum_finalise(uint32_t sum){
 
     uint16_t result = (uint16_t)~sum;
 
-    if (result == 0) result = 0xffff;
-
     return result;
 }
 
