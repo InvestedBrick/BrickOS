@@ -6,6 +6,7 @@
 #include "../io/log.h"
 #include "../tables/interrupts.h"
 #include "icmp.h"
+#include "udp.h"
 #include <stdatomic.h>
 
 static atomic_uint_fast16_t ip_id;
@@ -156,7 +157,7 @@ uint8_t ip_add_header(net_interface_t* iface,uint8_t* data, uint32_t* write_off,
     hdr->total_length = switch_endian16(IP_HDR_DEFAULT_SIZE + post_hdr_data_len);
     hdr->header_checksum = 0;
     hdr->header_checksum = switch_endian16(compute_checksum((uint8_t*)hdr,IP_HDR_DEFAULT_SIZE));
-
+    if (!hdr->header_checksum) hdr->header_checksum = 0xffff;
     *write_off -= sizeof(ipv4_header_t);
     return IP_HDR_RET_SUCCESS;
 }
@@ -294,7 +295,7 @@ uint32_t unify_ip_packet(ipv4_packet_part_t* part, uint8_t** out_data){
     return total_packet_size;
 }
 
-void hand_ip_packet_along(uint8_t* data, uint32_t len,uint8_t protocol, uint32_t src_ip){
+void hand_ip_packet_along(uint8_t* data, uint32_t len,uint8_t protocol, uint32_t src_ip, uint32_t dst_ip){
     switch (protocol)
     {
     case IP_PROTOCOL_ICMP:
@@ -303,6 +304,7 @@ void hand_ip_packet_along(uint8_t* data, uint32_t len,uint8_t protocol, uint32_t
     case IP_PROTOCOL_TCP:
         break;
     case IP_PROTOCOL_UDP:
+        udp_handle_packet(data,len,src_ip,dst_ip);
         break;
     case IP_PROTOCOL_RAW:
         break;
@@ -317,10 +319,11 @@ void ip_handle_packet(uint8_t* data, uint32_t write_off, uint32_t total_len) {
 
     uint8_t version = (ipv4_hdr->version_ihl >> 4) & 0xf;
     if (version != IP_VERSION_4) return;
-
+    
+    uint32_t src_ip = switch_endian32(ipv4_hdr->src_ip);
     uint32_t dst_ip = switch_endian32(ipv4_hdr->dst_ip);
 
-    route_t* route = route_lookup(dst_ip);
+    route_t* route = route_lookup(src_ip); // src_ip is the IP of where it came from -> other way around should be same interface
     if (!route) return; 
 
     if (dst_ip != route->iface->ip_addr) return; // not for me ; TODO: add acceptance for multicast stuff
@@ -344,10 +347,9 @@ void ip_handle_packet(uint8_t* data, uint32_t write_off, uint32_t total_len) {
 
     if (frag_off * 8 + post_hdr_data_len > IPv4_MAX_PACKET_SIZE) return;
     
-    uint32_t src_ip = switch_endian32(ipv4_hdr->src_ip);
     if (!(flags_frag_off & IP_FLAGS_MORE_FRAGMENTS) && frag_off == 0){
         // unfragmented packet
-        hand_ip_packet_along(data + write_off + hdr_len,post_hdr_data_len,ipv4_hdr->protocol, src_ip);
+        hand_ip_packet_along(data + write_off + hdr_len,post_hdr_data_len,ipv4_hdr->protocol, src_ip,dst_ip);
     }else{
         //fragmented
 
@@ -370,7 +372,7 @@ void ip_handle_packet(uint8_t* data, uint32_t write_off, uint32_t total_len) {
         if (ipv4_packet_complete(part)){
             uint8_t* out_data;
             uint32_t len = unify_ip_packet(part,&out_data);
-            hand_ip_packet_along(out_data,len,part->protocol,src_ip);
+            hand_ip_packet_along(out_data,len,part->protocol,src_ip,dst_ip);
             kfree(out_data); // can be freed here since was allocated in unify_ip_packet
         }
         mutex_signal(&ip_ll_mutex);
