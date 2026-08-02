@@ -80,7 +80,7 @@ uint64_t sys_ioctl(user_process_t* p, uint32_t fd,uint32_t cmd, void* arg){
 uint64_t sys_exit(user_process_t* p,interrupt_stack_frame_t* stack_frame){
     uint32_t pid = p->process_id;
 
-    logf("PID %d (%s) exited with %d",p->process_id,p->process_name,stack_frame->rbx);
+    logf("PID %d (%s) exited with %d",p->process_id,p->process_name,stack_frame->rdi);
     thread_t* thread = p->main_thread;
     while(thread) {
         // mark as dead and let the scheduler clean them up
