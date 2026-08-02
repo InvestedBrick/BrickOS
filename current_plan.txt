@@ -24,8 +24,8 @@ networking:
     [X] Ethernet
     [X] ARP
     [X] IP
-    [ ] ICMP
-    [ ] UDP
+    [X] UDP
+    [WIP] ICMP
     [ ] DHCP
     [ ] TCP
-    [ ] Userspace API
+    [X] Userspace API
