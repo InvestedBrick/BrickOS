@@ -463,3 +463,27 @@ uint64_t sys_bind(user_process_t* p, uint32_t fd, sockaddr_t* sock_addr, uint32_
 
     return sock->proto_ops->bind(sock,sock_addr,sock_addr_len);
 }
+
+uint64_t sys_recvfrom(user_process_t* p, uint32_t fd, void* buf, uint32_t buf_len, uint32_t flags, sockaddr_t* src_addr, uint32_t addr_len){
+    if (fd > MAX_FDS) return SYSCALL_FAIL;
+
+    generic_file_t* file = p->fd_table[fd];
+    if (!file || file->type != FILE_TYPE_SOCKET || !file->generic_data) return SYSCALL_FAIL;
+
+    socket_t* sock = (socket_t*)file->generic_data;
+    if (!sock->prot_sock || !sock->proto_ops || !sock->proto_ops->recvfrom) return SYSCALL_FAIL;
+
+    return sock->proto_ops->recvfrom(sock, buf, buf_len, flags,src_addr,addr_len);
+}
+
+uint64_t sys_sendto(user_process_t* p, uint32_t fd, void* buf, uint32_t buf_len, uint32_t flags, sockaddr_t* dst_addr, uint32_t addr_len){
+    if (fd > MAX_FDS) return SYSCALL_FAIL;
+
+    generic_file_t* file = p->fd_table[fd];
+    if (!file || file->type != FILE_TYPE_SOCKET || !file->generic_data) return SYSCALL_FAIL;
+
+    socket_t* sock = (socket_t*)file->generic_data;
+    if (!sock->prot_sock || !sock->proto_ops || !sock->proto_ops->sendto) return SYSCALL_FAIL;
+
+    return sock->proto_ops->sendto(sock, buf, buf_len, flags,dst_addr,addr_len);
+}
