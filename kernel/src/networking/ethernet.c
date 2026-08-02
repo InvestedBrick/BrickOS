@@ -17,9 +17,9 @@ uint8_t packet_designated_for_this_machine(ethernet_header_t* eth_hdr){
 }
 
 void ethernet_handle_packet(uint8_t* data, uint32_t len){
-    if (len < sizeof(ethernet_header_t)) goto cleanup;
+    if (len < sizeof(ethernet_header_t)) return;
     ethernet_header_t* eth_hdr = (ethernet_header_t*)data; 
-    if (!packet_designated_for_this_machine(eth_hdr)) goto cleanup; // not for me
+    if (!packet_designated_for_this_machine(eth_hdr)) return; // not for me
     uint16_t type = switch_endian16(eth_hdr->type);
     uint32_t write_off = sizeof(ethernet_header_t);
     switch (type)
@@ -37,8 +37,14 @@ void ethernet_handle_packet(uint8_t* data, uint32_t len){
         warnf("Recieved network packet with unknown ethernet type");
         break;
     }
-cleanup:
-    kfree(data);
+
+    // data cleaned up by driver
+
+}
+
+uint32_t ethernet_loopback_stub(void* data, uint32_t len){
+    ethernet_handle_packet((uint8_t*)data,len);
+    return len;
 }
 
 uint8_t ethernet_add_header(net_interface_t* iface,uint8_t* data, uint32_t* write_off,uint8_t* dst_mac,uint16_t ethertype){

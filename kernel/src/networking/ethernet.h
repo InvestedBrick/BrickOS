@@ -15,6 +15,14 @@ typedef struct {
     uint16_t type;
 } __attribute__((packed)) ethernet_header_t;
 
+/**
+ * ethernet_loopback_stub:
+ * A stub function to set as the send function for the loopback interface
+ * @param data The data to "send" back to the network stack
+ * @param len The length of the data
+ * @return The length of the data
+ */
+uint32_t ethernet_loopback_stub(void* data, uint32_t len);
 
 /**
  * ethernet_handle_packet:
