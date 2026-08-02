@@ -24,12 +24,13 @@ typedef struct udp_header udp_header_t;
 struct pseudo_ip_hdr;
 typedef struct pseudo_ip_hdr pseudo_ip_hdr_t;
 
+#define LOOPBACK_ADDR 0x7f000001
+
 typedef struct net_interface {
     char name[16];
     uint8_t mac_addr[6];
     
     uint32_t ip_addr;
-    uint32_t netmask;
     
     uint32_t mtu;
     
