@@ -37,6 +37,9 @@ typedef struct udp_waiting_thread{
 }udp_waiting_thread_t;
 
 typedef struct udp_recvd_packet {
+    uint32_t src_addr;
+    uint16_t src_port;
+
     uint8_t* data;
     uint32_t data_len;
 
@@ -55,6 +58,11 @@ typedef struct udp_socket{
 
     struct udp_socket* next; // everything is a linked list
 }udp_socket_t;
+
+typedef struct {
+    uint16_t src_port;
+    uint16_t dst_port;
+}udp_send_data_t;
 
 #define UDP_HDR_RET_SUCESS 0x0
 #define UDP_HDR_RET_DATA_OVERFLOW 0x1
