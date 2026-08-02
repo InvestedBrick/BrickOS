@@ -7,9 +7,9 @@
 #include "arp.h"
 #include "ip.h"
 #include "udp.h"
+#include "ethernet.h"
 #include "../tables/timer_callbacks.h"
 #include <stdbool.h>
-
 routing_table_t routing_table;
 
 typedef struct {
@@ -58,10 +58,35 @@ void update_or_insert_route(net_interface_t* iface, uint32_t network, uint32_t n
     }
     register_route(iface, network, netmask, gateway);
 }
-void setup_network_driver(){
+
+net_interface_t* init_loopback_interface(){
+    net_interface_t* lo = (net_interface_t*)kmalloc(sizeof(net_interface_t));
+    memcpy(lo->name,"loopback",sizeof("loopback"));
+    lo->ip_addr = IP_TESTING;
+    lo->send = ethernet_loopback_stub;
+    lo->mtu = (uint32_t)-1;
+    lo->arp_cache_head = (arp_mac_cache_t*)kmalloc(sizeof(arp_mac_cache_t));
+    lo->arp_cache_head->next = nullptr;
+    lo->arp_cache_head->timeout = ARP_CACHE_DONT_TIMEOUT;
+    mutex_init(&lo->mac_cache_mutex); 
+
+    return lo;
+}
+
+net_interface_t* init_eth0_interface(){
     net_interface_t* eth0 = (net_interface_t*)kmalloc(sizeof(net_interface_t));
-    memcpy(eth0->name,"eth0",5);
+    memcpy(eth0->name,"eth0",sizeof("eth0"));
+    eth0->arp_cache_head = nullptr;
     mutex_init(&eth0->mac_cache_mutex);
+
+    return eth0;
+}
+
+void setup_network_driver(){
+    
+    net_interface_t* eth0 = init_eth0_interface();    
+    net_interface_t* lo = init_loopback_interface();
+
     routing_table.n_routes = 0;
 
     register_timer_callback(ipv4_timer_callback,1000); // callback every second
@@ -79,7 +104,6 @@ void setup_network_driver(){
                     driver.init_driver(eth0,dev);
 
                     eth0->ip_addr = IP_TESTING;
-                    eth0->netmask = NETMASK_DEFAULT;
                     found = true;
                     break;
                 }
@@ -90,11 +114,19 @@ void setup_network_driver(){
         dev = dev->next;
     }
     logf("set up NIC driver");
+    memcpy(lo->mac_addr,eth0->mac_addr,sizeof(lo->mac_addr));
+    lo->arp_cache_head->ip_addr = eth0->ip_addr;
+
+    // for sending on the same machine
+    register_route(lo,IP_TESTING,0xffffffff,0);
+    register_route(lo,LOOPBACK_ADDR,0xffffffff,0); 
+
     register_route(eth0,IP_TESTING & NETMASK_DEFAULT,NETMASK_DEFAULT,0); // route for local network
     register_route(eth0,0,0,ROUTER_IP); // default route 
 
     uint32_t ip = ipv4_to_uint32("192.168.100.1"); 
     arp_send_request(ip);
+
 }
 
 uint32_t checksum_accumulate(uint8_t* data, size_t len, uint32_t sum) {
