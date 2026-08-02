@@ -89,6 +89,7 @@ void init_ip_linked_lists();
 #define IP_SEND_RET_IP_HDR_FAILED 0x3
 #define IP_SEND_RET_ETH_HDR_FAILED 0x4
 #define IP_SEND_RET_ICMP_HDR_FAILED 0x5
+#define IP_SEND_RET_UDP_HDR_FAILED 0x6
 /**
  * ip_add_header:
  * Adds an IP header to a ethernet packet by prepending to previous headers

@@ -157,7 +157,7 @@ uint8_t ip_add_header(net_interface_t* iface,uint8_t* data, uint32_t* write_off,
     hdr->total_length = switch_endian16(IP_HDR_DEFAULT_SIZE + post_hdr_data_len);
     hdr->header_checksum = 0;
     hdr->header_checksum = switch_endian16(compute_checksum((uint8_t*)hdr,IP_HDR_DEFAULT_SIZE));
-    if (!hdr->header_checksum) hdr->header_checksum = 0xffff;
+
     *write_off -= sizeof(ipv4_header_t);
     return IP_HDR_RET_SUCCESS;
 }
@@ -167,11 +167,21 @@ uint8_t send_ip_based_packet(uint8_t* usr_data, uint32_t usr_data_len, uint32_t 
     if (!route) return IP_SEND_RET_NO_ROUTE;
 
     uint32_t total_hdr_len = sizeof(ethernet_header_t) + sizeof(ipv4_header_t);
-    if (higher_prot == IP_PROTOCOL_ICMP) {
+    switch (higher_prot)
+    {
+    case IP_PROTOCOL_ICMP:;
         icmp_send_data_t* icmp_send = (icmp_send_data_t*)higher_prot_data;
         total_hdr_len += sizeof(icmp_header_t);
         total_hdr_len += icmp_send->extra_payload_len;
+        break;
+    case IP_PROTOCOL_UDP:
+        total_hdr_len += sizeof(udp_header_t);
+        break;
+    
+    default:
+        break;
     }
+
     if (usr_data_len + total_hdr_len > route->iface->mtu) return IP_SEND_RET_MTU_OVERSTEP;
 
     uint32_t next_hop = 0;
@@ -208,6 +218,23 @@ uint8_t send_ip_based_packet(uint8_t* usr_data, uint32_t usr_data_len, uint32_t 
             warnf("Fialed to add ICMP header to IP based packet (ERR:%x)",ret);
             kfree(data_buf);
             return IP_SEND_RET_ICMP_HDR_FAILED;
+        }
+    } else if (higher_prot == IP_PROTOCOL_UDP){
+        udp_send_data_t* udp_send = (udp_send_data_t*)higher_prot_data;
+        post_hdr_len += sizeof(udp_header_t);
+
+        ret = udp_add_header(route->iface,
+                             data_buf,
+                             &write_off,
+                             udp_send->src_port,
+                             udp_send->dst_port,
+                             usr_data_len,
+                             usr_data,
+                             dst_ip);
+        if (ret != UDP_HDR_RET_SUCESS) {
+            warnf("Failed to add UDP header to IP based packet (ERR: %x)",ret);
+            kfree(data_buf);
+            return IP_SEND_RET_UDP_HDR_FAILED;
         }
     }
 
