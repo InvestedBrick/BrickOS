@@ -3,6 +3,8 @@
 #include "networking.h"
 #include "ip.h"
 #include "../memory/kmalloc.h"
+#include "../processes/scheduler.h"
+#include "../io/log.h"
 #include "../filesystem/vfs/vfs.h"
 
 udp_socket_t* sock_head = nullptr;
@@ -201,7 +203,10 @@ udp_socket_t* find_target_udp_socket(uint32_t ip_addr, uint16_t port){
     // must be mutex locked from outside
     udp_socket_t* curr = sock_head;
     while(curr){
-        if (curr->ip_addr == ip_addr && curr->port == port) return curr;
+        if ((curr->ip_addr == ip_addr && curr->port == port) || 
+            (curr->ip_addr == INADDR_ANY && curr->port == port)){
+            return curr;
+        }
         curr = curr->next;
     }
     
@@ -268,8 +273,7 @@ uint8_t udp_add_header(net_interface_t* iface, uint8_t* data, uint32_t* write_of
     pseudo_ip.protocol = IP_PROTOCOL_UDP;
     pseudo_ip.udp_length = udp_hdr->length; // already in network order
 
-    udp_hdr->checksum = compute_udp_checksum(udp_hdr,&pseudo_ip,post_hdr_data,post_hdr_data_len);
-    if (!udp_hdr->checksum) udp_hdr->checksum = 0xffff;
+    udp_hdr->checksum = switch_endian16(compute_udp_checksum(udp_hdr,&pseudo_ip,post_hdr_data,post_hdr_data_len));
 
     *write_off -= sizeof(udp_header_t);
 
