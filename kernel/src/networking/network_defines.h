@@ -39,6 +39,6 @@ typedef struct {
 }__attribute__((packed)) sockaddr_t;
 
 
-#define MSG_DONTWAIT (1 << 0)
+#define MSG_DONTWAIT (0 << 1)
 #define MSG_PEEK (1 << 1)
 #endif
