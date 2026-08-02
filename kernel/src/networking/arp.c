@@ -14,7 +14,7 @@ void decrement_and_cleanup_arp_cache(net_interface_t* iface) {
     arp_mac_cache_t* curr = &dummy;
 
     while (curr->next) {
-        if (curr->next->timeout > 0) curr->next->timeout--;
+        if (curr->next->timeout > 0 && curr->next->timeout != ARP_CACHE_DONT_TIMEOUT) curr->next->timeout--;
 
         if (curr->next->timeout == 0) {
             arp_mac_cache_t* to_del = curr->next;
@@ -225,8 +225,9 @@ void arp_handle_packet(uint8_t* data, uint32_t write_off, uint32_t total_len){
     }
     
     uint32_t dst_ip = switch_endian32(arp_hdr->dst_ip);
+    uint32_t src_ip = switch_endian32(arp_hdr->src_ip);
 
-    route_t* route = route_lookup(dst_ip);
+    route_t* route = route_lookup(src_ip);
     if (!route) return; // not for this network (how did it get here??)
 
     if (dst_ip != route->iface->ip_addr) return; // not for me
@@ -238,7 +239,7 @@ void arp_handle_packet(uint8_t* data, uint32_t write_off, uint32_t total_len){
         arp_send_response(arp_hdr);
         break;
     case ARP_OP_REPLY_MAC:
-        if (!arp_cache_contains_ip(switch_endian32(arp_hdr->src_ip))) arp_cache_mac(arp_hdr);
+        if (!arp_cache_contains_ip(src_ip)) arp_cache_mac(arp_hdr);
         break;
     
     default:
