@@ -14,6 +14,7 @@ typedef struct {
 }process_fds_init_t;
 
 #include "../../../kernel/src/tables/syscall_defines.h"
+#include "../../../kernel/src/networking/network_defines.h"
 #include <stdint.h>
 #include <stdbool.h>
 /**
@@ -222,4 +223,54 @@ uint64_t gettimeofday();
  * @note Calling process must have necessary permissions
  */
 void settimezone(int utc_timezone);
+
+/**
+ * socket:
+ * Creates a new socket
+ * @param domain The domain of the socket (e. g. SOCKET_INET)
+ * @param type The type of the socket (e. g. SOCKET_TYPE_DGRAM)
+ * @param protocol The protocol of the socket (e. g. 0 for default)
+ * 
+ * @return The file descriptor of the new socket
+ */
+int socket(uint32_t domain, uint32_t type, uint32_t protocol);
+
+/**
+ * bind:
+ * Binds a socket to an address
+ * @param sockfd The file descriptor of the socket
+ * @param addr A pointer to a sockaddr_t struct containing the address to bind to
+ * @param addrlen The size of the addr struct (must be sizeof(sockaddr_t))
+ * 
+ * @return 0 on success, or -1 on error
+ */
+int bind(uint32_t sockfd, sockaddr_t* addr, uint32_t addrlen);
+
+/**
+ * recvfrom:
+ * Receives data from a socket
+ * @param sockfd The file descriptor of the socket
+ * @param buf The buffer to write the data into
+ * @param len The maximum number of bytes to read
+ * @param flags Flags for the receive operation (e. g. MSG_DONTWAIT)
+ * @param src_addr A pointer to a sockaddr_t struct to write the source address into (may be null)
+ * @param addrlen The size of the src_addr struct (must be sizeof(sockaddr_t) if src_addr is not null)
+ * 
+ * @return The number of bytes received, or -1 on error
+ */
+int recvfrom(uint32_t sockfd, void* buf, uint32_t len, uint32_t flags, sockaddr_t* src_addr, uint32_t addrlen);
+
+/**
+ * sendto:
+ * Sends data to a socket
+ * @param sockfd The file descriptor of the socket
+ * @param buf The buffer to read the data from
+ * @param len The number of bytes to send
+ * @param flags Flags for the send operation (e. g. MSG_DONTWAIT)
+ * @param dest_addr A pointer to a sockaddr_t struct containing the destination address (may be null for connected sockets)
+ * @param addrlen The size of the dest_addr struct (must be sizeof(sockaddr_t) if dest_addr is not null)
+ * 
+ * @return The number of bytes sent, or -1 on error
+ */
+int sendto(uint32_t sockfd, void* buf, uint32_t len, uint32_t flags, sockaddr_t* dest_addr, uint32_t addrlen);
 #endif

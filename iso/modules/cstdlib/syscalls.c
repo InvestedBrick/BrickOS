@@ -6,7 +6,7 @@ int write(uint32_t fd, const char* buffer, uint32_t count) {
     asm volatile (
         "int $0x30"
         : "=a"(ret)
-        : "a"(SYS_WRITE), "b"(fd), "c"(buffer), "d"(count)
+        : "a"(SYS_WRITE), "D"(fd), "S"(buffer), "d"(count)
         : "memory"
     );
     return ret;
@@ -17,7 +17,7 @@ int read(uint32_t fd, const char* buffer, uint32_t count) {
     asm volatile (
         "int $0x30"
         : "=a"(ret)
-        : "a"(SYS_READ), "b"(fd), "c"(buffer), "d"(count)
+        : "a"(SYS_READ), "D"(fd), "S"(buffer), "d"(count)
         : "memory"
     );
     return ret;
@@ -28,7 +28,7 @@ int open(const char* pathname, uint8_t flags) {
     asm volatile (
         "int $0x30"
         : "=a"(ret)
-        : "a"(SYS_OPEN), "b"(pathname), "c"(flags)
+        : "a"(SYS_OPEN), "D"(pathname), "S"(flags)
         : "memory"
     );
     return ret;
@@ -39,7 +39,7 @@ int close(uint32_t fd) {
     asm volatile (
         "int $0x30"
         : "=a"(ret)
-        : "a"(SYS_CLOSE), "b"(fd)
+        : "a"(SYS_CLOSE), "D"(fd)
         : "memory"
     );
     return ret;
@@ -50,30 +50,37 @@ int exit(uint32_t error_code) {
     asm volatile (
         "int $0x30"
         : "=a"(ret)
-        : "a"(SYS_EXIT), "b"(error_code)
+        : "a"(SYS_EXIT), "D"(error_code)
         : "memory"
     );
     return ret; // does not return, just convention
 }
 
-void* mmap(uint32_t size, uint32_t prot, uint32_t flags,
-           uint32_t fd, uint32_t offset) {
-    void* ret;
+void* mmap(uint32_t size, uint32_t prot, uint32_t flags, uint32_t fd, uint32_t offset) {
+    register uint64_t r10 asm("r10") = fd;
+    register uint64_t r8  asm("r8")  = offset;
+
+    void *ret;
+
     asm volatile (
         "int $0x30"
         : "=a"(ret)
-        : "a"(SYS_MMAP), "b"(size), "c"(prot),
-          "d"(flags), "D"(fd), "S"(offset)
+        : "a"(SYS_MMAP),
+          "D"(size),
+          "S"(prot),
+          "d"(flags),
+          "r"(r10),
+          "r"(r8)
         : "memory"
     );
+
     return ret;
 }
-
 void munmap(void* addr, uint64_t size){
     asm volatile (
         "int $0x30"
         :
-        : "a"(SYS_MUNMAP), "b"(addr), "c"(size)
+        : "a"(SYS_MUNMAP), "D"(addr), "S"(size)
         : "memory"
     );
 }
@@ -82,7 +89,7 @@ void getcwd(unsigned char* buffer, uint32_t size) {
     asm volatile (
         "int $0x30"
         : 
-        : "a"(SYS_GETCWD), "b"(buffer), "c"(size)
+        : "a"(SYS_GETCWD), "D"(buffer), "S"(size)
         : "memory"
     );
 }
@@ -92,7 +99,7 @@ int getdents(uint32_t fd, dirent_t* buffer, uint32_t size) {
     asm volatile (
         "int $0x30"
         : "=a"(ret)
-        : "a"(SYS_GETDENTS), "b"(fd), "c"(buffer), "d"(size)
+        : "a"(SYS_GETDENTS), "D"(fd), "S"(buffer), "d"(size)
         : "memory"
     );
     return ret;
@@ -103,7 +110,7 @@ int chdir(unsigned char* dir_name) {
     asm volatile (
         "int $0x30"
         : "=a"(ret)
-        : "a"(SYS_CHDIR), "b"(dir_name)
+        : "a"(SYS_CHDIR), "D"(dir_name)
         : "memory"
     );
     return ret;
@@ -114,7 +121,7 @@ int rmfile(unsigned char* filename) {
     asm volatile (
         "int $0x30"
         : "=a"(ret)
-        : "a"(SYS_RMFILE), "b"(filename)
+        : "a"(SYS_RMFILE), "D"(filename)
         : "memory"
     );
     return ret;
@@ -125,7 +132,7 @@ int seek(uint32_t fd,uint32_t offset,uint32_t whence){
     asm volatile (
         "int $0x30"
         : "=a"(ret)
-        : "a"(SYS_SEEK), "b"(fd), "c"(offset), "d"(whence)
+        : "a"(SYS_SEEK), "D"(fd), "S"(offset), "d"(whence)
         : "memory"
     );
     return ret;
@@ -136,7 +143,7 @@ int ioctl(uint32_t fd, uint32_t cmd,void* arg){
     asm volatile (
         "int $0x30"
         : "=a"(ret)
-        : "a"(SYS_IOCTL), "b"(fd), "c"(cmd), "d"(arg)
+        : "a"(SYS_IOCTL), "D"(fd), "S"(cmd), "d"(arg)
         : "memory"
     );
     return ret;
@@ -147,7 +154,7 @@ int mssleep(uint32_t time){
     asm volatile (
         "int $0x30"
         : "=a"(ret)
-        : "a"(SYS_MSSLEEP), "b"(time)
+        : "a"(SYS_MSSLEEP), "D"(time)
         : "memory"
     );
     return ret;
@@ -158,7 +165,7 @@ int spawn(unsigned char* filename, unsigned char* argv[],process_fds_init_t* sta
     asm volatile (
         "int $0x30"
         : "=a"(ret)
-        : "a"(SYS_SPAWN), "b"(filename), "c"(argv) , "d"(start_fds)
+        : "a"(SYS_SPAWN), "D"(filename), "S"(argv) , "d"(start_fds)
         : "memory"
     );
     return ret;
@@ -169,7 +176,7 @@ int mknod(unsigned char* filename, mknod_params_t* params){
     asm volatile (
         "int $0x30"
         : "=a"(ret)
-        : "a"(SYS_MKNOD), "b"(filename), "c"(params)
+        : "a"(SYS_MKNOD), "D"(filename), "S"(params)
         : "memory"
     );
     return ret;
@@ -190,7 +197,7 @@ void debug(unsigned char* msg){
     asm volatile (
         "int $0x30"
         :
-        : "a"(SYS_DEBUG), "b"(msg)
+        : "a"(SYS_DEBUG), "D"(msg)
         : "memory"
     );
 }
@@ -210,7 +217,51 @@ void settimezone(int utc_timezone){
     asm volatile (
         "int $0x30"
         :
-        : "a"(SYS_SETTIMEZONE), "b"(utc_timezone)
+        : "a"(SYS_SETTIMEZONE), "D"(utc_timezone)
         : "memory"
     );
+}
+
+int socket(uint32_t domain, uint32_t type, uint32_t protocol){
+    int ret;
+    asm volatile (
+        "int $0x30"
+        : "=a"(ret)
+        : "a"(SYS_SOCKET), "D"(domain), "S"(type), "d"(protocol)
+        : "memory"
+    );
+    return ret;
+}
+
+int bind(uint32_t sockfd, sockaddr_t* addr, uint32_t addrlen){
+    int ret;
+    asm volatile (
+        "int $0x30"
+        : "=a"(ret)
+        : "a"(SYS_BIND), "D"(sockfd), "S"(addr), "d"(addrlen)
+        : "memory"
+    );
+    return ret;
+}
+
+int recvfrom(uint32_t sockfd, void* buf, uint32_t len, uint32_t flags, sockaddr_t* src_addr, uint32_t addrlen){
+    int ret;
+    asm volatile (
+        "int $0x30"
+        : "=a"(ret)
+        : "a"(SYS_RECVFROM), "D"(sockfd), "S"(buf), "d"(len), "r"(flags), "r"(src_addr), "r"(addrlen)
+        : "memory"
+    );
+    return ret;
+}
+
+int sendto(uint32_t sockfd, void* buf, uint32_t len, uint32_t flags, sockaddr_t* dest_addr, uint32_t addrlen){
+    int ret;
+    asm volatile (
+        "int $0x30"
+        : "=a"(ret)
+        : "a"(SYS_SENDTO), "D"(sockfd), "S"(buf), "d"(len), "r"(flags), "r"(dest_addr), "r"(addrlen)
+        : "memory"
+    );
+    return ret;
 }
