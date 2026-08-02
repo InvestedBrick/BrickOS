@@ -52,4 +52,8 @@ uint64_t sys_settimezone(user_process_t* p,int utc_timezone);
 uint64_t sys_socket(user_process_t* p, uint32_t domain, uint32_t sock_type, uint32_t protocol);
 
 uint64_t sys_bind(user_process_t* p, uint32_t fd, sockaddr_t* sock_addr, uint32_t sock_addr_len);
+
+uint64_t sys_recvfrom(user_process_t* p, uint32_t fd, void* buf, uint32_t buf_len, uint32_t flags, sockaddr_t* src_addr, uint32_t addr_len);
+
+uint64_t sys_sendto(user_process_t* p, uint32_t fd, void* buf, uint32_t buf_len, uint32_t flags, sockaddr_t* dst_addr, uint32_t addr_len);
 #endif
