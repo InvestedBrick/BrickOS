@@ -2,7 +2,10 @@
 #define INCLUDE_NETWORK_DEFINES_H
 
 #include <stdint.h>
-
+/**
+ * IMPORTANT: all ports and ip addresses must be passed in normal host byte order
+ * The OS handles the endianness switching
+ */
 typedef enum {
     INET_FAM_IPv4,
     INET_FAM_IPv6,
@@ -35,4 +38,7 @@ typedef struct {
     uint8_t sa_data[14];
 }__attribute__((packed)) sockaddr_t;
 
+
+#define MSG_DONTWAIT (1 << 0)
+#define MSG_PEEK (1 << 1)
 #endif
