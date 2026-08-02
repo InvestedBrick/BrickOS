@@ -37,7 +37,7 @@
 
 #define IP_PROTOCOL_ICMP 1
 #define IP_PROTOCOL_TCP  6
-#define IP_PROTOCOL_UDP  11
+#define IP_PROTOCOL_UDP  17
 #define IP_PROTOCOL_RAW  254
 
 #define IP_OPTION_TYPE_END 0
