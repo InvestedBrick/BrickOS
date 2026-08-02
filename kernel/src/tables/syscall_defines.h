@@ -24,6 +24,10 @@
 #define SYS_GETTIMEOFDAY 0x11
 #define SYS_SETTIMEZONE 0x12
 #define SYS_MUNMAP 0x13
+#define SYS_SOCKET 0x14
+#define SYS_BIND 0x15
+#define SYS_RECVFROM 0x16
+#define SYS_SENDTO 0x17
 
 #define SYSCALL_FAIL -1
 #define SYSCALL_SUCCESS 0
