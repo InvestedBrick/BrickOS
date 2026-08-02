@@ -135,8 +135,6 @@ void arp_cache_mac(arp_header_t* arp_hdr){
     mutex_wait(&route->iface->mac_cache_mutex,TIMEOUT_INF);
 
     unsigned char* ip_addr_str = ipv4_to_str(cache->ip_addr);
-    logf("ARP: Caching MAC for IP %s",ip_addr_str);
-    log_MAC(arp_hdr->src_mac);
     kfree(ip_addr_str);
     memcpy(cache->mac,arp_hdr->src_mac,sizeof(cache->mac));
 
