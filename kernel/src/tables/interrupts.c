@@ -14,6 +14,7 @@
 #include "../drivers/timer/pit.h"
 #include "../kernel_header.h"
 #include "timer_callbacks.h"
+#include "../networking/network_defines.h"
 
 void page_fault_handler(user_process_t* p,uint64_t fault_addr,interrupt_stack_frame_t* stack_frame);
 
@@ -129,55 +130,55 @@ void handle_software_interrupt(interrupt_stack_frame_t* stack_frame){
     {
     case SYS_DEBUG:
         //temporary
-        log((unsigned char*)stack_frame->rbx);
+        log((unsigned char*)stack_frame->rdi);
         break;
     case SYS_EXIT: 
         rax =  sys_exit(p,stack_frame);
         break;
     case SYS_OPEN:
-        rax =  sys_open(p,(unsigned char*)stack_frame->rbx,(uint8_t)stack_frame->rcx);
+        rax =  sys_open(p,(unsigned char*)stack_frame->rdi,(uint8_t)stack_frame->rsi);
         break;
     case SYS_CLOSE:
-        rax =  sys_close(p,stack_frame->rbx);
+        rax =  sys_close(p,stack_frame->rdi);
         break;
     case SYS_READ:
-        rax =  sys_read(p,stack_frame->rbx,(unsigned char*)stack_frame->rcx,stack_frame->rdx);
+        rax =  sys_read(p,stack_frame->rdi,(unsigned char*)stack_frame->rsi,stack_frame->rdx);
         break;
     case SYS_WRITE:
-        rax =  sys_write(p,stack_frame->rbx,(unsigned char*)stack_frame->rcx,stack_frame->rdx);
+        rax =  sys_write(p,stack_frame->rdi,(unsigned char*)stack_frame->rsi,stack_frame->rdx);
         break;
     case SYS_SEEK:
-        rax =  sys_seek(p,stack_frame->rbx,stack_frame->rcx,stack_frame->rdx);
+        rax =  sys_seek(p,stack_frame->rdi,stack_frame->rsi,stack_frame->rdx);
         break;
     case SYS_MMAP:
-        rax =  sys_mmap(p,MMAP_UNSPEC_ADDR,stack_frame->rbx,stack_frame->rcx,stack_frame->rdx,stack_frame->rdi,stack_frame->rsi);
+        rax =  sys_mmap(p,MMAP_UNSPEC_ADDR,stack_frame->rdi,stack_frame->rsi,stack_frame->rdx,stack_frame->r10,stack_frame->r8);
         break;
     case SYS_MUNMAP:
-        rax = sys_munmap(p,stack_frame->rbx,stack_frame->rcx);
+        rax = sys_munmap(p,stack_frame->rdi,stack_frame->rsi);
         break;
     case SYS_GETCWD:
-        rax =  sys_getcwd((unsigned char*)stack_frame->rbx, stack_frame->rcx);
+        rax =  sys_getcwd((unsigned char*)stack_frame->rdi, stack_frame->rsi);
         break;
     case SYS_GETDENTS:
-        rax =  sys_getdents(p,stack_frame->rbx,(dirent_t*)stack_frame->rcx,stack_frame->rdx);
+        rax =  sys_getdents(p,stack_frame->rdi,(dirent_t*)stack_frame->rsi,stack_frame->rdx);
         break;
     case SYS_CHDIR:
-        rax =  sys_chdir((unsigned char*)stack_frame->rbx);
+        rax =  sys_chdir((unsigned char*)stack_frame->rdi);
         break;
     case SYS_RMFILE:
-        rax =  sys_rmfile((unsigned char*)stack_frame->rbx);
+        rax =  sys_rmfile((unsigned char*)stack_frame->rdi);
         break;
     case SYS_MKNOD:
-        rax =  sys_mknod((unsigned char*)stack_frame->rbx,(mknod_params_t*)stack_frame->rcx);
+        rax =  sys_mknod((unsigned char*)stack_frame->rdi,(mknod_params_t*)stack_frame->rsi);
         break;
     case SYS_IOCTL:
-        rax =  sys_ioctl(p,stack_frame->rbx,stack_frame->rcx,(void*)stack_frame->rdx);
+        rax =  sys_ioctl(p,stack_frame->rdi,stack_frame->rsi,(void*)stack_frame->rdx);
         break;
     case SYS_MSSLEEP:
-        rax =  sys_mssleep(stack_frame,stack_frame->rbx);
+        rax =  sys_mssleep(stack_frame,stack_frame->rdi);
         break;
     case SYS_SPAWN:
-        rax =  sys_spawn((unsigned char*)stack_frame->rbx,(unsigned char**)stack_frame->rcx,(process_fds_init_t*)stack_frame->rdx);
+        rax =  sys_spawn((unsigned char*)stack_frame->rdi,(unsigned char**)stack_frame->rsi,(process_fds_init_t*)stack_frame->rdx);
         break;
     case SYS_GETPID:
         rax =  sys_getpid(p); 
@@ -186,7 +187,19 @@ void handle_software_interrupt(interrupt_stack_frame_t* stack_frame){
         rax =  sys_gettimeofday();
         break;
     case SYS_SETTIMEZONE:
-        rax =  sys_settimezone(p,(int)stack_frame->rbx);
+        rax =  sys_settimezone(p,(int)stack_frame->rdi);
+        break;
+    case SYS_SOCKET:
+        rax =  sys_socket(p,stack_frame->rdi,stack_frame->rsi,stack_frame->rdx);
+        break;
+    case SYS_BIND:
+        rax =  sys_bind(p,stack_frame->rdi,(sockaddr_t*)stack_frame->rsi,stack_frame->rdx);
+        break;
+    case SYS_RECVFROM:
+        rax =  sys_recvfrom(p,stack_frame->rdi,(void*)stack_frame->rsi,stack_frame->rdx,stack_frame->r10,(sockaddr_t*)stack_frame->r8,stack_frame->r9);
+        break;
+    case SYS_SENDTO:
+        rax =  sys_sendto(p,stack_frame->rdi,(void*)stack_frame->rsi,stack_frame->rdx,stack_frame->r10,(sockaddr_t*)stack_frame->r8,stack_frame->r9);
         break;
     default:
         rax = (uint64_t)SYSCALL_FAIL;
