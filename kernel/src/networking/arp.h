@@ -20,6 +20,7 @@ typedef struct net_interface net_interface_t;
 #define ARP_HDR_RET_NO_ROUTE 0x2
 
 #define ARP_CACHE_TIMEOUT 30
+#define ARP_CACHE_DONT_TIMEOUT (uint16_t)-1
 
 typedef struct {
     uint16_t htype;
