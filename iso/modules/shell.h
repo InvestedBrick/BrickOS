@@ -16,6 +16,7 @@ typedef struct {
     const char* help;
 }shell_command_t;
 
+void cmd_nwtest(command_t* cmd);
 void cmd_help(command_t*);
 void cmd_clear(command_t*);
 void cmd_ls(command_t*);

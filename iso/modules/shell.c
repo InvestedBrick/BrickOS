@@ -5,6 +5,7 @@
 #include "cstdlib/malloc.h"
 #include "cstdlib/time.h"
 #include "../../kernel/src/filesystem/devices/device_defines.h"
+#include "../../kernel/src/networking/network_defines.h"
 #include <stdint.h>
 
 #define LINE_BUFFER_SIZE 256
@@ -21,6 +22,7 @@ shell_command_t commands[] = {
     {"clock",cmd_clock,"Prints current date and time"},
     {"run",cmd_run,"Runs a specified binary"},
     {"sysinfo",cmd_sysinfo,"Displays some system information"},
+    {"nwtest",cmd_nwtest, "Network test"},
     {0,0,0}
 };
 
@@ -126,6 +128,56 @@ void cmd_help(command_t* cmd){
         print("\n");
     }
 }
+
+void cmd_nwtest(command_t* cmd){
+
+    int sock_fd = socket(SOCKET_INET,SOCKET_TYPE_DGRAM,0);
+    in_sockaddr_t addr = {
+        .inet_family = INET_FAM_IPv4,
+        .inet_port = 80,
+        .inet_addr = INADDR_ANY,
+    };
+
+    if (sock_fd < 0) {
+        print("Failed to create socket\n");
+        return;
+    }
+
+    if (bind(sock_fd,(sockaddr_t*)&addr,sizeof(addr)) < 0){
+        print("Failed to bind socket\n");
+        close(sock_fd);
+        return;
+    }
+
+    in_sockaddr_t dst = {
+        .inet_family = INET_FAM_IPv4,
+        .inet_port = 2000,
+        .inet_addr = 0xc0a86401, // host pc IP through tap
+    };
+
+    unsigned char* msg = (unsigned char*)"Hello from BrickOS shell!";
+    int sent_bytes = sendto(sock_fd,msg,strlen(msg),0,(sockaddr_t*)&dst,sizeof(dst));
+    
+    if (sent_bytes < 0)
+    print("Failed to send message\n");
+    
+
+    unsigned char buffer[128] = {0};
+
+    int n_read = recvfrom(sock_fd,buffer,sizeof(buffer),0,0,0);
+    if (n_read < 0) {
+        print("Failed to receive message\n");
+        close(sock_fd);
+        return;
+    }
+    print("Received message: ");
+    print(buffer);
+    print("\n");
+
+    close(sock_fd);
+
+}
+
 void cmd_clear(command_t* cmd){
     print("\e");
 }
