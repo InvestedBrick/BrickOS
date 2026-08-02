@@ -184,6 +184,7 @@ void i8254x_recv_packets(i82540em_t* nic){
             nic->accumulating = 0;
             nic->total_size = 0;
             ethernet_handle_packet(data_buffer,write_off);
+            kfree(data_buffer);
         }
 
         nic->rx_next = (nic->rx_next + 1) % I8254x_N_RX_DESCRS;
