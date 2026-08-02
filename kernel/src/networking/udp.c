@@ -14,6 +14,48 @@ mutex_t sock_queue_lock;
  * This is to ensure that a deleted lock is not tried to be accessed
  */
 
+
+void udp_socket_clear_wait_queue(udp_socket_t* sock){
+    while(sock->wait_queue){
+        udp_waiting_thread_t* wthread = sock->wait_queue;
+        sock->wait_queue = sock->wait_queue->next;
+        wakeup_thread(wthread->thread);
+        kfree(wthread);
+    }
+}
+
+void udp_socket_clear_rx_queue(udp_socket_t* sock){
+    while(sock->rx_queue){
+        udp_recvd_packet_t* packet = sock->rx_queue;
+        sock->rx_queue = sock->rx_queue->next;
+        kfree(packet->data);
+        kfree(packet);
+
+    }
+}   
+void cleanup_udp_socket(void* sock_ptr){
+    udp_socket_t* sock = (udp_socket_t*)sock_ptr; 
+    mutex_wait(&sock_queue_lock,TIMEOUT_INF);
+    if (sock_head == sock) sock_head = sock->next;
+    else{
+        udp_socket_t* prev = sock_head;
+        while(prev->next && prev->next != sock) prev = prev->next;
+        if (!prev->next){
+            mutex_signal(&sock_queue_lock);
+            return;
+        }
+        prev->next = sock->next;
+    }
+    mutex_signal(&sock_queue_lock);
+    mutex_wait(&sock->lock,TIMEOUT_INF);
+    
+    udp_socket_clear_rx_queue(sock);
+    udp_socket_clear_wait_queue(sock);
+
+    kfree(sock);
+
+}
+
 uint8_t is_udp_port_used(uint16_t port){
     mutex_wait(&sock_queue_lock,TIMEOUT_INF);
     udp_socket_t* curr = sock_head;
@@ -43,6 +85,8 @@ int udp_bind(socket_t* sock, sockaddr_t* addr, uint32_t len){
         return UDP_RET_FAIL;
     }
 
+    udp_socket_clear_rx_queue(udp_sock);
+    udp_socket_clear_wait_queue(udp_sock);
     udp_sock->ip_addr = inet_sockaddr->inet_addr;
     udp_sock->port = inet_sockaddr->inet_port;
 
@@ -51,11 +95,89 @@ int udp_bind(socket_t* sock, sockaddr_t* addr, uint32_t len){
 }
 
 int udp_sendto(socket_t* sock, void* buf, uint32_t buf_len, uint32_t flags, sockaddr_t* dst_addr, uint32_t addr_len){
-    return 0;
+    udp_socket_t* udp_sock = (udp_socket_t*)sock->prot_sock;
+    in_sockaddr_t* in_addr = (in_sockaddr_t*)dst_addr;
+
+
+    if (addr_len != sizeof(in_sockaddr_t)) return UDP_RET_FAIL;
+
+    udp_send_data_t send_data;
+    send_data.dst_port = in_addr->inet_port;
+    send_data.src_port = udp_sock->port;
+
+    if (send_ip_based_packet(buf,buf_len,in_addr->inet_addr,IP_PROTOCOL_UDP,&send_data) != IP_SEND_RET_SUCCESS)
+        return UDP_RET_FAIL;
+
+    
+    return buf_len;
+}
+
+void udp_erase_packet_from_rx_queue(udp_socket_t* sock, udp_recvd_packet_t* packet){
+    mutex_wait(&sock->lock,TIMEOUT_INF);
+    udp_recvd_packet_t* curr = sock->rx_queue;
+    if (curr == packet){
+        sock->rx_queue = curr->next;
+
+        goto cleanup;
+    }
+    while(curr && curr->next != packet) curr = curr->next;
+    if (!curr) {
+        mutex_signal(&sock->lock);
+        return;
+    }
+    curr->next = packet->next;
+cleanup:
+    kfree(packet->data);
+    kfree(packet);
+    mutex_signal(&sock->lock);
+
+}
+
+void udp_add_waiting_thread(udp_socket_t* sock, thread_t* thread){
+    mutex_wait(&sock->lock,TIMEOUT_INF);
+    udp_waiting_thread_t* wthread = (udp_waiting_thread_t*)kmalloc(sizeof(udp_waiting_thread_t));
+    wthread->thread = thread;
+    wthread->next = nullptr;
+
+    if (!sock->wait_queue) sock->wait_queue = wthread;
+    else{
+        udp_waiting_thread_t* curr = sock->wait_queue;
+        while(curr->next) curr = curr->next;
+        curr->next = wthread;
+    }
+
+    add_sleeping_thread(thread,THREAD_ETERNAL_SLEEP);
+    mutex_signal(&sock->lock);
 }
 
 int udp_recvfrom(socket_t* sock, void* buf, uint32_t buf_len, uint32_t flags, sockaddr_t* src_addr, uint32_t addr_len){
-    return 0;
+    
+    udp_socket_t* udp_sock = (udp_socket_t*)sock->prot_sock;
+    in_sockaddr_t* in_addr = (in_sockaddr_t*)src_addr;
+
+    while(true){
+        udp_recvd_packet_t* packet = udp_sock->rx_queue;
+        if (packet){
+            if (in_addr && addr_len == sizeof(in_sockaddr_t) ){
+                in_addr->inet_addr = packet->src_addr;
+                in_addr->inet_port = packet->src_port;
+            }
+            uint32_t copy_len = min(buf_len,packet->data_len);
+            memcpy(buf,packet->data,copy_len);
+
+            if (!(flags & MSG_PEEK) )
+                udp_erase_packet_from_rx_queue(udp_sock,packet);
+
+            return copy_len;
+        }
+
+        if (flags & MSG_DONTWAIT) return UDP_RET_FAIL;
+        udp_add_waiting_thread(udp_sock,get_current_thread()); // awoken when message arrives
+        invoke_scheduler();
+
+    }
+    
+    return 0; // should not be reached
 }
 
 void init_udp_sock_queue(){
@@ -74,40 +196,6 @@ void insert_socket(udp_socket_t* sock){
     mutex_signal(&sock_queue_lock);
 }
 
-void cleanup_udp_socket(void* sock_ptr){
-    udp_socket_t* sock = (udp_socket_t*)sock_ptr; 
-    mutex_wait(&sock_queue_lock,TIMEOUT_INF);
-    if (sock_head == sock) sock_head = sock->next;
-    else{
-        udp_socket_t* prev = sock_head;
-        while(prev->next && prev->next != sock) prev = prev->next;
-        if (!prev->next){
-            mutex_signal(&sock_queue_lock);
-            return;
-        }
-        prev->next = sock->next;
-    }
-    mutex_signal(&sock_queue_lock);
-    mutex_wait(&sock->lock,TIMEOUT_INF);
-    
-    while(sock->wait_queue){
-        udp_waiting_thread_t* wthread = sock->wait_queue;
-        sock->wait_queue = sock->wait_queue->next;
-        wakeup_thread(wthread->thread);
-        kfree(wthread);
-    }
-    
-    while(sock->rx_queue){
-        udp_recvd_packet_t* packet = sock->rx_queue;
-        sock->rx_queue = sock->rx_queue->next;
-        kfree(packet->data);
-        kfree(packet);
-
-    }
-
-    kfree(sock);
-
-}
 
 udp_socket_t* find_target_udp_socket(uint32_t ip_addr, uint16_t port){
     // must be mutex locked from outside
@@ -120,7 +208,7 @@ udp_socket_t* find_target_udp_socket(uint32_t ip_addr, uint16_t port){
     return nullptr;
 }
 
-void udp_enqueue_rx_data(udp_socket_t* sock, uint8_t* data, uint16_t data_len){
+void udp_enqueue_rx_data(udp_socket_t* sock, uint8_t* data, uint16_t data_len, uint32_t src_addr, uint16_t src_port){
     // sock->lock must be locked
     udp_recvd_packet_t* packet = (udp_recvd_packet_t*)kmalloc(sizeof(udp_recvd_packet_t));
     uint8_t* data_buffer = (uint8_t*)kmalloc(data_len);
@@ -128,6 +216,8 @@ void udp_enqueue_rx_data(udp_socket_t* sock, uint8_t* data, uint16_t data_len){
     packet->next = nullptr;
     packet->data = data_buffer;
     packet->data_len = data_len;
+    packet->src_addr = src_addr;
+    packet->src_port = src_port;
 
 
     // enqueue packet
@@ -145,8 +235,6 @@ void udp_enqueue_rx_data(udp_socket_t* sock, uint8_t* data, uint16_t data_len){
         wakeup_thread(wthread->thread);
         kfree(wthread);
     }
-
-    
 
 }
 
@@ -193,7 +281,7 @@ void udp_handle_packet(uint8_t* data, uint32_t len, uint32_t src_ip, uint32_t ds
 
     udp_header_t* udp_hdr = (udp_header_t*)(data);
     pseudo_ip_hdr_t pseudo;
-    pseudo.src_addr = switch_endian32(src_ip); 
+    pseudo.src_addr = switch_endian32(src_ip); // host -> netword order
     pseudo.zero = 0;
     pseudo.udp_length = udp_hdr->length; // still in network byte order
     pseudo.protocol = IP_PROTOCOL_UDP;
@@ -219,7 +307,7 @@ void udp_handle_packet(uint8_t* data, uint32_t len, uint32_t src_ip, uint32_t ds
     
     mutex_wait(&sock->lock,TIMEOUT_INF);
     mutex_signal(&sock_queue_lock);
-    udp_enqueue_rx_data(sock,payload,payload_size);
+    udp_enqueue_rx_data(sock,payload,payload_size,src_ip,src_port);
     mutex_signal(&sock->lock);
 }
 
