@@ -93,7 +93,7 @@ static int simple_vsnprintf(char *buf, size_t bufsz, const char *fmt, va_list ap
                 break;
             }
             case 'u': {
-                unsigned long v = va_arg(ap, unsigned long);
+                unsigned int v = va_arg(ap, unsigned int);
                 char tmp[32];
                 int t = 0;
                 if(v == 0) tmp[t++] = '0';
@@ -105,12 +105,12 @@ static int simple_vsnprintf(char *buf, size_t bufsz, const char *fmt, va_list ap
                 break;
             }
             case 'd': {
-                long v = va_arg(ap, long);
-                unsigned long uv;
+                int v = va_arg(ap, int);
+                unsigned int uv;
                 if(v < 0){
                     if(idx < bufsz - 1) buf[idx++] = '-';
-                    uv = (unsigned long)(-v);
-                } else uv = (unsigned long)v;
+                    uv = (unsigned int)(-v);
+                } else uv = (unsigned int)v;
                 char tmp[32];
                 int t = 0;
                 if(uv == 0) tmp[t++] = '0';
