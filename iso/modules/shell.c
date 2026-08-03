@@ -131,10 +131,10 @@ void cmd_help(command_t* cmd){
 
 void cmd_nwtest(command_t* cmd){
 
-    int sock_fd = socket(SOCKET_INET,SOCKET_TYPE_DGRAM,0);
+    int sock_fd = socket(SOCKET_INET,SOCKET_TYPE_RAW,IP_PROTOCOL_RAW2);
     in_sockaddr_t addr = {
         .inet_family = INET_FAM_IPv4,
-        .inet_port = 80,
+        .inet_port = 0,
         .inet_addr = INADDR_ANY,
     };
 
@@ -143,15 +143,15 @@ void cmd_nwtest(command_t* cmd){
         return;
     }
 
-    if (bind(sock_fd,(sockaddr_t*)&addr,sizeof(addr)) < 0){
-        print("Failed to bind socket\n");
-        close(sock_fd);
-        return;
-    }
+    //if (bind(sock_fd,(sockaddr_t*)&addr,sizeof(addr)) < 0){
+    //    print("Failed to bind socket\n");
+    //    close(sock_fd);
+    //    return;
+    //}
 
     in_sockaddr_t dst = {
         .inet_family = INET_FAM_IPv4,
-        .inet_port = 2000,
+        .inet_port = 0,
         .inet_addr = 0xc0a86401, // host pc IP through tap
     };
 
