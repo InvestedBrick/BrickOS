@@ -421,22 +421,15 @@ uint64_t sys_clone(user_process_t* p,int (*fn)(void*),void* stack,int flags, voi
     return (uint64_t)0;
 }
 
-uint64_t sys_socket(user_process_t* p, uint32_t domain, uint32_t sock_type, uint32_t protocol){
+uint64_t sys_socket(user_process_t* p, uint32_t domain, uint32_t sock_type, uint8_t protocol){
 
     if (domain >= SOCKET_UNUSED) return SYSCALL_FAIL;
     if (sock_type >= SOCKET_TYPE_UNUSED) return SYSCALL_FAIL;
-    // protocol unused for now since it can be determined from domain and sock_type
-
-
+    
     socket_t* sock = (socket_t*)kmalloc(sizeof(socket_t));
     sock->sock_type = (socket_type_e)sock_type;
     sock->sock_state = SOCKET_UNCONNECTED;
-    if (init_socket_ops(sock,(socket_domain_e)domain,sock->sock_type) != SOCKET_OPS_INIT_SUCCESS) {
-        kfree(sock);
-        return SYSCALL_FAIL;
-    }
-
-    if (init_protocol_specific_socket(sock,(socket_domain_e)domain, sock->sock_type) != SOCKET_PROT_SOCK_SUCCESS){
+    if (init_socket(sock,(socket_domain_e)domain,sock->sock_type,protocol) != SOCKET_OPS_INIT_SUCCESS) {
         kfree(sock);
         return SYSCALL_FAIL;
     }

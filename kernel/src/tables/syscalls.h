@@ -49,7 +49,7 @@ uint64_t sys_gettimeofday();
 
 uint64_t sys_settimezone(user_process_t* p,int utc_timezone);
 
-uint64_t sys_socket(user_process_t* p, uint32_t domain, uint32_t sock_type, uint32_t protocol);
+uint64_t sys_socket(user_process_t* p, uint32_t domain, uint32_t sock_type, uint8_t protocol);
 
 uint64_t sys_bind(user_process_t* p, uint32_t fd, sockaddr_t* sock_addr, uint32_t sock_addr_len);
 
