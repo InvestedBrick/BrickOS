@@ -13,6 +13,9 @@ static atomic_uint_fast16_t ip_id;
 ipv4_ll_link_t* packet_ll_origin = nullptr;
 mutex_t ip_ll_mutex;
 
+raw_ip_socket_t* raw_ip_sock_head = nullptr;
+mutex_t raw_ip_sock_lock;
+
 void init_ip_linked_lists(){
     mutex_init(&ip_ll_mutex);
 }
@@ -276,15 +279,6 @@ uint8_t send_ip_based_packet(uint8_t* usr_data, uint32_t usr_data_len, uint32_t 
     return IP_SEND_RET_SUCCESS;
 }
 
-uint8_t send_ip_packet(uint8_t* data, uint32_t len, uint32_t dst_ip){
-
-    return send_ip_based_packet(data,
-                                len,
-                                dst_ip,
-                                IP_PROTOCOL_RAW,
-                                nullptr);
-}
-
 uint32_t unify_ip_packet(ipv4_packet_part_t* part, uint8_t** out_data){
     ipv4_ll_link_t* link = find_ipv4_packet_start_link(part->ident);
     if (!link) panic("No ipv4 packet linked list link was found, should have been there"); // should never run
@@ -333,7 +327,9 @@ void hand_ip_packet_along(uint8_t* data, uint32_t len,uint8_t protocol, uint32_t
     case IP_PROTOCOL_UDP:
         udp_handle_packet(data,len,src_ip,dst_ip);
         break;
-    case IP_PROTOCOL_RAW:
+    case IP_PROTOCOL_RAW1:
+    case IP_PROTOCOL_RAW2:
+        handle_raw_ip_packet(data,len,src_ip,dst_ip,protocol);
         break;
     default:
         warnf("recieved unhandled protocol (%d)", protocol);
@@ -409,3 +405,94 @@ void ip_handle_packet(uint8_t* data, uint32_t write_off, uint32_t total_len) {
 
 
 }
+
+void handle_raw_ip_packet(uint8_t* data, uint32_t len, uint32_t src_ip, uint32_t dst_ip, uint8_t protocol){
+    mutex_wait(&raw_ip_sock_lock,TIMEOUT_INF);
+    raw_ip_socket_t* sock = (raw_ip_socket_t*)raw_ip_sock_head;
+
+    raw_ip_recvd_packet_t* packet = (raw_ip_recvd_packet_t*)kmalloc(sizeof(raw_ip_recvd_packet_t));
+    uint8_t* data_buffer = (uint8_t*)kmalloc(len);
+    memcpy(data_buffer,data,len);
+    packet->packet.next = nullptr;
+    packet->packet.data = data_buffer;
+    packet->packet.data_len = len;
+    packet->src_addr = src_ip;
+    packet->protocol = protocol;
+    packet->refcnt = 0;
+    
+    uint8_t found_any_socket = 0;
+    while(sock){
+        // every socket with the same protocol and either the same ip or INADDR_ANY should get the packet
+        if ((sock->ip_addr == dst_ip && sock->protocol == protocol) || 
+        (sock->ip_addr == INADDR_ANY && sock->protocol == protocol)) {
+            found_any_socket = 1;
+            atomic_fetch_add(&packet->refcnt, 1);
+            enqueue_rx_data((generic_proto_socket_t*)sock, (recvd_packet_t*)packet);
+        }
+        sock = (raw_ip_socket_t*)sock->sock.next;
+    }
+
+
+    mutex_signal(&raw_ip_sock_lock);
+    if (!found_any_socket){
+        kfree(data_buffer);
+        kfree(packet);
+    }
+    
+
+}
+
+void raw_ip_cleanup_sock(generic_proto_socket_t* sock){
+    cleanup_socket((generic_proto_socket_t**)&raw_ip_sock_head,sock,&raw_ip_sock_lock);
+}
+
+int raw_ip_sendto(socket_t* sock, void* buf, uint32_t buf_len, uint32_t flags, sockaddr_t* dst_addr, uint32_t addr_len){
+
+    raw_ip_socket_t* ip_sock = (raw_ip_socket_t*)sock->prot_sock;
+    in_sockaddr_t* in_addr = (in_sockaddr_t*)dst_addr;
+
+    if (addr_len != sizeof(in_sockaddr_t)) return RAW_IP_RET_FAIL;
+
+    if (send_ip_based_packet(buf,buf_len,in_addr->inet_addr,ip_sock->protocol,nullptr) != IP_SEND_RET_SUCCESS)
+        return RAW_IP_RET_FAIL;
+
+    return buf_len;
+}
+
+int raw_ip_recvfrom(socket_t* sock, void* buf, uint32_t buf_len, uint32_t flags, sockaddr_t* src_addr, uint32_t addr_len){
+
+    raw_ip_socket_t* ip_sock = (raw_ip_socket_t*)sock->prot_sock;
+    in_sockaddr_t* in_addr = (in_sockaddr_t*)src_addr;
+
+    while(true){
+        raw_ip_recvd_packet_t* packet = (raw_ip_recvd_packet_t*)ip_sock->sock.rx_queue;
+        if (packet){
+            if (in_addr && addr_len == sizeof(in_sockaddr_t)){
+                in_addr->inet_family = INET_FAM_IPv4;
+                in_addr->inet_port = 0;
+                in_addr->inet_addr = packet->src_addr;
+            }
+
+            uint32_t copy_len = min(buf_len,packet->packet.data_len);
+            memcpy(buf,packet->packet.data,copy_len);
+
+            if ( (!(flags & MSG_PEEK)) && atomic_fetch_sub(&packet->refcnt,1) == 1){
+                erase_packet_from_rx_queue((generic_proto_socket_t*)ip_sock, (recvd_packet_t*)packet);
+            }
+
+            return copy_len;
+        }
+
+        if (flags & MSG_DONTWAIT) return RAW_IP_RET_FAIL;
+        add_packet_waiting_thread((generic_proto_socket_t*)ip_sock,get_current_thread()); // awoken when message arrives
+        invoke_scheduler();
+    }
+
+    return 0;
+}
+
+proto_handles_t raw_ip_proto_handles = {
+    .bind = 0,
+    .sendto = raw_ip_sendto,
+    .recvfrom = raw_ip_recvfrom
+};
