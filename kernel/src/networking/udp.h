@@ -31,32 +31,20 @@ typedef struct pseudo_ip_hdr{
     uint16_t udp_length;
 }__attribute__((packed)) pseudo_ip_hdr_t; 
 
-typedef struct udp_waiting_thread{
-    thread_t* thread;
-    struct udp_waiting_thread* next;
-}udp_waiting_thread_t;
-
 typedef struct udp_recvd_packet {
+    recvd_packet_t packet;
+
     uint32_t src_addr;
     uint16_t src_port;
 
-    uint8_t* data;
-    uint32_t data_len;
-
-    struct udp_recvd_packet* next;
 }udp_recvd_packet_t;
 
 typedef struct udp_socket{
+    generic_proto_socket_t sock;
+
     uint32_t ip_addr;
     uint16_t port;
 
-    user_process_t* owner_proc;
-    mutex_t lock;
-
-    udp_waiting_thread_t* wait_queue;
-    udp_recvd_packet_t* rx_queue;
-
-    struct udp_socket* next; // everything is a linked list
 }udp_socket_t;
 
 typedef struct {
@@ -67,11 +55,8 @@ typedef struct {
 #define UDP_HDR_RET_SUCESS 0x0
 #define UDP_HDR_RET_DATA_OVERFLOW 0x1
 
-/**
- * init_udp_sock_queue:
- * Initializes the udp socket queue
- */
-void init_udp_sock_queue();
+extern udp_socket_t* udp_sock_head;
+extern mutex_t udp_sock_queue_lock;
 
 /**
  * udp_add_header:
@@ -90,12 +75,6 @@ void init_udp_sock_queue();
 uint8_t udp_add_header(net_interface_t* iface, uint8_t* data, uint32_t* write_off, uint16_t src_port, uint16_t dst_port,uint32_t post_hdr_data_len,uint8_t* post_hdr_data, uint32_t dst_addr);
 
 /**
- * init_udp_socket:
- * creates and initialises an UDP socket without a ip address or port (needs to be set by bind())
- */
-udp_socket_t* init_udp_socket();
-
-/**
  * udp_handle_packet:
  * extracts the UDP header from a packet, validates the checksum and forwards the data to the respective socket
  * @param data The data starting with the UDP header
@@ -107,8 +86,8 @@ void udp_handle_packet(uint8_t* data, uint32_t len, uint32_t src_ip, uint32_t ds
 
 /**
  * cleanup_udp_socket:
- * frees all data associated with the udp socket
- * @param sock_ptr A pointer to a udp_socket_t*
+ * calls cleanup_socket with the needed lock and queue head
+ * @param sock A pointer to a udp_socket_t* as generic_proto_socket_t*
  */
-void cleanup_udp_socket(void* sock_ptr);
+void udp_cleanup_sock(generic_proto_socket_t* sock);
 #endif
