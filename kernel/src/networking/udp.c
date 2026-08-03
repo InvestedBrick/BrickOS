@@ -60,7 +60,6 @@ int udp_sendto(socket_t* sock, void* buf, uint32_t buf_len, uint32_t flags, sock
     udp_socket_t* udp_sock = (udp_socket_t*)sock->prot_sock;
     in_sockaddr_t* in_addr = (in_sockaddr_t*)dst_addr;
 
-    log("HERE");
     if (addr_len != sizeof(in_sockaddr_t)) return UDP_RET_FAIL;
 
     udp_send_data_t send_data;
@@ -83,6 +82,7 @@ int udp_recvfrom(socket_t* sock, void* buf, uint32_t buf_len, uint32_t flags, so
         udp_recvd_packet_t* packet = (udp_recvd_packet_t*)udp_sock->sock.rx_queue;
         if (packet){
             if (in_addr && addr_len == sizeof(in_sockaddr_t) ){
+                in_addr->inet_family = INET_FAM_IPv4;
                 in_addr->inet_addr = packet->src_addr;
                 in_addr->inet_port = packet->src_port;
             }
@@ -106,7 +106,7 @@ int udp_recvfrom(socket_t* sock, void* buf, uint32_t buf_len, uint32_t flags, so
 
 void udp_cleanup_sock(generic_proto_socket_t* sock){
     // just so that I dont have to store queue lock and queue head in the socket
-    cleanup_socket((generic_proto_socket_t*)&udp_sock_head,sock,&udp_sock_queue_lock);
+    cleanup_socket((generic_proto_socket_t**)&udp_sock_head,sock,&udp_sock_queue_lock);
 }
 
 udp_socket_t* find_target_udp_socket(uint32_t ip_addr, uint16_t port){
