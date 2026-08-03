@@ -92,7 +92,7 @@ void setup_network_driver(){
     register_timer_callback(ipv4_timer_callback,1000); // callback every second
     register_timer_callback(arp_timer_callback,1000);
     init_ip_linked_lists();
-    init_udp_sock_queue();
+    init_socket_queues();
     pci_device_t* dev = pci_head;
     while(dev){
         if (dev->class_code == PCI_CLASS_NETWORK_CONTROLLER 
