@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include "networking.h"
 #include "../processes/spinlocks.h"
+#include "network_defines.h"
 
 #define IP_VERSION_4 0x4
 
@@ -34,11 +35,6 @@
 #define IP_TTL_MAX 255
 
 // fragment offset is measured in units of 8 bytes to where the fragment belongs
-
-#define IP_PROTOCOL_ICMP 1
-#define IP_PROTOCOL_TCP  6
-#define IP_PROTOCOL_UDP  17
-#define IP_PROTOCOL_RAW  254
 
 #define IP_OPTION_TYPE_END 0
 
@@ -74,6 +70,22 @@ typedef struct ipv4_ll_link {
 
     struct ipv4_ll_link* next;
 }ipv4_ll_link_t;
+
+typedef struct raw_ip_recvd_packet {
+    recvd_packet_t packet;
+
+    uint32_t src_addr;
+    uint8_t protocol;
+
+}raw_ip_recvd_packet_t;
+
+typedef struct raw_ip_socket {
+    generic_proto_socket_t sock;
+
+    uint32_t ip_addr;
+    uint8_t protocol;
+
+}raw_ip_socket_t;
 
 void init_ip_linked_lists();
 
