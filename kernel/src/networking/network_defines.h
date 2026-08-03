@@ -23,6 +23,12 @@ typedef enum {
     SOCKET_UNUSED,
 }socket_domain_e;
 
+#define IP_PROTOCOL_ICMP 1
+#define IP_PROTOCOL_TCP  6
+#define IP_PROTOCOL_UDP  17
+#define IP_PROTOCOL_RAW1  253
+#define IP_PROTOCOL_RAW2  254
+
 #define INADDR_LOOPBACK 0x7f000001
 #define INADDR_ANY      0x00000000
 
