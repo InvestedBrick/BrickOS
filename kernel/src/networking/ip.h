@@ -2,6 +2,7 @@
 #define INCLUDE_IP_H
 
 #include <stdint.h>
+#include <stdatomic.h>
 #include "networking.h"
 #include "../processes/spinlocks.h"
 #include "network_defines.h"
@@ -76,6 +77,7 @@ typedef struct raw_ip_recvd_packet {
 
     uint32_t src_addr;
     uint8_t protocol;
+    atomic_uint_fast32_t refcnt;
 
 }raw_ip_recvd_packet_t;
 
@@ -87,7 +89,13 @@ typedef struct raw_ip_socket {
 
 }raw_ip_socket_t;
 
+extern proto_handles_t raw_ip_proto_handles;
+extern raw_ip_socket_t* raw_ip_sock_head;
+extern mutex_t raw_ip_sock_lock;
+
 void init_ip_linked_lists();
+
+#define RAW_IP_RET_FAIL -1
 
 #define IP_HDR_DEFAULT_SIZE sizeof(ipv4_header_t)
 
@@ -150,5 +158,23 @@ void ipv4_timer_callback();
  * @return IP_SEND_RET_SUCCESS upon success, otherwise an error (see IP_SEND_RET_*) 
  */
 uint8_t send_ip_based_packet(uint8_t* usr_data, uint32_t usr_data_len, uint32_t dst_ip, uint8_t higher_prot, void* higher_prot_data);
+
+/**
+ * raw_ip_cleanup_sock:
+ * Cleans up a raw IP socket by removing it from the raw IP socket queue, clearing its receive and wait queues, and freeing its memory
+ * @param sock The raw IP socket to clean up
+ */
+void raw_ip_cleanup_sock(generic_proto_socket_t* sock);
+
+/**
+ * handle_raw_ip_packet:
+ * Handles an incoming raw IP packet by enqueuing it to the appropriate raw IP sockets based on the destination IP address and protocol
+ * @param data The raw packet data
+ * @param len The length of the packet data
+ * @param src_ip The source IP address of the packet
+ * @param dst_ip The destination IP address of the packet
+ * @param protocol The IP protocol of the packet (I_PROTOCOL_RAW1 / IP_PROTOCOL_RAW)
+ */
+void handle_raw_ip_packet(uint8_t* data, uint32_t len, uint32_t src_ip, uint32_t dst_ip, uint8_t protocol);
 
 #endif
