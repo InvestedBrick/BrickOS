@@ -1,11 +1,13 @@
 #include "socket.h"
 #include "../udp.h"
+#include "../ip.h"
 #include "../../filesystem/vfs/vfs.h"
 #include "../../memory/kmalloc.h"
 #include "../../io/log.h"
 
 void init_socket_queues(){
     mutex_init(&udp_sock_queue_lock);
+    mutex_init(&raw_ip_sock_lock);
 }
 
 int socket_close(generic_file_t* file){
@@ -32,16 +34,22 @@ uint8_t init_socket(socket_t* sock, socket_domain_e domain, socket_type_e type, 
     {
     case (SOCKET_INET << 16 | SOCKET_TYPE_DGRAM << 8 | 0 ): 
     case (SOCKET_INET << 16 | SOCKET_TYPE_DGRAM << 8 | IP_PROTOCOL_UDP ): 
-        log("HERE");
         sock->prot_sock = (generic_proto_socket_t*)kmalloc(sizeof(udp_socket_t));
         sock->proto_ops = &udp_proto_handles;
         sock->cleanup_prot_sock = udp_cleanup_sock;
-        init_prot_socket(sock->prot_sock,sizeof(udp_socket_t),(generic_proto_socket_t*)&udp_sock_head,&udp_sock_queue_lock);
+        init_prot_socket(sock->prot_sock,sizeof(udp_socket_t),(generic_proto_socket_t**)&udp_sock_head,&udp_sock_queue_lock);
         break;
     case (SOCKET_INET << 16 | SOCKET_TYPE_STREAM << 8 | 0): 
     case (SOCKET_INET << 16 | SOCKET_TYPE_STREAM << 8 | IP_PROTOCOL_TCP): 
-    case (SOCKET_INET << 16 | SOCKET_TYPE_RAW | IP_PROTOCOL_RAW1):
-    case (SOCKET_INET << 16 | SOCKET_TYPE_RAW | IP_PROTOCOL_RAW2):
+        return SOCKET_OPS_INIT_FAILURE;
+    case (SOCKET_INET << 16 | SOCKET_TYPE_RAW << 8 | IP_PROTOCOL_RAW1):
+    case (SOCKET_INET << 16 | SOCKET_TYPE_RAW << 8 | IP_PROTOCOL_RAW2):
+        sock->prot_sock = (generic_proto_socket_t*)kmalloc(sizeof(raw_ip_socket_t));
+        sock->proto_ops = &raw_ip_proto_handles;
+        sock->cleanup_prot_sock = raw_ip_cleanup_sock;
+        init_prot_socket(sock->prot_sock,sizeof(raw_ip_socket_t),(generic_proto_socket_t**)&raw_ip_sock_head,&raw_ip_sock_lock);
+        ((raw_ip_socket_t*)sock->prot_sock)->protocol = protocol;
+        break;
     case (SOCKET_INET << 16 | SOCKET_TYPE_RAW | IP_PROTOCOL_ICMP):
     default:
         return SOCKET_OPS_INIT_FAILURE;
