@@ -70,6 +70,9 @@ typedef struct socket {
 
 #define SOCKET_SETOPTS_SUCCESS 0x0
 #define SOCKET_SETOPTS_FAILURE 0x1
+
+#define SOCKET_GETOPTS_SUCCESS 0x0
+#define SOCKET_GETOPTS_FAILURE 0x1
 extern vfs_handles_t socket_handles;
 
 /**
@@ -104,6 +107,27 @@ uint8_t handle_socket_setopt(socket_t* sock, uint32_t optname, void* optval, uin
  */
 uint8_t handle_ip_setopt(user_process_t* p,socket_t* sock, uint32_t optname, void* optval, uint32_t optlen);
 
+/**
+ * handle_ip_getopt:
+ * Handles IP level getsockopt calls
+ * @param sock The socket
+ * @param optname The option name
+ * @param optval The option value
+ * @param optlen The length of the option value
+ * @return SOCKET_GETOPTS_SUCCESS upon success, SOCKET_GETOPTS_FAILURE otherwise
+ */
+uint8_t handle_ip_getopt(socket_t* sock, uint32_t optname, void* optval, uint32_t* optlen);
+
+/**
+ * handle_socket_getopt:
+ * Handles socket level getsockopt calls
+ * @param sock The socket
+ * @param optname The option name
+ * @param optval The option value
+ * @param optlen The length of the option value
+ * @return SOCKET_GETOPTS_SUCCESS upon success, SOCKET_GETOPTS_FAILURE otherwise
+ */
+uint8_t handle_socket_getopt(socket_t* sock, uint32_t optname, void* optval, uint32_t* optlen);
 /**
  * init_socket_ops:
  * Assigns a socket the relevant operations to be called upon their respective syscall

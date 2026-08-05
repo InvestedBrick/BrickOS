@@ -25,23 +25,33 @@ uint8_t handle_socket_setopt(socket_t* sock, uint32_t optname, void* optval, uin
     switch (optname)
     {
     case SO_RCVTIMEOUT:
-        if (optlen != sizeof(uint64_t)) return SOCKET_SETOPTS_FAILURE;
+        if (optlen != sizeof(sock->sock_opts.recv_timeout)) 
+            return SOCKET_SETOPTS_FAILURE;
+        
         sock->sock_opts.recv_timeout = MS_TO_TICKS(*(uint64_t*)optval);
         break;
     case SO_SNDTIMEOUT:
-        if (optlen != sizeof(uint64_t)) return SOCKET_SETOPTS_FAILURE;
+        if (optlen != sizeof(sock->sock_opts.send_timeout)) 
+            return SOCKET_SETOPTS_FAILURE;
+        
         sock->sock_opts.send_timeout = MS_TO_TICKS(*(uint64_t*)optval);
         break;
     case SO_REUSEADDR:
-        if (optlen != sizeof(uint8_t)) return SOCKET_SETOPTS_FAILURE;
+        if (optlen != sizeof(sock->sock_opts.reuse_addr))
+            return SOCKET_SETOPTS_FAILURE;
+    
         sock->sock_opts.reuse_addr = *(uint8_t*)optval;
         break;
     case SO_RCVBUF:
-        if (optlen != sizeof(uint32_t)) return SOCKET_SETOPTS_FAILURE;
+        if (optlen != sizeof(sock->sock_opts.recv_buf_size ))
+            return SOCKET_SETOPTS_FAILURE;
+
         sock->sock_opts.recv_buf_size = *(uint32_t*)optval;
         break;
     case SO_SNDBUF:
-        if (optlen != sizeof(uint32_t)) return SOCKET_SETOPTS_FAILURE;
+        if (optlen != sizeof(sock->sock_opts.send_buf_size)) 
+            return SOCKET_SETOPTS_FAILURE;
+
         sock->sock_opts.send_buf_size = *(uint32_t*)optval;
         break;
     default:
@@ -57,18 +67,28 @@ uint8_t handle_ip_setopt(user_process_t* p,socket_t* sock, uint32_t optname, voi
     switch (optname)
     {
     case IP_TOS:
-        if (optlen != sizeof(uint8_t)) return SOCKET_SETOPTS_FAILURE;
+        if (optlen != sizeof(sock->ip_opts.tos)) 
+            return SOCKET_SETOPTS_FAILURE;
+        
         uint8_t new_tos = *(uint8_t*)optval;
-        if (new_tos & IP_TOS_PREC_MASK && p->priv_lvl > PRIV_SPECIAL) return SOCKET_SETOPTS_FAILURE; // you are not that important
+        if (new_tos & IP_TOS_PREC_MASK && p->priv_lvl > PRIV_SPECIAL) 
+            return SOCKET_SETOPTS_FAILURE; // you are not that important
+        
         sock->ip_opts.tos = new_tos & ~0x3; // bottom 2 bits must be 0
         break;
     case IP_TTL:
-        if (optlen != sizeof(uint8_t)) return SOCKET_SETOPTS_FAILURE;
+        if (optlen != sizeof(sock->ip_opts.ttl)) 
+            return SOCKET_SETOPTS_FAILURE;
+    
         sock->ip_opts.ttl = *(uint8_t*)optval;
         break;
     case IP_HDRINCL:
-        if (sock->sock_type != SOCKET_TYPE_RAW) return SOCKET_SETOPTS_FAILURE;
-        if (optlen != sizeof(uint8_t)) return SOCKET_SETOPTS_FAILURE;
+        if (sock->sock_type != SOCKET_TYPE_RAW) 
+            return SOCKET_SETOPTS_FAILURE;
+
+        if (optlen != sizeof(uint8_t)) 
+            return SOCKET_SETOPTS_FAILURE;
+        
         sock->ip_opts.hdr_incl = *(uint8_t*)optval;
         break;
     default:
@@ -76,6 +96,85 @@ uint8_t handle_ip_setopt(user_process_t* p,socket_t* sock, uint32_t optname, voi
     }
 
     return SOCKET_SETOPTS_SUCCESS;
+}
+
+uint8_t handle_socket_getopt(socket_t* sock, uint32_t optname, void* optval, uint32_t* optlen){
+    if (!optval || !optlen) return SOCKET_GETOPTS_FAILURE;
+    switch (optname)
+    {
+    case SO_RCVTIMEOUT:
+        if (*optlen < sizeof(sock->sock_opts.recv_timeout)) 
+            return SOCKET_GETOPTS_FAILURE;
+        
+        *(uint64_t*)optval = TICKS_TO_MS(sock->sock_opts.recv_timeout);
+        *optlen = sizeof(sock->sock_opts.recv_timeout);
+        break;
+    case SO_SNDTIMEOUT:
+        if (*optlen < sizeof(sock->sock_opts.send_timeout)) 
+            return SOCKET_GETOPTS_FAILURE;
+        
+        *(uint64_t*)optval = TICKS_TO_MS(sock->sock_opts.send_timeout);
+        *optlen = sizeof(sock->sock_opts.send_timeout);
+        break;
+    case SO_REUSEADDR:
+        if (*optlen < sizeof(sock->sock_opts.reuse_addr)) 
+            return SOCKET_GETOPTS_FAILURE;
+        
+        *(uint8_t*)optval = sock->sock_opts.reuse_addr;
+        *optlen = sizeof(sock->sock_opts.reuse_addr);
+        break;
+    case SO_RCVBUF:
+        if (*optlen < sizeof(sock->sock_opts.recv_buf_size )) 
+            return SOCKET_GETOPTS_FAILURE;
+        
+        *(uint32_t*)optval = sock->sock_opts.recv_buf_size;
+        *optlen = sizeof(sock->sock_opts.recv_buf_size);
+        break;
+    case SO_SNDBUF:
+        if (*optlen < sizeof(sock->sock_opts.send_buf_size)) 
+            return SOCKET_GETOPTS_FAILURE;
+        
+        *(uint32_t*)optval = sock->sock_opts.send_buf_size;
+        *optlen = sizeof(sock->sock_opts.send_buf_size);
+        break;
+    default:
+        return SOCKET_GETOPTS_FAILURE;
+    }
+
+    return SOCKET_GETOPTS_SUCCESS;
+}
+
+uint8_t handle_ip_getopt(socket_t* sock, uint32_t optname, void* optval, uint32_t* optlen){
+    if (!optval || !optlen) return SOCKET_GETOPTS_FAILURE;
+
+    switch (optname)
+    {
+    case IP_TOS:
+        if (*optlen < sizeof(sock->ip_opts.tos))
+            return SOCKET_GETOPTS_FAILURE;
+
+        *(uint8_t*)optval = sock->ip_opts.tos;
+        *optlen = sizeof(sock->ip_opts.tos);
+        break;
+    case IP_TTL:
+        if (*optlen < sizeof(sock->ip_opts.ttl))
+            return SOCKET_GETOPTS_FAILURE;
+
+        *(uint8_t*)optval = sock->ip_opts.ttl;
+        *optlen = sizeof(sock->ip_opts.ttl);
+        break;
+    case IP_HDRINCL:
+        if (*optlen < sizeof(sock->ip_opts.hdr_incl))
+            return SOCKET_GETOPTS_FAILURE;
+
+        *(uint8_t*)optval = sock->ip_opts.hdr_incl;
+        *optlen = sizeof(sock->ip_opts.hdr_incl);
+        break;
+    default:
+        return SOCKET_GETOPTS_FAILURE;
+    }
+
+    return SOCKET_GETOPTS_SUCCESS;
 }
 int socket_close(generic_file_t* file){
     socket_t* sock = (socket_t*)file->generic_data;
