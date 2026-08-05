@@ -8,7 +8,7 @@
 #include "ethernet.h"
 
 void decrement_and_cleanup_arp_cache(net_interface_t* iface) {
-    mutex_wait(&iface->mac_cache_mutex,TIMEOUT_INF);
+    mutex_wait(&iface->mac_cache_mutex,LOCK_TIMEOUT_INF);
     arp_mac_cache_t dummy;
     dummy.next = iface->arp_cache_head;
     arp_mac_cache_t* curr = &dummy;
@@ -132,7 +132,7 @@ void arp_cache_mac(arp_header_t* arp_hdr){
         warn("Failed to cache mac, no route found");
         return;
     }
-    mutex_wait(&route->iface->mac_cache_mutex,TIMEOUT_INF);
+    mutex_wait(&route->iface->mac_cache_mutex,LOCK_TIMEOUT_INF);
 
     unsigned char* ip_addr_str = ipv4_to_str(cache->ip_addr);
     kfree(ip_addr_str);
@@ -165,7 +165,7 @@ arp_mac_cache_t* arp_cache_contains_ip(uint32_t ip_addr){
     route_t* route = route_lookup(ip_addr);
     if (!route) return nullptr;
 
-    mutex_wait(&route->iface->mac_cache_mutex,TIMEOUT_INF);
+    mutex_wait(&route->iface->mac_cache_mutex,LOCK_TIMEOUT_INF);
     arp_mac_cache_t* result = arp_cache_contains_ip_locked(route->iface,ip_addr);
     mutex_signal(&route->iface->mac_cache_mutex);
 
@@ -178,7 +178,7 @@ void arp_lookup(uint32_t ip_addr,uint8_t* mac_out){
     route_t* route = route_lookup(ip_addr);
     if (!route) return;
 
-    mutex_wait(&route->iface->mac_cache_mutex,TIMEOUT_INF);
+    mutex_wait(&route->iface->mac_cache_mutex,LOCK_TIMEOUT_INF);
 
     arp_mac_cache_t* cache = arp_cache_contains_ip_locked(route->iface,ip_addr);
     if (cache) {
@@ -191,7 +191,7 @@ void arp_lookup(uint32_t ip_addr,uint8_t* mac_out){
     arp_send_request(ip_addr);
 
     while(1) {
-        mutex_wait(&route->iface->mac_cache_mutex,TIMEOUT_INF);
+        mutex_wait(&route->iface->mac_cache_mutex,LOCK_TIMEOUT_INF);
         cache = arp_cache_contains_ip_locked(route->iface,ip_addr);
         if (cache) {
             memcpy(mac_out,cache->mac,sizeof(cache->mac));
