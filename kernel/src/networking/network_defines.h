@@ -32,6 +32,20 @@ typedef enum {
 #define INADDR_LOOPBACK 0x7f000001
 #define INADDR_ANY      0x00000000
 
+// socket opt level (need to be above protocol numbers, as they might also be valid levels)
+#define SOL_SOCKET 256
+#define SOL_IP 257
+
+#define IP_TOS        (SOL_IP << 8 | 0x1)
+#define IP_TTL        (SOL_IP << 8 | 0x2)
+#define IP_HDRINCL    (SOL_IP << 8 | 0x3)
+
+#define SO_RCVTIMEOUT (SOL_SOCKET << 8 | 0x1)
+#define SO_SNDTIMEOUT (SOL_SOCKET << 8 | 0x2)
+#define SO_REUSEADDR  (SOL_SOCKET << 8 | 0x3)
+#define SO_RCVBUF     (SOL_SOCKET << 8 | 0x4)
+#define SO_SNDBUF     (SOL_SOCKET << 8 | 0x5)
+
 typedef struct {
     uint16_t inet_family;
     uint16_t inet_port;
