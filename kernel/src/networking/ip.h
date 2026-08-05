@@ -22,6 +22,7 @@
 #define IP_TOS_PREC_INTERNETWORK    0b110
 #define IP_TOS_PREC_NETWORK_CONTROL 0b111
 
+#define IP_TOS_PREC_MASK 0x1f
 // routine with no special requests
 #define IP_TOS_DEFAULT 0x0
 
@@ -150,6 +151,7 @@ void ipv4_timer_callback();
 /**
  * send_ip_based_packet:
  * Sends an IP based packet (raw IP, UDP, TCP, ICMP ...) to a designated ip address
+ * @param sock The socket from which to send
  * @param usr_data The user data to send
  * @param usr_data_len The length of the user data
  * @param dst_ip The destination IPv4 address
@@ -157,7 +159,7 @@ void ipv4_timer_callback();
  * @param higher_prot_data A pointer to a protocol specific struct for additonal data
  * @return IP_SEND_RET_SUCCESS upon success, otherwise an error (see IP_SEND_RET_*) 
  */
-uint8_t send_ip_based_packet(uint8_t* usr_data, uint32_t usr_data_len, uint32_t dst_ip, uint8_t higher_prot, void* higher_prot_data);
+uint8_t send_ip_based_packet(socket_t* sock,uint8_t* usr_data, uint32_t usr_data_len, uint32_t dst_ip, uint8_t higher_prot, void* higher_prot_data);
 
 /**
  * raw_ip_cleanup_sock:

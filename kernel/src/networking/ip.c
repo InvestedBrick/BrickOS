@@ -58,7 +58,7 @@ void abort_reassembly(ipv4_packet_part_t* part){
 
 void ipv4_timer_callback(){
     // called every second
-    mutex_wait(&ip_ll_mutex,TIMEOUT_INF);
+    mutex_wait(&ip_ll_mutex,LOCK_TIMEOUT_INF);
     ipv4_ll_link_t* head = packet_ll_origin;
     while(head){
         ipv4_ll_link_t* to_del = nullptr;
@@ -165,7 +165,7 @@ uint8_t ip_add_header(net_interface_t* iface,uint8_t* data, uint32_t* write_off,
     return IP_HDR_RET_SUCCESS;
 }
 
-uint8_t send_ip_based_packet(uint8_t* usr_data, uint32_t usr_data_len, uint32_t dst_ip, uint8_t higher_prot, void* higher_prot_data){
+uint8_t send_ip_based_packet(socket_t* sock,uint8_t* usr_data, uint32_t usr_data_len, uint32_t dst_ip, uint8_t higher_prot, void* higher_prot_data){
     route_t* route = route_lookup(dst_ip);
     if (!route) return IP_SEND_RET_NO_ROUTE;
 
@@ -218,7 +218,7 @@ uint8_t send_ip_based_packet(uint8_t* usr_data, uint32_t usr_data_len, uint32_t 
                            icmp_send->extra_payload_len);
 
         if (ret != ICMP_HDR_RET_SUCCESS) {
-            warnf("Fialed to add ICMP header to IP based packet (ERR:%x)",ret);
+            warnf("Failed to add ICMP header to IP based packet (ERR:%x)",ret);
             kfree(data_buf);
             return IP_SEND_RET_ICMP_HDR_FAILED;
         }
@@ -241,20 +241,22 @@ uint8_t send_ip_based_packet(uint8_t* usr_data, uint32_t usr_data_len, uint32_t 
         }
     }
 
-    ret = ip_add_header(route->iface,
-                                data_buf,
-                                &write_off,
-                                dst_ip,
-                                higher_prot,
-                                IP_TOS_DEFAULT,
-                                IP_TTL_MAX,
-                                id,
-                                IP_MAY_FRAGMENT,
-                                post_hdr_len);
-    if (ret != IP_HDR_RET_SUCCESS) {
-        warnf("Failed to add IP header to IP packet (ERR: %x)",ret);
-        kfree(data_buf);
-        return IP_SEND_RET_IP_HDR_FAILED;
+    if (!sock->ip_opts.hdr_incl){
+        ret = ip_add_header(route->iface,
+            data_buf,
+            &write_off,
+            dst_ip,
+            higher_prot,
+            sock->ip_opts.tos,
+            sock->ip_opts.ttl,
+            id,
+            IP_MAY_FRAGMENT,
+            post_hdr_len);
+            if (ret != IP_HDR_RET_SUCCESS) {
+                warnf("Failed to add IP header to IP packet (ERR: %x)",ret);
+                kfree(data_buf);
+                return IP_SEND_RET_IP_HDR_FAILED;
+            }
     }
 
     ret = ethernet_add_header(route->iface,
@@ -389,7 +391,7 @@ void ip_handle_packet(uint8_t* data, uint32_t write_off, uint32_t total_len) {
 
         part->next = nullptr;
         
-        mutex_wait(&ip_ll_mutex,TIMEOUT_INF);
+        mutex_wait(&ip_ll_mutex,LOCK_TIMEOUT_INF);
         insert_ipv4_packet_part(part);
 
         if (ipv4_packet_complete(part)){
@@ -407,7 +409,7 @@ void ip_handle_packet(uint8_t* data, uint32_t write_off, uint32_t total_len) {
 }
 
 void handle_raw_ip_packet(uint8_t* data, uint32_t len, uint32_t src_ip, uint32_t dst_ip, uint8_t protocol){
-    mutex_wait(&raw_ip_sock_lock,TIMEOUT_INF);
+    mutex_wait(&raw_ip_sock_lock,LOCK_TIMEOUT_INF);
     raw_ip_socket_t* sock = (raw_ip_socket_t*)raw_ip_sock_head;
 
     raw_ip_recvd_packet_t* packet = (raw_ip_recvd_packet_t*)kmalloc(sizeof(raw_ip_recvd_packet_t));
@@ -425,9 +427,11 @@ void handle_raw_ip_packet(uint8_t* data, uint32_t len, uint32_t src_ip, uint32_t
         // every socket with the same protocol and either the same ip or INADDR_ANY should get the packet
         if ((sock->ip_addr == dst_ip && sock->protocol == protocol) || 
         (sock->ip_addr == INADDR_ANY && sock->protocol == protocol)) {
+            mutex_wait(&sock->sock.lock,LOCK_TIMEOUT_INF);
             found_any_socket = 1;
             atomic_fetch_add(&packet->refcnt, 1);
             enqueue_rx_data((generic_proto_socket_t*)sock, (recvd_packet_t*)packet);
+            mutex_signal(&sock->sock.lock);
         }
         sock = (raw_ip_socket_t*)sock->sock.next;
     }
@@ -453,7 +457,7 @@ int raw_ip_sendto(socket_t* sock, void* buf, uint32_t buf_len, uint32_t flags, s
 
     if (addr_len != sizeof(in_sockaddr_t)) return RAW_IP_RET_FAIL;
 
-    if (send_ip_based_packet(buf,buf_len,in_addr->inet_addr,ip_sock->protocol,nullptr) != IP_SEND_RET_SUCCESS)
+    if (send_ip_based_packet(sock,buf,buf_len,in_addr->inet_addr,ip_sock->protocol,nullptr) != IP_SEND_RET_SUCCESS)
         return RAW_IP_RET_FAIL;
 
     return buf_len;
@@ -464,31 +468,40 @@ int raw_ip_recvfrom(socket_t* sock, void* buf, uint32_t buf_len, uint32_t flags,
     raw_ip_socket_t* ip_sock = (raw_ip_socket_t*)sock->prot_sock;
     in_sockaddr_t* in_addr = (in_sockaddr_t*)src_addr;
 
+    raw_ip_recvd_packet_t* packet =  nullptr;
+    
+    mutex_wait(&ip_sock->sock.lock,LOCK_TIMEOUT_INF);
     while(true){
-        raw_ip_recvd_packet_t* packet = (raw_ip_recvd_packet_t*)ip_sock->sock.rx_queue;
-        if (packet){
-            if (in_addr && addr_len == sizeof(in_sockaddr_t)){
-                in_addr->inet_family = INET_FAM_IPv4;
-                in_addr->inet_port = 0;
-                in_addr->inet_addr = packet->src_addr;
-            }
+        packet = (raw_ip_recvd_packet_t*)ip_sock->sock.rx_queue;
 
-            uint32_t copy_len = min(buf_len,packet->packet.data_len);
-            memcpy(buf,packet->packet.data,copy_len);
-
-            if ( (!(flags & MSG_PEEK)) && atomic_fetch_sub(&packet->refcnt,1) == 1){
-                erase_packet_from_rx_queue((generic_proto_socket_t*)ip_sock, (recvd_packet_t*)packet);
-            }
-
-            return copy_len;
-        }
+        if (packet) break;
 
         if (flags & MSG_DONTWAIT) return RAW_IP_RET_FAIL;
-        add_packet_waiting_thread((generic_proto_socket_t*)ip_sock,get_current_thread()); // awoken when message arrives
+
+        mutex_signal(&ip_sock->sock.lock);
+        add_packet_waiting_thread((generic_proto_socket_t*)ip_sock,get_current_thread(),sock->sock_opts.recv_timeout); // awoken when message arrives
+        
+        flags |= MSG_DONTWAIT; // if thread wakes up without packet ( timed out ) then it will be caught by check above 
         invoke_scheduler();
+
+        mutex_wait(&ip_sock->sock.lock,LOCK_TIMEOUT_INF);
     }
 
-    return 0;
+    if (in_addr && addr_len == sizeof(in_sockaddr_t)){
+        in_addr->inet_family = INET_FAM_IPv4;
+        in_addr->inet_port = 0;
+        in_addr->inet_addr = packet->src_addr;
+    }
+
+    uint32_t copy_len = min(buf_len,packet->packet.data_len);
+    memcpy(buf,packet->packet.data,copy_len);
+
+    if ( (!(flags & MSG_PEEK)) && atomic_fetch_sub(&packet->refcnt,1) == 1){
+        erase_packet_from_rx_queue((generic_proto_socket_t*)ip_sock, (recvd_packet_t*)packet);
+    }
+
+    mutex_signal(&ip_sock->sock.lock);
+    return copy_len;
 }
 
 proto_handles_t raw_ip_proto_handles = {
