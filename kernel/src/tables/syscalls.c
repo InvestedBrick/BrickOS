@@ -473,10 +473,10 @@ uint64_t sys_setsockopt(user_process_t* p, uint32_t fd, uint32_t level, uint32_t
     switch (level)
     {
     case SOL_SOCKET:
-        if (!handle_socket_setopt(sock,optname,optval,optlen)) return SYSCALL_FAIL;
+        if (handle_socket_setopt(sock, optname, optval, optlen) != SOCKET_SETOPTS_SUCCESS) return SYSCALL_FAIL;
         break;
     case SOL_IP:
-        if (!handle_ip_setopt(p, sock, optname, optval, optlen)) return SYSCALL_FAIL;
+        if (handle_ip_setopt(p, sock, optname, optval, optlen) != SOCKET_SETOPTS_SUCCESS) return SYSCALL_FAIL;
         break;
     default:
         return SYSCALL_FAIL;
@@ -490,6 +490,18 @@ uint64_t sys_getsockopt(user_process_t* p, uint32_t fd, uint32_t level, uint32_t
     socket_t* sock = valid_socket(p,fd);
     if (!sock) return SYSCALL_FAIL;
 
+    switch (level)
+    {
+    case SOL_SOCKET:
+        if (handle_socket_getopt(sock, optname, optval,optlen) != SOCKET_GETOPTS_SUCCESS) return SYSCALL_FAIL;
+        break;
+    case SOL_IP:
+        if (handle_ip_getopt(sock, optname, optval, optlen) != SOCKET_GETOPTS_SUCCESS) return SYSCALL_FAIL;
+        break;
+    default:
+        return SYSCALL_FAIL;
+        break;
+    }
 
     return SYSCALL_SUCCESS;
 }

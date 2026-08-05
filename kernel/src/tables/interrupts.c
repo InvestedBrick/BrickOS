@@ -201,6 +201,12 @@ void handle_software_interrupt(interrupt_stack_frame_t* stack_frame){
     case SYS_SENDTO:
         rax =  sys_sendto(p,stack_frame->rdi,(void*)stack_frame->rsi,stack_frame->rdx,stack_frame->r10,(sockaddr_t*)stack_frame->r8,stack_frame->r9);
         break;
+    case SYS_SETSOCKOPT:
+        rax  = sys_setsockopt(p,stack_frame->rdi,stack_frame->rsi,stack_frame->rdx, (void*)stack_frame->r10,stack_frame->r8);
+        break;
+    case SYS_GETSOCKOPT:
+        rax  = sys_getsockopt(p,stack_frame->rdi,stack_frame->rsi,stack_frame->rdx, (void*)stack_frame->r10,(uint32_t*)stack_frame->r8);
+        break;
     default:
         rax = (uint64_t)SYSCALL_FAIL;
         break;

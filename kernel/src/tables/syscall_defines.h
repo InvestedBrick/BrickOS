@@ -28,6 +28,8 @@
 #define SYS_BIND 0x15
 #define SYS_RECVFROM 0x16
 #define SYS_SENDTO 0x17
+#define SYS_SETSOCKOPT 0x18
+#define SYS_GETSOCKOPT 0x19
 
 #define SYSCALL_FAIL -1
 #define SYSCALL_SUCCESS 0

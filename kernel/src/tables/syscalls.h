@@ -56,4 +56,8 @@ uint64_t sys_bind(user_process_t* p, uint32_t fd, sockaddr_t* sock_addr, uint32_
 uint64_t sys_recvfrom(user_process_t* p, uint32_t fd, void* buf, uint32_t buf_len, uint32_t flags, sockaddr_t* src_addr, uint32_t addr_len);
 
 uint64_t sys_sendto(user_process_t* p, uint32_t fd, void* buf, uint32_t buf_len, uint32_t flags, sockaddr_t* dst_addr, uint32_t addr_len);
+
+uint64_t sys_setsockopt(user_process_t* p, uint32_t fd, uint32_t level, uint32_t optname, void* optval, uint32_t optlen);
+
+uint64_t sys_getsockopt(user_process_t* p, uint32_t fd, uint32_t level, uint32_t optname, void* optval, uint32_t* optlen);
 #endif
