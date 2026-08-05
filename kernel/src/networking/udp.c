@@ -18,7 +18,7 @@ mutex_t udp_sock_queue_lock;
 
 
 uint8_t is_udp_port_used(uint16_t port){
-    mutex_wait(&udp_sock_queue_lock,TIMEOUT_INF);
+    mutex_wait(&udp_sock_queue_lock,LOCK_TIMEOUT_INF);
     udp_socket_t* curr = udp_sock_head;
     while(curr){
         if (curr->port == port) {
@@ -39,7 +39,7 @@ int udp_bind(socket_t* sock, sockaddr_t* addr, uint32_t len){
     in_sockaddr_t* inet_sockaddr = (in_sockaddr_t*)addr;
     if (inet_sockaddr->inet_family != INET_FAM_IPv4) return UDP_RET_FAIL;
     
-    mutex_wait(&udp_sock->sock.lock,TIMEOUT_INF);
+    mutex_wait(&udp_sock->sock.lock,LOCK_TIMEOUT_INF);
     
     if (is_udp_port_used(inet_sockaddr->inet_port)) {
         mutex_signal(&udp_sock->sock.lock);
@@ -66,7 +66,7 @@ int udp_sendto(socket_t* sock, void* buf, uint32_t buf_len, uint32_t flags, sock
     send_data.dst_port = in_addr->inet_port;
     send_data.src_port = udp_sock->port;
 
-    if (send_ip_based_packet(buf,buf_len,in_addr->inet_addr,IP_PROTOCOL_UDP,&send_data) != IP_SEND_RET_SUCCESS)
+    if (send_ip_based_packet(sock,buf,buf_len,in_addr->inet_addr,IP_PROTOCOL_UDP,&send_data) != IP_SEND_RET_SUCCESS)
         return UDP_RET_FAIL;
 
     
@@ -78,30 +78,34 @@ int udp_recvfrom(socket_t* sock, void* buf, uint32_t buf_len, uint32_t flags, so
     udp_socket_t* udp_sock = (udp_socket_t*)sock->prot_sock;
     in_sockaddr_t* in_addr = (in_sockaddr_t*)src_addr;
 
+    udp_recvd_packet_t* packet = nullptr;
+    mutex_wait(&udp_sock->sock.lock,LOCK_TIMEOUT_INF);
     while(true){
-        udp_recvd_packet_t* packet = (udp_recvd_packet_t*)udp_sock->sock.rx_queue;
-        if (packet){
-            if (in_addr && addr_len == sizeof(in_sockaddr_t) ){
-                in_addr->inet_family = INET_FAM_IPv4;
-                in_addr->inet_addr = packet->src_addr;
-                in_addr->inet_port = packet->src_port;
-            }
-            uint32_t copy_len = min(buf_len,packet->packet.data_len);
-            memcpy(buf,packet->packet.data,copy_len);
-
-            if (!(flags & MSG_PEEK) )
-                erase_packet_from_rx_queue((generic_proto_socket_t*)udp_sock, (recvd_packet_t*)packet);
-
-            return copy_len;
-        }
+        packet = (udp_recvd_packet_t*)udp_sock->sock.rx_queue;
+        if (packet) break;
 
         if (flags & MSG_DONTWAIT) return UDP_RET_FAIL;
-        add_packet_waiting_thread((generic_proto_socket_t*)udp_sock,get_current_thread()); // awoken when message arrives
+        mutex_signal(&udp_sock->sock.lock);
+        add_packet_waiting_thread((generic_proto_socket_t*)udp_sock,get_current_thread(),sock->sock_opts.recv_timeout); // awoken when message arrives
+        
+        flags |= MSG_DONTWAIT;
         invoke_scheduler();
-
+        mutex_wait(&udp_sock->sock.lock,LOCK_TIMEOUT_INF);
     }
     
-    return 0; // should not be reached
+    if (in_addr && addr_len == sizeof(in_sockaddr_t) ){
+        in_addr->inet_family = INET_FAM_IPv4;
+        in_addr->inet_addr = packet->src_addr;
+        in_addr->inet_port = packet->src_port;
+    }
+    uint32_t copy_len = min(buf_len,packet->packet.data_len);
+    memcpy(buf,packet->packet.data,copy_len);
+
+    if (!(flags & MSG_PEEK) )
+        erase_packet_from_rx_queue((generic_proto_socket_t*)udp_sock, (recvd_packet_t*)packet);
+
+    mutex_signal(&udp_sock->sock.lock);
+    return copy_len;
 }
 
 void udp_cleanup_sock(generic_proto_socket_t* sock){
@@ -181,14 +185,14 @@ void udp_handle_packet(uint8_t* data, uint32_t len, uint32_t src_ip, uint32_t ds
     uint16_t dst_port = switch_endian16(udp_hdr->dst_port);
     uint16_t src_port = switch_endian16(udp_hdr->src_port);
 
-    mutex_wait(&udp_sock_queue_lock,TIMEOUT_INF);
+    mutex_wait(&udp_sock_queue_lock,LOCK_TIMEOUT_INF);
     udp_socket_t* sock = find_target_udp_socket(dst_ip,dst_port);
     if (!sock) {
         mutex_signal(&udp_sock_queue_lock);
         return;
     }
     
-    mutex_wait(&sock->sock.lock,TIMEOUT_INF);
+    mutex_wait(&sock->sock.lock,LOCK_TIMEOUT_INF);
     mutex_signal(&udp_sock_queue_lock);
     udp_enqueue_rx_data(sock,payload,payload_size,src_ip,src_port);
     mutex_signal(&sock->sock.lock);
