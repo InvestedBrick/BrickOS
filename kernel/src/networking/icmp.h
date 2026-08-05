@@ -25,13 +25,6 @@
 #define ICMP_REDIR_TOS_HOST 3
 
 typedef struct {
-    uint8_t icmp_type;
-    uint8_t icmp_code;
-    uint16_t checksum;
-    uint8_t may_be_used[4];
-}icmp_header_t;
-
-typedef struct {
     uint16_t echo_ident;
     uint16_t echo_seq;
 }icmp_echo_t;
@@ -57,6 +50,20 @@ typedef struct {
     uint32_t gateway_ip_addr;
 }icmp_redir_t;
 
+typedef struct {
+    uint8_t icmp_type;
+    uint8_t icmp_code;
+    uint16_t checksum;
+    union {
+        uint32_t may_be_used;
+        icmp_echo_t echo;
+        icmp_redir_t redir;
+        icmp_param_problem_t param_problem;
+        icmp_timestamp_t timestamp;
+        icmp_info_t info;
+    }un;
+
+}icmp_header_t;
 
 typedef struct{
     uint8_t icmp_type;

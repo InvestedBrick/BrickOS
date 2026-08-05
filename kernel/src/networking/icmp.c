@@ -30,52 +30,52 @@ uint8_t icmp_add_hdr(uint8_t* data, uint32_t* write_off, uint8_t icmp_type, uint
     hdr->icmp_type = icmp_type;
     hdr->icmp_code = icmp_code;
     hdr->checksum  = 0;
-    memset(hdr->may_be_used,0x0,sizeof(hdr->may_be_used));
+    memset(&hdr->un.may_be_used,0x0,sizeof(hdr->un.may_be_used));
     switch (icmp_type){
         case ICMP_TYPE_ECHO_REPLY:
-            ((icmp_echo_t*)(hdr->may_be_used))->echo_ident = switch_endian16((uint16_t)(may_be_used_dword >> 16));
-            ((icmp_echo_t*)(hdr->may_be_used))->echo_seq = switch_endian16((uint16_t)(may_be_used_dword & 0xffff));
+            hdr->un.echo.echo_ident = switch_endian16((uint16_t)(may_be_used_dword >> 16));
+            hdr->un.echo.echo_seq = switch_endian16((uint16_t)(may_be_used_dword & 0xffff));
             hdr->icmp_code = 0;
             break;
         case ICMP_TYPE_DEST_UNR_MSG:
-            ((uint32_t*)hdr->may_be_used)[0] = switch_endian32(may_be_used_dword);
+            hdr->un.may_be_used = switch_endian32(may_be_used_dword);
             break;
         case ICMP_TYPE_SRC_QUENCH_MSG:
             hdr->icmp_code = 0;
-            ((uint32_t*)hdr->may_be_used)[0] = 0;
+            hdr->un.may_be_used = 0;
             break;
         case ICMP_TYPE_REDIR_MSG:
-            ((icmp_redir_t*)hdr->may_be_used)->gateway_ip_addr = switch_endian32(may_be_used_dword);
+            hdr->un.redir.gateway_ip_addr = switch_endian32(may_be_used_dword);
             break;
         case ICMP_TYPE_ECHO_MSG:
-            ((icmp_echo_t*)(hdr->may_be_used))->echo_ident = switch_endian16((uint16_t)(may_be_used_dword >> 16));
-            ((icmp_echo_t*)(hdr->may_be_used))->echo_seq = switch_endian16((uint16_t)(may_be_used_dword & 0xffff));
+            hdr->un.echo.echo_ident = switch_endian16((uint16_t)(may_be_used_dword >> 16));
+            hdr->un.echo.echo_seq = switch_endian16((uint16_t)(may_be_used_dword & 0xffff));
             hdr->icmp_code = 0;
             break;
         case ICMP_TYPE_TIME_EXC_MSG:
-            ((uint32_t*)hdr->may_be_used)[0] = switch_endian32(may_be_used_dword);
+            hdr->un.may_be_used = switch_endian32(may_be_used_dword);
             break;
         case ICMP_TYPE_PARAM_PRBLM_MSG:
-            ((icmp_param_problem_t*)hdr->may_be_used)->ptr = (uint8_t)(may_be_used_dword & 0xff);
+            hdr->un.param_problem.ptr = (uint8_t)(may_be_used_dword & 0xff);
             break;
         case ICMP_TYPE_TIMESTMP_MSG:
-            ((icmp_timestamp_t*)hdr->may_be_used)->time_stmp_ident = switch_endian16((uint16_t)(may_be_used_dword >> 16));
-            ((icmp_timestamp_t*)hdr->may_be_used)->time_stmp_seq = switch_endian16((uint16_t)(may_be_used_dword & 0xffff));
+            hdr->un.timestamp.time_stmp_ident = switch_endian16((uint16_t)(may_be_used_dword >> 16));
+            hdr->un.timestamp.time_stmp_seq = switch_endian16((uint16_t)(may_be_used_dword & 0xffff));
             hdr->icmp_code = 0;
             break;
         case ICMP_TYPE_TIMESTMP_REPLY:
-            ((icmp_timestamp_t*)hdr->may_be_used)->time_stmp_ident = switch_endian16((uint16_t)(may_be_used_dword >> 16));
-            ((icmp_timestamp_t*)hdr->may_be_used)->time_stmp_seq = switch_endian16((uint16_t)(may_be_used_dword & 0xffff));
+            hdr->un.timestamp.time_stmp_ident = switch_endian16((uint16_t)(may_be_used_dword >> 16));
+            hdr->un.timestamp.time_stmp_seq = switch_endian16((uint16_t)(may_be_used_dword & 0xffff));
             hdr->icmp_code = 0;
             break;
         case ICMP_TYPE_INFO_REQ_MSG:
-            ((icmp_info_t*)(hdr->may_be_used))->info_ident = switch_endian16((uint16_t)(may_be_used_dword >> 16));
-            ((icmp_info_t*)(hdr->may_be_used))->info_seq = switch_endian16((uint16_t)(may_be_used_dword & 0xffff));
+            hdr->un.info.info_ident = switch_endian16((uint16_t)(may_be_used_dword >> 16));
+            hdr->un.info.info_seq = switch_endian16((uint16_t)(may_be_used_dword & 0xffff));
             hdr->icmp_code = 0;
             break;
         case ICMP_TYPE_INFO_REPLY_MSG:
-            ((icmp_info_t*)(hdr->may_be_used))->info_ident = switch_endian16((uint16_t)(may_be_used_dword >> 16));
-            ((icmp_info_t*)(hdr->may_be_used))->info_seq = switch_endian16((uint16_t)(may_be_used_dword & 0xffff));
+            hdr->un.info.info_ident = switch_endian16((uint16_t)(may_be_used_dword >> 16));
+            hdr->un.info.info_seq = switch_endian16((uint16_t)(may_be_used_dword & 0xffff));
             hdr->icmp_code = 0;
             break;
         default:
@@ -154,7 +154,7 @@ void icmp_handle_redirect(icmp_header_t* icmp_hdr, uint32_t total_len, uint32_t 
     uint32_t original_dest_ip = switch_endian32(ip_hdr->dst_ip);
     if (!original_dest_ip) return;
 
-    icmp_redir_t* redir = (icmp_redir_t*)(icmp_hdr->may_be_used);
+    icmp_redir_t* redir = &icmp_hdr->un.redir;
     uint32_t new_gateway = switch_endian32(redir->gateway_ip_addr);
 
     route_t* route = route_lookup(original_dest_ip);
@@ -181,7 +181,7 @@ void icmp_handle_redirect(icmp_header_t* icmp_hdr, uint32_t total_len, uint32_t 
 
 }
 void icmp_handle_echo_request(icmp_header_t* icmp_hdr, uint32_t total_len, uint32_t src_ip){
-    icmp_echo_t* echo = (icmp_echo_t*)(icmp_hdr->may_be_used);
+    icmp_echo_t* echo = &icmp_hdr->un.echo;
     uint16_t ident = switch_endian16(echo->echo_ident);
     uint16_t seq = switch_endian16(echo->echo_seq);
 
@@ -192,7 +192,13 @@ void icmp_handle_echo_request(icmp_header_t* icmp_hdr, uint32_t total_len, uint3
     send_data->extra_payload = (uint8_t*)icmp_hdr + sizeof(icmp_header_t);
     send_data->extra_payload_len = total_len - sizeof(icmp_header_t);
 
-    send_ip_based_packet(nullptr,
+    socket_t fake_sock;
+    fake_sock.ip_opts.hdr_incl = 0;
+    fake_sock.ip_opts.tos = IP_TOS_DEFAULT;
+    fake_sock.ip_opts.ttl = IP_TTL_MAX;
+
+    send_ip_based_packet(&fake_sock,
+                         nullptr,
                          0,
                          src_ip,
                          IP_PROTOCOL_ICMP,
