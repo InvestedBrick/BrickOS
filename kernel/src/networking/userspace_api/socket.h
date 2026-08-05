@@ -5,6 +5,8 @@
 #include "../../filesystem/vfs/vfs.h"
 #include "../../processes/spinlocks.h"
 #include "../../processes/scheduler.h"
+
+#define SOCK_DEFAULT_MAX_BUF_SZ (64 * 1024) 
 typedef struct socket socket_t; 
 typedef enum {
     SOCKET_UNCONNECTED,
@@ -35,21 +37,72 @@ typedef struct {
     int (*recvfrom) (socket_t* sock, void* buf, uint32_t buf_len, uint32_t flags, sockaddr_t* src_addr, uint32_t addr_len);
 }proto_handles_t;
 
-typedef struct socket{
+typedef struct {
+    uint64_t recv_timeout;
+    uint64_t send_timeout;
+    uint32_t recv_buf_size;
+    uint32_t send_buf_size;
+    uint8_t reuse_addr; // > 0 means do reuse
+}socket_opts_t;
+
+typedef struct {
+    uint8_t ttl;
+    uint8_t tos;
+    uint8_t hdr_incl; // > 0 means user includes header 
+}ip_opts_t;
+
+typedef struct socket {
     socket_state_e sock_state;
     socket_type_e sock_type;
     proto_handles_t* proto_ops;
+    
+    socket_opts_t sock_opts;
+    ip_opts_t ip_opts;
+
     generic_proto_socket_t* prot_sock; // protocol specific socket for managing queues etc
     void (*cleanup_prot_sock)(generic_proto_socket_t*);    
 }socket_t;
-
 #define SOCKET_OPS_INIT_SUCCESS 0x0
 #define SOCKET_OPS_INIT_FAILURE 0x1
 
 #define SOCKET_PROT_SOCK_SUCCESS 0x0
 #define SOCKET_PROT_SOCK_FAILURE 0x1
 
+#define SOCKET_SETOPTS_SUCCESS 0x0
+#define SOCKET_SETOPTS_FAILURE 0x1
 extern vfs_handles_t socket_handles;
+
+/**
+ * valid_socket:
+ * Validates if a socket is present at the fd table under the given fd and whether the underlying socket struct is valid
+ * @param p The process
+ * @param fd The file descriptor
+ * @return The socket at fd_table[fd]->generic_data if success, nullptr otherwise
+ */
+socket_t* valid_socket(user_process_t* p, uint32_t fd);
+
+/**
+ * handle_socket_setopt:
+ * Handles socket level setsockopt calls
+ * @param sock The socket
+ * @param optname The option name
+ * @param optval The option value
+ * @param optlen The length of the option value
+ * @return SOCKET_SETOPTS_SUCCESS upon success, SOCKET_SETOPTS_FAILURE otherwise
+ */
+uint8_t handle_socket_setopt(socket_t* sock, uint32_t optname, void* optval, uint32_t optlen);
+
+/**
+ * handle_ip_setopt:
+ * Handles IP level setsockopt calls
+ * @param p The user process (needed for TOS priviledge check)
+ * @param sock The socket
+ * @param optname The option name
+ * @param optval The option value
+ * @param optlen The length of the option value
+ * @return SOCKET_SETOPTS_SUCCESS upon success, SOCKET_SETOPTS_FAILURE otherwise
+ */
+uint8_t handle_ip_setopt(user_process_t* p,socket_t* sock, uint32_t optname, void* optval, uint32_t optlen);
 
 /**
  * init_socket_ops:
@@ -95,8 +148,9 @@ void socket_clear_wait_queue(generic_proto_socket_t* sock);
  * Adds a thread to the socket's wait queue and puts it to sleep 
  * @param sock The socket
  * @param thread The thread to add
+ * @param sleep_ticks The timeout to sleep for (THREAD_ETERNAL_SLEEP to wait until awoken manually)
  */
-void add_packet_waiting_thread(generic_proto_socket_t* sock, thread_t* thread);
+void add_packet_waiting_thread(generic_proto_socket_t* sock, thread_t* thread, uint64_t sleep_ticks);
 
 /**
  * enqueue_rx_data:

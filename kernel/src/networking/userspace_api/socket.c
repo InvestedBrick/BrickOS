@@ -10,6 +10,73 @@ void init_socket_queues(){
     mutex_init(&raw_ip_sock_lock);
 }
 
+socket_t* valid_socket(user_process_t* p, uint32_t fd){
+    if (fd > MAX_FDS) return nullptr;
+
+    generic_file_t* file = p->fd_table[fd];
+    if (!file || file->type != FILE_TYPE_SOCKET || !file->generic_data) return nullptr;
+    
+    return (socket_t*)file->generic_data;
+}
+
+uint8_t handle_socket_setopt(socket_t* sock, uint32_t optname, void* optval, uint32_t optlen){
+    if (!optval) return SOCKET_SETOPTS_FAILURE;
+
+    switch (optname)
+    {
+    case SO_RCVTIMEOUT:
+        if (optlen != sizeof(uint64_t)) return SOCKET_SETOPTS_FAILURE;
+        sock->sock_opts.recv_timeout = MS_TO_TICKS(*(uint64_t*)optval);
+        break;
+    case SO_SNDTIMEOUT:
+        if (optlen != sizeof(uint64_t)) return SOCKET_SETOPTS_FAILURE;
+        sock->sock_opts.send_timeout = MS_TO_TICKS(*(uint64_t*)optval);
+        break;
+    case SO_REUSEADDR:
+        if (optlen != sizeof(uint8_t)) return SOCKET_SETOPTS_FAILURE;
+        sock->sock_opts.reuse_addr = *(uint8_t*)optval;
+        break;
+    case SO_RCVBUF:
+        if (optlen != sizeof(uint32_t)) return SOCKET_SETOPTS_FAILURE;
+        sock->sock_opts.recv_buf_size = *(uint32_t*)optval;
+        break;
+    case SO_SNDBUF:
+        if (optlen != sizeof(uint32_t)) return SOCKET_SETOPTS_FAILURE;
+        sock->sock_opts.send_buf_size = *(uint32_t*)optval;
+        break;
+    default:
+        return SOCKET_SETOPTS_FAILURE;
+    }
+
+    return SOCKET_SETOPTS_SUCCESS;
+}
+
+uint8_t handle_ip_setopt(user_process_t* p,socket_t* sock, uint32_t optname, void* optval, uint32_t optlen){
+    if (!optval) return SOCKET_SETOPTS_FAILURE;
+
+    switch (optname)
+    {
+    case IP_TOS:
+        if (optlen != sizeof(uint8_t)) return SOCKET_SETOPTS_FAILURE;
+        uint8_t new_tos = *(uint8_t*)optval;
+        if (new_tos & IP_TOS_PREC_MASK && p->priv_lvl > PRIV_SPECIAL) return SOCKET_SETOPTS_FAILURE; // you are not that important
+        sock->ip_opts.tos = new_tos & ~0x3; // bottom 2 bits must be 0
+        break;
+    case IP_TTL:
+        if (optlen != sizeof(uint8_t)) return SOCKET_SETOPTS_FAILURE;
+        sock->ip_opts.ttl = *(uint8_t*)optval;
+        break;
+    case IP_HDRINCL:
+        if (sock->sock_type != SOCKET_TYPE_RAW) return SOCKET_SETOPTS_FAILURE;
+        if (optlen != sizeof(uint8_t)) return SOCKET_SETOPTS_FAILURE;
+        sock->ip_opts.hdr_incl = *(uint8_t*)optval;
+        break;
+    default:
+        return SOCKET_SETOPTS_FAILURE;
+    }
+
+    return SOCKET_SETOPTS_SUCCESS;
+}
 int socket_close(generic_file_t* file){
     socket_t* sock = (socket_t*)file->generic_data;
 
@@ -55,11 +122,22 @@ uint8_t init_socket(socket_t* sock, socket_domain_e domain, socket_type_e type, 
         return SOCKET_OPS_INIT_FAILURE;
     }
 
+    sock->ip_opts.ttl = IP_TTL_MAX;
+    sock->ip_opts.tos = IP_TOS_DEFAULT;
+    sock->ip_opts.hdr_incl = 0;
+
+    sock->sock_opts.reuse_addr = 0;
+    sock->sock_opts.recv_timeout  = THREAD_ETERNAL_SLEEP;
+    sock->sock_opts.send_timeout  = THREAD_ETERNAL_SLEEP;
+    sock->sock_opts.recv_buf_size = SOCK_DEFAULT_MAX_BUF_SZ;
+    sock->sock_opts.send_buf_size = SOCK_DEFAULT_MAX_BUF_SZ;
+
+
     return SOCKET_OPS_INIT_SUCCESS;
 }
 
 void erase_packet_from_rx_queue(generic_proto_socket_t* sock, recvd_packet_t* packet){
-    mutex_wait(&sock->lock,TIMEOUT_INF);
+    mutex_wait(&sock->lock,LOCK_TIMEOUT_INF);
     recvd_packet_t* curr = sock->rx_queue;
     if (curr == packet){
         sock->rx_queue = curr->next;
@@ -96,8 +174,8 @@ void socket_clear_wait_queue(generic_proto_socket_t* sock){
     }
 }
 
-void add_packet_waiting_thread(generic_proto_socket_t* sock, thread_t* thread){
-    mutex_wait(&sock->lock,TIMEOUT_INF);
+void add_packet_waiting_thread(generic_proto_socket_t* sock, thread_t* thread, uint64_t sleep_ticks){
+    mutex_wait(&sock->lock,LOCK_TIMEOUT_INF);
     packet_waiting_thread_t* wthread = (packet_waiting_thread_t*)kmalloc(sizeof(packet_waiting_thread_t));
     wthread->thread = thread;
     wthread->next = nullptr;
@@ -109,7 +187,7 @@ void add_packet_waiting_thread(generic_proto_socket_t* sock, thread_t* thread){
         curr->next = wthread;
     }
 
-    add_sleeping_thread(thread,THREAD_ETERNAL_SLEEP);
+    add_sleeping_thread(thread,sleep_ticks);
     mutex_signal(&sock->lock);
 }
 
@@ -130,7 +208,7 @@ void enqueue_rx_data(generic_proto_socket_t* sock, recvd_packet_t* packet){
 }
 
 void insert_socket(generic_proto_socket_t** queue_head,generic_proto_socket_t* sock,mutex_t* queue_lock){
-    mutex_wait(queue_lock,TIMEOUT_INF);
+    mutex_wait(queue_lock,LOCK_TIMEOUT_INF);
     generic_proto_socket_t* curr = *queue_head;
     if (!curr) *queue_head = sock;
     else{
@@ -142,7 +220,7 @@ void insert_socket(generic_proto_socket_t** queue_head,generic_proto_socket_t* s
 }
 
 void cleanup_socket(generic_proto_socket_t** queue_head,generic_proto_socket_t* sock,mutex_t* queue_lock){
-    mutex_wait(queue_lock,TIMEOUT_INF);
+    mutex_wait(queue_lock,LOCK_TIMEOUT_INF);
     if (*queue_head == sock) *queue_head = sock->next;
     else{
         generic_proto_socket_t* prev = *queue_head;
@@ -154,7 +232,7 @@ void cleanup_socket(generic_proto_socket_t** queue_head,generic_proto_socket_t* 
         prev->next = sock->next;
     }
     mutex_signal(queue_lock);
-    mutex_wait(&sock->lock,TIMEOUT_INF);
+    mutex_wait(&sock->lock,LOCK_TIMEOUT_INF);
     
     socket_clear_rx_queue(sock);
     socket_clear_wait_queue(sock);
