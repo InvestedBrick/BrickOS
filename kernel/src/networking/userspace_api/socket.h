@@ -25,8 +25,12 @@ typedef struct recvd_packet {
 }recvd_packet_t;
 
 typedef struct generic_proto_socket {
+    struct socket* parent_sock; // to get socket_opts access
     packet_waiting_thread_t* wait_queue;
+
     recvd_packet_t* rx_queue;
+    uint32_t rx_queue_size;
+    
     mutex_t lock;
     struct generic_proto_socket* next;
 }generic_proto_socket_t;
@@ -40,8 +44,8 @@ typedef struct {
 typedef struct {
     uint64_t recv_timeout;
     uint64_t send_timeout;
-    uint32_t recv_buf_size;
-    uint32_t send_buf_size;
+    uint32_t recv_max_buf_size;
+    uint32_t send_max_buf_size;
     uint8_t reuse_addr; // > 0 means do reuse
 }socket_opts_t;
 
