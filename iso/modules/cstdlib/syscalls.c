@@ -246,10 +246,15 @@ int bind(uint32_t sockfd, sockaddr_t* addr, uint32_t addrlen){
 
 int recvfrom(uint32_t sockfd, void* buf, uint32_t len, uint32_t flags, sockaddr_t* src_addr, uint32_t addrlen){
     int ret;
+
+    register uint64_t r10 asm("r10") = flags;
+    register uint64_t r8  asm("r8")  = (uint64_t)src_addr;
+    register uint64_t r9  asm("r9")  = addrlen;
+
     asm volatile (
         "int $0x30"
         : "=a"(ret)
-        : "a"(SYS_RECVFROM), "D"(sockfd), "S"(buf), "d"(len), "r"(flags), "r"(src_addr), "r"(addrlen)
+        : "a"(SYS_RECVFROM), "D"(sockfd), "S"(buf), "d"(len), "r"(r10), "r"(r8), "r"(r9)
         : "memory"
     );
     return ret;
@@ -257,11 +262,43 @@ int recvfrom(uint32_t sockfd, void* buf, uint32_t len, uint32_t flags, sockaddr_
 
 int sendto(uint32_t sockfd, void* buf, uint32_t len, uint32_t flags, sockaddr_t* dest_addr, uint32_t addrlen){
     int ret;
+    register uint64_t r10 asm("r10") = flags;
+    register uint64_t r8  asm("r8")  = (uint64_t)dest_addr;
+    register uint64_t r9  asm("r9")  = addrlen;
+
     asm volatile (
         "int $0x30"
         : "=a"(ret)
-        : "a"(SYS_SENDTO), "D"(sockfd), "S"(buf), "d"(len), "r"(flags), "r"(dest_addr), "r"(addrlen)
+        : "a"(SYS_SENDTO), "D"(sockfd), "S"(buf), "d"(len), "r"(r10), "r"(r8), "r"(r9)
         : "memory"
     );
     return ret;
+}
+
+int setsockopt(uint32_t sockfd, uint32_t level, uint32_t optname, void* optval, uint32_t optlen){
+    int ret;
+    register uint64_t r10 asm("r10") = (uint64_t)optval;
+    register uint64_t r8  asm("r8")  = optlen;
+
+    asm volatile (
+        "int $0x30"
+        : "=a"(ret)
+        : "a"(SYS_SETSOCKOPT), "D"(sockfd), "S"(level), "d"(optname), "r"(r10), "r"(r8)
+        : "memory"
+    );
+    return ret;    
+}
+
+int getsockopt(uint32_t sockfd, uint32_t level, uint32_t optname, void* optval, uint32_t* optlen){
+    int ret;
+    register uint64_t r10 asm("r10") = (uint64_t)optval;
+    register uint64_t r8  asm("r8")  = (uint64_t)optlen;
+
+    asm volatile (
+        "int $0x30"
+        : "=a"(ret)
+        : "a"(SYS_GETSOCKOPT), "D"(sockfd), "S"(level), "d"(optname), "r"(r10), "r"(r8)
+        : "memory"
+    );
+    return ret;    
 }

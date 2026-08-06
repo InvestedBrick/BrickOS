@@ -273,4 +273,28 @@ int recvfrom(uint32_t sockfd, void* buf, uint32_t len, uint32_t flags, sockaddr_
  * @return The number of bytes sent, or -1 on error
  */
 int sendto(uint32_t sockfd, void* buf, uint32_t len, uint32_t flags, sockaddr_t* dest_addr, uint32_t addrlen);
+
+/**
+ * setsockopt:
+ * Sets a socket option
+ * @param sockfd The file descriptor of the socket
+ * @param level The level at which the option is defined (e. g. SOL_SOCKET)
+ * @param optname The name of the option (e. g. SO_REUSEADDR)
+ * @param optval A pointer to the option value
+ * @param optlen The size of the option value
+ * @return 0 on success, or -1 on error
+ */
+int setsockopt(uint32_t sockfd, uint32_t level, uint32_t optname, void* optval, uint32_t optlen);
+
+/**
+ * getsockopt:
+ * Gets a socket option
+ * @param sockfd The file descriptor of the socket
+ * @param level The level at which the option is defined (e. g. SOL_SOCKET)
+ * @param optname The name of the option (e. g. SO_REUSEADDR)
+ * @param optval A pointer to the option value
+ * @param optlen A pointer to the size of the option value
+ * @return 0 on success, or -1 on error
+ */
+int getsockopt(uint32_t sockfd, uint32_t level, uint32_t optname, void* optval, uint32_t* optlen);
 #endif
