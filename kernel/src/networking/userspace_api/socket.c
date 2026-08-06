@@ -43,16 +43,16 @@ uint8_t handle_socket_setopt(socket_t* sock, uint32_t optname, void* optval, uin
         sock->sock_opts.reuse_addr = *(uint8_t*)optval;
         break;
     case SO_RCVBUF:
-        if (optlen != sizeof(sock->sock_opts.recv_buf_size ))
+        if (optlen != sizeof(sock->sock_opts.recv_max_buf_size ))
             return SOCKET_SETOPTS_FAILURE;
 
-        sock->sock_opts.recv_buf_size = *(uint32_t*)optval;
+        sock->sock_opts.recv_max_buf_size = *(uint32_t*)optval;
         break;
     case SO_SNDBUF:
-        if (optlen != sizeof(sock->sock_opts.send_buf_size)) 
+        if (optlen != sizeof(sock->sock_opts.send_max_buf_size)) 
             return SOCKET_SETOPTS_FAILURE;
 
-        sock->sock_opts.send_buf_size = *(uint32_t*)optval;
+        sock->sock_opts.send_max_buf_size = *(uint32_t*)optval;
         break;
     default:
         return SOCKET_SETOPTS_FAILURE;
@@ -124,18 +124,18 @@ uint8_t handle_socket_getopt(socket_t* sock, uint32_t optname, void* optval, uin
         *optlen = sizeof(sock->sock_opts.reuse_addr);
         break;
     case SO_RCVBUF:
-        if (*optlen < sizeof(sock->sock_opts.recv_buf_size )) 
+        if (*optlen < sizeof(sock->sock_opts.recv_max_buf_size )) 
             return SOCKET_GETOPTS_FAILURE;
         
-        *(uint32_t*)optval = sock->sock_opts.recv_buf_size;
-        *optlen = sizeof(sock->sock_opts.recv_buf_size);
+        *(uint32_t*)optval = sock->sock_opts.recv_max_buf_size;
+        *optlen = sizeof(sock->sock_opts.recv_max_buf_size);
         break;
     case SO_SNDBUF:
-        if (*optlen < sizeof(sock->sock_opts.send_buf_size)) 
+        if (*optlen < sizeof(sock->sock_opts.send_max_buf_size)) 
             return SOCKET_GETOPTS_FAILURE;
         
-        *(uint32_t*)optval = sock->sock_opts.send_buf_size;
-        *optlen = sizeof(sock->sock_opts.send_buf_size);
+        *(uint32_t*)optval = sock->sock_opts.send_max_buf_size;
+        *optlen = sizeof(sock->sock_opts.send_max_buf_size);
         break;
     default:
         return SOCKET_GETOPTS_FAILURE;
@@ -221,6 +221,8 @@ uint8_t init_socket(socket_t* sock, socket_domain_e domain, socket_type_e type, 
         return SOCKET_OPS_INIT_FAILURE;
     }
 
+    sock->prot_sock->parent_sock = sock;
+
     sock->ip_opts.ttl = IP_TTL_MAX;
     sock->ip_opts.tos = IP_TOS_DEFAULT;
     sock->ip_opts.hdr_incl = 0;
@@ -228,9 +230,8 @@ uint8_t init_socket(socket_t* sock, socket_domain_e domain, socket_type_e type, 
     sock->sock_opts.reuse_addr = 0;
     sock->sock_opts.recv_timeout  = THREAD_ETERNAL_SLEEP;
     sock->sock_opts.send_timeout  = THREAD_ETERNAL_SLEEP;
-    sock->sock_opts.recv_buf_size = SOCK_DEFAULT_MAX_BUF_SZ;
-    sock->sock_opts.send_buf_size = SOCK_DEFAULT_MAX_BUF_SZ;
-
+    sock->sock_opts.recv_max_buf_size = SOCK_DEFAULT_MAX_BUF_SZ;
+    sock->sock_opts.send_max_buf_size = SOCK_DEFAULT_MAX_BUF_SZ;
 
     return SOCKET_OPS_INIT_SUCCESS;
 }
@@ -250,6 +251,7 @@ void erase_packet_from_rx_queue(generic_proto_socket_t* sock, recvd_packet_t* pa
     }
     curr->next = packet->next;
 cleanup:
+    sock->rx_queue_size -= packet->data_len;
     kfree(packet->data);
     kfree(packet);
     mutex_signal(&sock->lock);
@@ -263,6 +265,7 @@ void socket_clear_rx_queue(generic_proto_socket_t* sock){
         kfree(packet);
 
     }
+    sock->rx_queue_size = 0;
 }
 void socket_clear_wait_queue(generic_proto_socket_t* sock){
     while(sock->wait_queue){
@@ -291,6 +294,15 @@ void add_packet_waiting_thread(generic_proto_socket_t* sock, thread_t* thread, u
 }
 
 void enqueue_rx_data(generic_proto_socket_t* sock, recvd_packet_t* packet){
+
+    if (sock->rx_queue_size + packet->data_len > sock->parent_sock->sock_opts.recv_max_buf_size){
+        // drop the packet
+        kfree(packet->data);
+        kfree(packet);
+        return;
+    }
+    sock->rx_queue_size += packet->data_len;
+
     recvd_packet_t* curr = sock->rx_queue;
     if (!curr) sock->rx_queue = packet;
     else{
