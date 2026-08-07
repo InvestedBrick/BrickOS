@@ -183,6 +183,7 @@ void arp_lookup(uint32_t ip_addr,uint8_t* mac_out){
     arp_mac_cache_t* cache = arp_cache_contains_ip_locked(route->iface,ip_addr);
     if (cache) {
         memcpy(mac_out,cache->mac,sizeof(cache->mac));
+        cache->timeout = ARP_CACHE_TIMEOUT;
         mutex_signal(&route->iface->mac_cache_mutex);
         return;
     }
