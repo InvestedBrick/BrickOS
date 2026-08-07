@@ -429,7 +429,7 @@ uint64_t sys_socket(user_process_t* p, uint32_t domain, uint32_t sock_type, uint
     socket_t* sock = (socket_t*)kmalloc(sizeof(socket_t));
     sock->sock_type = (socket_type_e)sock_type;
     sock->sock_state = SOCKET_UNCONNECTED;
-    if (init_socket(sock,(socket_domain_e)domain,sock->sock_type,protocol) != SOCKET_OPS_INIT_SUCCESS) {
+    if (init_socket(p,sock,(socket_domain_e)domain,sock->sock_type,protocol) != SOCKET_OPS_INIT_SUCCESS) {
         kfree(sock);
         return SYSCALL_FAIL;
     }
