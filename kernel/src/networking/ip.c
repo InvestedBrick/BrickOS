@@ -480,8 +480,8 @@ int raw_ip_recvfrom(socket_t* sock, void* buf, uint32_t buf_len, uint32_t flags,
 
         if (flags & MSG_DONTWAIT) return RAW_IP_RET_FAIL;
 
-        mutex_signal(&ip_sock->sock.lock);
         add_packet_waiting_thread((generic_proto_socket_t*)ip_sock,get_current_thread(),sock->sock_opts.recv_timeout); // awoken when message arrives
+        mutex_signal(&ip_sock->sock.lock);
         
         flags |= MSG_DONTWAIT; // if thread wakes up without packet ( timed out ) then it will be caught by check above 
         invoke_scheduler();
@@ -506,8 +506,27 @@ int raw_ip_recvfrom(socket_t* sock, void* buf, uint32_t buf_len, uint32_t flags,
     return copy_len;
 }
 
+int raw_ip_bind(socket_t* sock, sockaddr_t* addr, uint32_t len){
+    raw_ip_socket_t* raw_ip_sock = (raw_ip_socket_t*)sock->prot_sock;
+
+    if (len != sizeof(in_sockaddr_t)) return RAW_IP_RET_FAIL;
+    in_sockaddr_t* inet_sockaddr = (in_sockaddr_t*)addr;
+    if (inet_sockaddr->inet_family != INET_FAM_IPv4) return RAW_IP_RET_FAIL;
+
+    mutex_wait(&raw_ip_sock->sock.lock,LOCK_TIMEOUT_INF);
+
+    socket_clear_rx_queue((generic_proto_socket_t*)raw_ip_sock);
+    socket_clear_wait_queue((generic_proto_socket_t*)raw_ip_sock);
+
+    raw_ip_sock->ip_addr = inet_sockaddr->inet_addr;
+
+    mutex_signal(&raw_ip_sock->sock.lock);
+
+    return 0;
+}
+
 proto_handles_t raw_ip_proto_handles = {
-    .bind = 0,
+    .bind = raw_ip_bind,
     .sendto = raw_ip_sendto,
     .recvfrom = raw_ip_recvfrom
 };
