@@ -50,11 +50,11 @@ uint8_t icmp_add_hdr(uint8_t* data, uint32_t* write_off, uint8_t icmp_type, uint
             hdr->icmp_code = 0;
             break;
         case ICMP_TYPE_DEST_UNR_MSG:
-            hdr->un.may_be_used = switch_endian32(may_be_used_dword);
+            hdr->un.unused = 0;
             break;
         case ICMP_TYPE_SRC_QUENCH_MSG:
             hdr->icmp_code = 0;
-            hdr->un.may_be_used = 0;
+            hdr->un.unused = 0;
             break;
         case ICMP_TYPE_REDIR_MSG:
             hdr->un.redir.gateway_ip_addr = switch_endian32(may_be_used_dword);
@@ -65,7 +65,7 @@ uint8_t icmp_add_hdr(uint8_t* data, uint32_t* write_off, uint8_t icmp_type, uint
             hdr->icmp_code = 0;
             break;
         case ICMP_TYPE_TIME_EXC_MSG:
-            hdr->un.may_be_used = switch_endian32(may_be_used_dword);
+            hdr->un.unused = 0;
             break;
         case ICMP_TYPE_PARAM_PRBLM_MSG:
             hdr->un.param_problem.ptr = (uint8_t)(may_be_used_dword & 0xff);
@@ -103,46 +103,50 @@ uint8_t icmp_add_hdr(uint8_t* data, uint32_t* write_off, uint8_t icmp_type, uint
     return ICMP_HDR_RET_SUCCESS;
 }
 
-void icmp_handle_packet(uint8_t* data, uint32_t len, uint32_t src_ip){
+void icmp_handle_packet(uint8_t* data, uint32_t len){
     if (len < DEFAULT_ICMP_HDR_SIZE) return;
 
-    if (compute_checksum(data,len) != 0) return;
+    ipv4_header_t* ip_hdr = (ipv4_header_t*)(data);
+    uint8_t ip_hlen = (ip_hdr->version_ihl & 0xf) * sizeof(uint32_t);
+    uint32_t post_ip_hdr_data_len = len - ip_hlen;
 
-    icmp_header_t* icmp_hdr = (icmp_header_t*)data;
+    icmp_header_t* icmp_hdr = (icmp_header_t*)(data + ip_hlen);
+    if (compute_checksum((uint8_t*)icmp_hdr, post_ip_hdr_data_len) != 0) return;
+
     switch (icmp_hdr->icmp_type)
     {
     case ICMP_TYPE_ECHO_REPLY:
-        icmp_handle_echo_reply(icmp_hdr, len);
+        icmp_handle_echo_reply(ip_hdr, ip_hlen, len);
         break;
     case ICMP_TYPE_DEST_UNR_MSG:
-        icmp_handle_dest_unreachable(icmp_hdr, len);
+        icmp_handle_dest_unreachable(ip_hdr,ip_hlen, len);
         break;
     case ICMP_TYPE_SRC_QUENCH_MSG:
-        icmp_handle_source_quench(icmp_hdr, len);
+        icmp_handle_source_quench(ip_hdr,ip_hlen, len);
         break;
     case ICMP_TYPE_REDIR_MSG:
-        icmp_handle_redirect(icmp_hdr, len, src_ip);
+        icmp_handle_redirect(ip_hdr,ip_hlen, len);
         break;
     case ICMP_TYPE_ECHO_MSG:
-        icmp_handle_echo_request(icmp_hdr, len, src_ip);
+        icmp_handle_echo_request(ip_hdr,ip_hlen, len);
         break;
     case ICMP_TYPE_TIME_EXC_MSG:
-        icmp_handle_time_exceeded(icmp_hdr, len);
+        icmp_handle_time_exceeded(ip_hdr,ip_hlen, len);
         break;
     case ICMP_TYPE_PARAM_PRBLM_MSG:
-        icmp_handle_parameter_problem(icmp_hdr, len);
+        icmp_handle_parameter_problem(ip_hdr,ip_hlen, len);
         break;
     case ICMP_TYPE_TIMESTMP_MSG:
-        icmp_handle_timestamp(icmp_hdr, len);
+        icmp_handle_timestamp(ip_hdr,ip_hlen, len);
         break;
     case ICMP_TYPE_TIMESTMP_REPLY:
-        icmp_handle_timestamp_reply(icmp_hdr, len);
+        icmp_handle_timestamp_reply(ip_hdr,ip_hlen, len);
         break;
     case ICMP_TYPE_INFO_REQ_MSG:
-        icmp_handle_info_request(icmp_hdr, len);
+        icmp_handle_info_request(ip_hdr, ip_hlen, len);
         break;
     case ICMP_TYPE_INFO_REPLY_MSG:
-        icmp_handle_info_reply(icmp_hdr, len);
+        icmp_handle_info_reply(ip_hdr,ip_hlen, len);
         break;
     default:
         break;
@@ -150,23 +154,28 @@ void icmp_handle_packet(uint8_t* data, uint32_t len, uint32_t src_ip){
 
 }
 
-void icmp_handle_echo_reply(icmp_header_t* icmp_hdr, uint32_t total_len){
+void icmp_handle_echo_reply(ipv4_header_t* ip_hdr, uint8_t ip_hlen, uint32_t total_len){
     // WIP
 }
 
-void icmp_handle_dest_unreachable(icmp_header_t* icmp_hdr, uint32_t total_len){
+void icmp_handle_dest_unreachable(ipv4_header_t* ip_hdr, uint8_t ip_hlen, uint32_t total_len){
     // WIP
 }
 
-void icmp_handle_source_quench(icmp_header_t* icmp_hdr, uint32_t total_len){
+void icmp_handle_source_quench(ipv4_header_t* ip_hdr, uint8_t ip_hlen, uint32_t total_len){
     // OBSOLETE
 }
 
-void icmp_handle_redirect(icmp_header_t* icmp_hdr, uint32_t total_len, uint32_t src_ip){
+void icmp_handle_redirect(ipv4_header_t* ip_hdr,uint8_t ip_hlen,  uint32_t total_len){
+    icmp_header_t* icmp_hdr = (icmp_header_t*)((uint8_t*)ip_hdr + ip_hlen);
+
     uint16_t true_size = get_true_icmp_header_size(ICMP_TYPE_REDIR_MSG);
-    ipv4_header_t* ip_hdr = (ipv4_header_t*)((uint8_t*)icmp_hdr + true_size);
+    ipv4_header_t* inner_ip_hdr = (ipv4_header_t*)((uint8_t*)icmp_hdr + true_size);
+    
     if (total_len < true_size + sizeof(ipv4_header_t)) return;
-    uint32_t original_dest_ip = switch_endian32(ip_hdr->dst_ip);
+    
+    uint32_t original_dest_ip = switch_endian32(inner_ip_hdr->dst_ip);
+    
     if (!original_dest_ip) return;
 
     icmp_redir_t* redir = &icmp_hdr->un.redir;
@@ -175,6 +184,8 @@ void icmp_handle_redirect(icmp_header_t* icmp_hdr, uint32_t total_len, uint32_t 
     route_t* route = route_lookup(original_dest_ip);
 
     if (!route) return;
+
+    uint32_t src_ip = switch_endian32(ip_hdr->src_ip);
 
     if (route->gateway != src_ip) return; // ignore redirects that are not from the gateway
 
@@ -195,7 +206,10 @@ void icmp_handle_redirect(icmp_header_t* icmp_hdr, uint32_t total_len, uint32_t 
     }
 
 }
-void icmp_handle_echo_request(icmp_header_t* icmp_hdr, uint32_t total_len, uint32_t src_ip){
+void icmp_handle_echo_request(ipv4_header_t* ip_hdr, uint8_t ip_hlen, uint32_t total_len){
+    icmp_header_t* icmp_hdr = (icmp_header_t*)((uint8_t*)ip_hdr + ip_hlen);
+    uint32_t src_ip = switch_endian32(ip_hdr->src_ip);
+
     icmp_echo_t* echo = &icmp_hdr->un.echo;
     uint16_t ident = switch_endian16(echo->echo_ident);
     uint16_t seq = switch_endian16(echo->echo_seq);
@@ -207,7 +221,7 @@ void icmp_handle_echo_request(icmp_header_t* icmp_hdr, uint32_t total_len, uint3
     send_data->icmp_type = ICMP_TYPE_ECHO_REPLY;
     send_data->may_be_used = ((uint32_t)ident << 16) | seq;
     send_data->extra_payload = (uint8_t*)icmp_hdr + true_size;
-    send_data->extra_payload_len = total_len - true_size;
+    send_data->extra_payload_len = total_len - ip_hlen - true_size;
 
     socket_t fake_sock;
     fake_sock.ip_opts.hdr_incl = 0;
@@ -224,26 +238,40 @@ void icmp_handle_echo_request(icmp_header_t* icmp_hdr, uint32_t total_len, uint3
     kfree(send_data);
 }
 
-void icmp_handle_time_exceeded(icmp_header_t* icmp_hdr, uint32_t total_len){
+void icmp_handle_time_exceeded(ipv4_header_t* ip_hdr, uint8_t ip_hlen, uint32_t total_len){
     // WIP
 }
 
-void icmp_handle_parameter_problem(icmp_header_t* icmp_hdr, uint32_t total_len){
+void icmp_handle_parameter_problem(ipv4_header_t* ip_hdr, uint8_t ip_hlen, uint32_t total_len){
     // WIP
 }
 
-void icmp_handle_timestamp(icmp_header_t* icmp_hdr, uint32_t total_len){
+void icmp_handle_timestamp(ipv4_header_t* ip_hdr, uint8_t ip_hlen, uint32_t total_len){
     // WIP
 }
 
-void icmp_handle_timestamp_reply(icmp_header_t* icmp_hdr, uint32_t total_len){
+void icmp_handle_timestamp_reply(ipv4_header_t* ip_hdr, uint8_t ip_hlen, uint32_t total_len){
     // WIP
 }
 
-void icmp_handle_info_request(icmp_header_t* icmp_hdr, uint32_t total_len){
+void icmp_handle_info_request(ipv4_header_t* ip_hdr,uint8_t ip_hlen, uint32_t total_len){
     // OBSOLETE
 }
 
-void icmp_handle_info_reply(icmp_header_t* icmp_hdr, uint32_t total_len){
+void icmp_handle_info_reply(ipv4_header_t* ip_hdr,uint8_t ip_hlen, uint32_t total_len){
     // OBSOLETE
 }
+
+int icmp_sendto(socket_t* sock, void* buf, uint32_t buf_len, uint32_t flags, sockaddr_t* dst_addr, uint32_t addr_len){
+
+}
+
+int icmp_recvfrom(socket_t* sock, void* buf, uint32_t buf_len, uint32_t flags, sockaddr_t* src_addr, uint32_t addr_len){
+
+}
+
+proto_handles_t icmp_proto_handles = {
+    .bind = 0, // not needed rn
+    .sendto = icmp_sendto,
+    .recvfrom = icmp_recvfrom
+};

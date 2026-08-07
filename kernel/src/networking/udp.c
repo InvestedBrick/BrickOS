@@ -163,24 +163,31 @@ uint8_t udp_add_header(net_interface_t* iface, uint8_t* data, uint32_t* write_of
     return UDP_HDR_RET_SUCESS;
 }
 
-void udp_handle_packet(uint8_t* data, uint32_t len, uint32_t src_ip, uint32_t dst_ip){
+void udp_handle_packet(uint8_t* data, uint32_t len){
     if (len < sizeof(udp_header_t)) return;
 
-    udp_header_t* udp_hdr = (udp_header_t*)(data);
+    ipv4_header_t* ip_hdr = (ipv4_header_t*)(data);
+    uint8_t ip_hlen = (ip_hdr->version_ihl & 0xf) * sizeof(uint32_t);
+    uint32_t post_ip_hdr_data_len = len - ip_hlen;
+
+    uint32_t src_ip = switch_endian32(ip_hdr->src_ip);
+    uint32_t dst_ip = switch_endian32(ip_hdr->dst_ip);
+
+    udp_header_t* udp_hdr = (udp_header_t*)(data + ip_hlen);
     pseudo_ip_hdr_t pseudo;
-    pseudo.src_addr = switch_endian32(src_ip); // host -> netword order
+    pseudo.src_addr = switch_endian32(src_ip); // host -> network order
     pseudo.zero = 0;
     pseudo.udp_length = udp_hdr->length; // still in network byte order
     pseudo.protocol = IP_PROTOCOL_UDP;
     pseudo.dst_addr = switch_endian32(dst_ip);
     uint8_t* payload = (uint8_t*)udp_hdr + sizeof(udp_header_t);
-    uint16_t payload_size = len - sizeof(udp_header_t);
+    uint16_t payload_size = post_ip_hdr_data_len - sizeof(udp_header_t);
 
     if (compute_udp_checksum(udp_hdr,&pseudo,payload,payload_size) != 0) 
         return;
     
     uint16_t total_len = switch_endian16(udp_hdr->length);
-    if (total_len != len) return; // should be the same
+    if (total_len != post_ip_hdr_data_len) return; // should be the same
 
     uint16_t dst_port = switch_endian16(udp_hdr->dst_port);
     uint16_t src_port = switch_endian16(udp_hdr->src_port);

@@ -77,12 +77,10 @@ uint8_t udp_add_header(net_interface_t* iface, uint8_t* data, uint32_t* write_of
 /**
  * udp_handle_packet:
  * extracts the UDP header from a packet, validates the checksum and forwards the data to the respective socket
- * @param data The data starting with the UDP header
- * @param len The total length of the data (headers + payload)
- * @param src_ip The source IPv4 address of the packet
- * @param dst_ip The destination IPv4 address (one of the hosts IP addresses)
+ * @param data The data starting with the IPv4 header
+ * @param len The total length of the data (IP header + UDP header + payload)
  */
-void udp_handle_packet(uint8_t* data, uint32_t len, uint32_t src_ip, uint32_t dst_ip);
+void udp_handle_packet(uint8_t* data, uint32_t len);
 
 /**
  * cleanup_udp_socket:

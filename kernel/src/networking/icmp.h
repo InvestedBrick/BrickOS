@@ -2,6 +2,8 @@
 #define INCLUDE_ICMP_H
 
 #include <stdint.h>
+#include "userspace_api/socket.h"
+#include "ip.h"
 #define ICMP_TYPE_ECHO_REPLY 0
 #define ICMP_TYPE_DEST_UNR_MSG 3
 #define ICMP_TYPE_SRC_QUENCH_MSG 4
@@ -57,7 +59,7 @@ typedef struct {
     uint8_t icmp_code;
     uint16_t checksum;
     union {
-        uint32_t may_be_used;
+        uint32_t unused;
         icmp_echo_t echo;
         icmp_redir_t redir;
         icmp_param_problem_t param_problem;
@@ -78,6 +80,10 @@ typedef struct{
 }icmp_send_data_t;
 
 
+typedef struct {
+    generic_proto_socket_t sock;
+}icmp_socket_t;
+
 /**
  * get_true_icmp_header_size:
  * Returns the actually needed icmp header size based on the type
@@ -89,11 +95,10 @@ uint16_t get_true_icmp_header_size(uint8_t icmp_type);
 /**
  * icmp_handle_packet:
  * Reads the ICMP header of a packet and takes action depending on the type
- * @param data The data starting at the icmp header
- * @param len The length of the header + any extra payloads
- * @param src_ip The IPv4 address of the message source
+ * @param data The data starting at the ipv4 header
+ * @param len The length of the ip and icmp header + any extra payloads
  */
-void icmp_handle_packet(uint8_t* data, uint32_t len, uint32_t src_ip);
+void icmp_handle_packet(uint8_t* data, uint32_t len);
 
 /**
  * icmp_add_hdr:
@@ -109,16 +114,16 @@ void icmp_handle_packet(uint8_t* data, uint32_t len, uint32_t src_ip);
 uint8_t icmp_add_hdr(uint8_t* data, uint32_t* write_off, uint8_t icmp_type, uint8_t icmp_code, uint32_t may_be_used_dword, uint8_t* extra_payload, uint32_t extra_payload_len);
 
 
-void icmp_handle_echo_reply(icmp_header_t* icmp_hdr, uint32_t total_len);
-void icmp_handle_dest_unreachable(icmp_header_t* icmp_hdr, uint32_t total_len);
-void icmp_handle_source_quench(icmp_header_t* icmp_hdr, uint32_t total_len);
-void icmp_handle_redirect(icmp_header_t* icmp_hdr, uint32_t total_len,uint32_t src_ip);
-void icmp_handle_echo_request(icmp_header_t* icmp_hdr, uint32_t total_len, uint32_t src_ip);
-void icmp_handle_time_exceeded(icmp_header_t* icmp_hdr, uint32_t total_len);
-void icmp_handle_parameter_problem(icmp_header_t* icmp_hdr, uint32_t total_len);
-void icmp_handle_timestamp(icmp_header_t* icmp_hdr, uint32_t total_len);
-void icmp_handle_timestamp_reply(icmp_header_t* icmp_hdr, uint32_t total_len);
-void icmp_handle_info_request(icmp_header_t* icmp_hdr, uint32_t total_len);
-void icmp_handle_info_reply(icmp_header_t* icmp_hdr, uint32_t total_len);
+void icmp_handle_echo_reply(ipv4_header_t* ip_hdr, uint8_t ip_hlen,uint32_t total_len);
+void icmp_handle_dest_unreachable(ipv4_header_t* ip_hdr, uint8_t ip_hlen,uint32_t total_len);
+void icmp_handle_source_quench(ipv4_header_t* ip_hdr, uint8_t ip_hlen,uint32_t total_len);
+void icmp_handle_redirect(ipv4_header_t* ip_hdr, uint8_t ip_hlen,uint32_t total_len);
+void icmp_handle_echo_request(ipv4_header_t* ip_hdr, uint8_t ip_hlen,uint32_t total_len);
+void icmp_handle_time_exceeded(ipv4_header_t* ip_hdr, uint8_t ip_hlen,uint32_t total_len);
+void icmp_handle_parameter_problem(ipv4_header_t* ip_hdr, uint8_t ip_hlen,uint32_t total_len);
+void icmp_handle_timestamp(ipv4_header_t* ip_hdr, uint8_t ip_hlen,uint32_t total_len);
+void icmp_handle_timestamp_reply(ipv4_header_t* ip_hdr, uint8_t ip_hlen,uint32_t total_len);
+void icmp_handle_info_request(ipv4_header_t* ip_hdr, uint8_t ip_hlen,uint32_t total_len);
+void icmp_handle_info_reply(ipv4_header_t* ip_hdr, uint8_t ip_hlen,uint32_t total_len);
 
 #endif

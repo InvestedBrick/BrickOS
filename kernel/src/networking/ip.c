@@ -300,17 +300,20 @@ uint32_t unify_ip_packet(ipv4_packet_part_t* part, uint8_t** out_data){
 
     kfree(link);
 
-    
+    uint32_t total_packet_size = 0;
     ipv4_packet_part_t* curr = packet_start;
-    while(curr->next) curr = curr->next;
-
-    uint32_t total_packet_size = curr->frag_offset * 8 + curr->data_len;
+    while(curr->next) {
+        total_packet_size += curr->data_len; // accumulating instead of using frag_offset * 8 of the last since the first packet contains IP header
+        curr = curr->next;
+    }
 
     *out_data = (uint8_t*)kmalloc(total_packet_size);
 
     curr = packet_start;
+    uint16_t n_written = 0;
     while (curr) {
-        memcpy(*out_data + curr->frag_offset * 8, curr->data, curr->data_len);
+        memcpy(*out_data + n_written, curr->data, curr->data_len);
+        n_written += curr->data_len;
         ipv4_packet_part_t* del = curr;
         curr = curr->next;
         kfree(del->data);
@@ -320,20 +323,20 @@ uint32_t unify_ip_packet(ipv4_packet_part_t* part, uint8_t** out_data){
     return total_packet_size;
 }
 
-void hand_ip_packet_along(uint8_t* data, uint32_t len,uint8_t protocol, uint32_t src_ip, uint32_t dst_ip){
+void hand_ip_packet_along(uint8_t* data, uint32_t len,uint8_t protocol){
     switch (protocol)
     {
     case IP_PROTOCOL_ICMP:
-        icmp_handle_packet(data,len,src_ip);
+        icmp_handle_packet(data,len);
         break;
     case IP_PROTOCOL_TCP:
         break;
     case IP_PROTOCOL_UDP:
-        udp_handle_packet(data,len,src_ip,dst_ip);
+        udp_handle_packet(data,len);
         break;
     case IP_PROTOCOL_RAW1:
     case IP_PROTOCOL_RAW2:
-        handle_raw_ip_packet(data,len,src_ip,dst_ip,protocol);
+        handle_raw_ip_packet(data,len);
         break;
     default:
         warnf("recieved unhandled protocol (%d)", protocol);
@@ -376,15 +379,26 @@ void ip_handle_packet(uint8_t* data, uint32_t write_off, uint32_t total_len) {
     
     if (!(flags_frag_off & IP_FLAGS_MORE_FRAGMENTS) && frag_off == 0){
         // unfragmented packet
-        hand_ip_packet_along(data + write_off + hdr_len,post_hdr_data_len,ipv4_hdr->protocol, src_ip,dst_ip);
+        hand_ip_packet_along(data + write_off ,total_packet_part_length,ipv4_hdr->protocol);
     }else{
         //fragmented
 
         ipv4_packet_part_t* part = (ipv4_packet_part_t*)kmalloc(sizeof(ipv4_packet_part_t));
-        uint8_t* post_hdr_data = (uint8_t*)kmalloc(post_hdr_data_len);
-        memcpy(post_hdr_data,(void*)(data + write_off + hdr_len), post_hdr_data_len);
+
+        uint8_t* post_hdr_data = nullptr;
+        uint16_t copy_len = post_hdr_data_len;
+        if (frag_off == 0){
+            // copy the ip header of the first fragment into the data (just because ICMP is so extra)
+            copy_len = post_hdr_data_len + hdr_len;
+            post_hdr_data = (uint8_t*)kmalloc(copy_len);
+            memcpy(post_hdr_data,(void*)(data + write_off), copy_len);
+        }else{
+            post_hdr_data = (uint8_t*)kmalloc(post_hdr_data_len);
+            memcpy(post_hdr_data,(void*)(data + write_off + hdr_len), copy_len);
+        }
+        
         part->ident = create_packet_part_ident(src_ip,ident,ipv4_hdr->protocol);
-        part->data_len = post_hdr_data_len;
+        part->data_len = copy_len;
         part->data = post_hdr_data;
         part->protocol = ipv4_hdr->protocol;
 
@@ -399,7 +413,7 @@ void ip_handle_packet(uint8_t* data, uint32_t write_off, uint32_t total_len) {
         if (ipv4_packet_complete(part)){
             uint8_t* out_data;
             uint32_t len = unify_ip_packet(part,&out_data);
-            hand_ip_packet_along(out_data,len,part->protocol,src_ip,dst_ip);
+            hand_ip_packet_along(out_data,len,part->protocol);
             kfree(out_data); // can be freed here since was allocated in unify_ip_packet
         }
         mutex_signal(&ip_ll_mutex);
@@ -410,25 +424,33 @@ void ip_handle_packet(uint8_t* data, uint32_t write_off, uint32_t total_len) {
 
 }
 
-void handle_raw_ip_packet(uint8_t* data, uint32_t len, uint32_t src_ip, uint32_t dst_ip, uint8_t protocol){
+void handle_raw_ip_packet(uint8_t* data, uint32_t len){
     mutex_wait(&raw_ip_sock_lock,LOCK_TIMEOUT_INF);
+
+    ipv4_header_t* ip_hdr = (ipv4_header_t*)(data);
+    uint8_t ip_hlen = (ip_hdr->version_ihl & 0xf) * sizeof(uint32_t);
+    uint32_t post_hdr_data_len = len - ip_hlen;
+
+    uint32_t src_ip = switch_endian32(ip_hdr->src_ip);
+    uint32_t dst_ip = switch_endian32(ip_hdr->dst_ip);
+
     raw_ip_socket_t* sock = (raw_ip_socket_t*)raw_ip_sock_head;
 
     raw_ip_recvd_packet_t* packet = (raw_ip_recvd_packet_t*)kmalloc(sizeof(raw_ip_recvd_packet_t));
-    uint8_t* data_buffer = (uint8_t*)kmalloc(len);
-    memcpy(data_buffer,data,len);
+    uint8_t* data_buffer = (uint8_t*)kmalloc(post_hdr_data_len);
+    memcpy(data_buffer,data + ip_hlen,post_hdr_data_len);
     packet->packet.next = nullptr;
     packet->packet.data = data_buffer;
-    packet->packet.data_len = len;
+    packet->packet.data_len = post_hdr_data_len;
     packet->src_addr = src_ip;
-    packet->protocol = protocol;
+    packet->protocol = ip_hdr->protocol;
     packet->refcnt = 0;
     
     uint8_t found_any_socket = 0;
     while(sock){
         // every socket with the same protocol and either the same ip or INADDR_ANY should get the packet
-        if ((sock->ip_addr == dst_ip && sock->protocol == protocol) || 
-        (sock->ip_addr == INADDR_ANY && sock->protocol == protocol)) {
+        if ((sock->ip_addr == dst_ip && sock->protocol == packet->protocol) || 
+        (sock->ip_addr == INADDR_ANY && sock->protocol == packet->protocol)) {
             mutex_wait(&sock->sock.lock,LOCK_TIMEOUT_INF);
             found_any_socket = 1;
             atomic_fetch_add(&packet->refcnt, 1);

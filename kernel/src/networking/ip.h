@@ -171,12 +171,9 @@ void raw_ip_cleanup_sock(generic_proto_socket_t* sock);
 /**
  * handle_raw_ip_packet:
  * Handles an incoming raw IP packet by enqueuing it to the appropriate raw IP sockets based on the destination IP address and protocol
- * @param data The raw packet data
+ * @param data The packet data starting from the IPv4 header
  * @param len The length of the packet data
- * @param src_ip The source IP address of the packet
- * @param dst_ip The destination IP address of the packet
- * @param protocol The IP protocol of the packet (I_PROTOCOL_RAW1 / IP_PROTOCOL_RAW)
  */
-void handle_raw_ip_packet(uint8_t* data, uint32_t len, uint32_t src_ip, uint32_t dst_ip, uint8_t protocol);
+void handle_raw_ip_packet(uint8_t* data, uint32_t len);
 
 #endif
