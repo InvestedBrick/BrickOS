@@ -135,13 +135,14 @@ uint8_t handle_socket_getopt(socket_t* sock, uint32_t optname, void* optval, uin
 /**
  * init_socket_ops:
  * Assigns a socket the relevant operations to be called upon their respective syscall
+ * @param proc The process which opens this socket
  * @param sock The generic socket
  * @param domain The domain in which the socket operates
  * @param type The socket type
  * @param protocol The protocol
  * @return SOCKET_OPS_INIT_SUCCESS upon success, SOCKET_OPS_INIT_FAILURE otherwise 
  */
-uint8_t init_socket(socket_t* sock, socket_domain_e domain, socket_type_e type, uint8_t protocol);
+uint8_t init_socket(user_process_t* proc,socket_t* sock, socket_domain_e domain, socket_type_e type, uint8_t protocol);
 
 
 /**
@@ -153,6 +154,7 @@ void init_socket_queues();
 /**
  * erase_packet_from_rx_queue:
  * Erases a packet from the socket's receive queue and frees its memory
+ * @note The socket must be locked before calling 
  * @param sock The socket
  * @param packet The packet to erase
  */
@@ -160,20 +162,24 @@ void erase_packet_from_rx_queue(generic_proto_socket_t* sock, recvd_packet_t* pa
 
 /**
  * socket_clear_rx_queue:
- * Clears the receive queue of a socket and frees all memory
+ * Clears the receive queue of a socket and frees all memory 
+ * @note The socket must be locked before calling 
  * @param sock The socket
  */
 void socket_clear_rx_queue(generic_proto_socket_t* sock);
 
 /**
  * socket_clear_wait_queue:
- * Clears the wait queue of a socket and wakes up all waiting threads
+ * Clears the wait queue of a socket and wakes up all waiting threads 
+ * @note The socket must be locked before calling 
+ * @param sock The socket
  */
 void socket_clear_wait_queue(generic_proto_socket_t* sock);
 
 /**
  * add_packet_waiting_thread:
  * Adds a thread to the socket's wait queue and puts it to sleep 
+ * @note The socket must be locked before calling 
  * @param sock The socket
  * @param thread The thread to add
  * @param sleep_ticks The timeout to sleep for (THREAD_ETERNAL_SLEEP to wait until awoken manually)
@@ -183,6 +189,7 @@ void add_packet_waiting_thread(generic_proto_socket_t* sock, thread_t* thread, u
 /**
  * enqueue_rx_data:
  * Enqueues a received packet to the socket's receive queue and wakes up a waiting thread if any are waiting
+ * @note The socket must be locked before calling 
  * @param sock The socket
  * @param packet The received packet to enqueue
  */

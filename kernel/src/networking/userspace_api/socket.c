@@ -194,7 +194,7 @@ vfs_handles_t socket_handles = {
     .seek = 0,
 };
 
-uint8_t init_socket(socket_t* sock, socket_domain_e domain, socket_type_e type, uint8_t protocol){
+uint8_t init_socket(user_process_t* proc,socket_t* sock, socket_domain_e domain, socket_type_e type, uint8_t protocol){
     uint32_t merge = ((uint32_t)domain << 16) | ((uint32_t)type << 8) | (uint32_t)protocol;
     switch (merge)
     {
@@ -217,6 +217,8 @@ uint8_t init_socket(socket_t* sock, socket_domain_e domain, socket_type_e type, 
         ((raw_ip_socket_t*)sock->prot_sock)->protocol = protocol;
         break;
     case (SOCKET_INET << 16 | SOCKET_TYPE_RAW | IP_PROTOCOL_ICMP):
+        if (proc->priv_lvl > PRIV_SPECIAL) return  SOCKET_OPS_INIT_FAILURE; 
+
     default:
         return SOCKET_OPS_INIT_FAILURE;
     }
@@ -237,7 +239,6 @@ uint8_t init_socket(socket_t* sock, socket_domain_e domain, socket_type_e type, 
 }
 
 void erase_packet_from_rx_queue(generic_proto_socket_t* sock, recvd_packet_t* packet){
-    mutex_wait(&sock->lock,LOCK_TIMEOUT_INF);
     recvd_packet_t* curr = sock->rx_queue;
     if (curr == packet){
         sock->rx_queue = curr->next;
@@ -246,7 +247,6 @@ void erase_packet_from_rx_queue(generic_proto_socket_t* sock, recvd_packet_t* pa
     }
     while(curr && curr->next != packet) curr = curr->next;
     if (!curr) {
-        mutex_signal(&sock->lock);
         return;
     }
     curr->next = packet->next;
@@ -254,7 +254,6 @@ cleanup:
     sock->rx_queue_size -= packet->data_len;
     kfree(packet->data);
     kfree(packet);
-    mutex_signal(&sock->lock);
 }
 
 void socket_clear_rx_queue(generic_proto_socket_t* sock){
@@ -277,7 +276,6 @@ void socket_clear_wait_queue(generic_proto_socket_t* sock){
 }
 
 void add_packet_waiting_thread(generic_proto_socket_t* sock, thread_t* thread, uint64_t sleep_ticks){
-    mutex_wait(&sock->lock,LOCK_TIMEOUT_INF);
     packet_waiting_thread_t* wthread = (packet_waiting_thread_t*)kmalloc(sizeof(packet_waiting_thread_t));
     wthread->thread = thread;
     wthread->next = nullptr;
@@ -290,7 +288,6 @@ void add_packet_waiting_thread(generic_proto_socket_t* sock, thread_t* thread, u
     }
 
     add_sleeping_thread(thread,sleep_ticks);
-    mutex_signal(&sock->lock);
 }
 
 void enqueue_rx_data(generic_proto_socket_t* sock, recvd_packet_t* packet){
