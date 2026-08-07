@@ -95,7 +95,7 @@ int udp_recvfrom(socket_t* sock, void* buf, uint32_t buf_len, uint32_t flags, so
     
     if (in_addr && addr_len == sizeof(in_sockaddr_t) ){
         in_addr->inet_family = INET_FAM_IPv4;
-        in_addr->inet_addr = packet->src_addr;
+        in_addr->inet_addr = packet->packet.src_ip;
         in_addr->inet_port = packet->src_port;
     }
     uint32_t copy_len = min(buf_len,packet->packet.data_len);
@@ -135,7 +135,7 @@ void udp_enqueue_rx_data(udp_socket_t* sock, uint8_t* data, uint16_t data_len, u
     packet->packet.next = nullptr;
     packet->packet.data = data_buffer;
     packet->packet.data_len = data_len;
-    packet->src_addr = src_addr;
+    packet->packet.src_ip = src_addr;
     packet->src_port = src_port;
 
     enqueue_rx_data((generic_proto_socket_t*)sock, (recvd_packet_t*)packet);

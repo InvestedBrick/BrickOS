@@ -442,7 +442,7 @@ void handle_raw_ip_packet(uint8_t* data, uint32_t len){
     packet->packet.next = nullptr;
     packet->packet.data = data_buffer;
     packet->packet.data_len = post_hdr_data_len;
-    packet->src_addr = src_ip;
+    packet->packet.src_ip = src_ip;
     packet->protocol = ip_hdr->protocol;
     packet->refcnt = 0;
     
@@ -514,7 +514,7 @@ int raw_ip_recvfrom(socket_t* sock, void* buf, uint32_t buf_len, uint32_t flags,
     if (in_addr && addr_len == sizeof(in_sockaddr_t)){
         in_addr->inet_family = INET_FAM_IPv4;
         in_addr->inet_port = 0;
-        in_addr->inet_addr = packet->src_addr;
+        in_addr->inet_addr = packet->packet.src_ip;
     }
 
     uint32_t copy_len = min(buf_len,packet->packet.data_len);

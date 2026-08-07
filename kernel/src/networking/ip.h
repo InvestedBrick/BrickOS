@@ -76,7 +76,6 @@ typedef struct ipv4_ll_link {
 typedef struct raw_ip_recvd_packet {
     recvd_packet_t packet;
 
-    uint32_t src_addr;
     uint8_t protocol;
     atomic_uint_fast32_t refcnt;
 

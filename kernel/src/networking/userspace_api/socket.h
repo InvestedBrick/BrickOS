@@ -21,6 +21,7 @@ typedef struct packet_waiting_thread{
 typedef struct recvd_packet {
     uint8_t* data;
     uint32_t data_len;
+    uint32_t src_ip;
     struct recvd_packet* next;
 }recvd_packet_t;
 

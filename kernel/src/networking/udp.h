@@ -34,7 +34,6 @@ typedef struct pseudo_ip_hdr{
 typedef struct udp_recvd_packet {
     recvd_packet_t packet;
 
-    uint32_t src_addr;
     uint16_t src_port;
 
 }udp_recvd_packet_t;
