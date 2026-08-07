@@ -85,8 +85,8 @@ int udp_recvfrom(socket_t* sock, void* buf, uint32_t buf_len, uint32_t flags, so
         if (packet) break;
 
         if (flags & MSG_DONTWAIT) return UDP_RET_FAIL;
-        mutex_signal(&udp_sock->sock.lock);
         add_packet_waiting_thread((generic_proto_socket_t*)udp_sock,get_current_thread(),sock->sock_opts.recv_timeout); // awoken when message arrives
+        mutex_signal(&udp_sock->sock.lock);
         
         flags |= MSG_DONTWAIT;
         invoke_scheduler();
