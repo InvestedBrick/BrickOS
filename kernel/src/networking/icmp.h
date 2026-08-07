@@ -24,15 +24,17 @@
 #define ICMP_REDIR_HOST 1
 #define ICMP_REDIR_TOS_HOST 3
 
+#define DEFAULT_ICMP_HDR_SIZE 8
+
 typedef struct {
     uint16_t echo_ident;
     uint16_t echo_seq;
-}icmp_echo_t;
+}__attribute__((packed)) icmp_echo_t;
 
 typedef struct {
     uint16_t info_ident;
     uint16_t info_seq;
-}icmp_info_t;
+}__attribute__((packed)) icmp_info_t;
 
 typedef struct {
     uint16_t time_stmp_ident;
@@ -40,15 +42,15 @@ typedef struct {
     uint32_t originate_timestmp;
     uint32_t recv_timestmp;
     uint32_t transmit_timestmp;
-}icmp_timestamp_t;
+}__attribute__((packed)) icmp_timestamp_t;
 
 typedef struct {
     uint8_t ptr;
-}icmp_param_problem_t;
+}__attribute__((packed)) icmp_param_problem_t;
 
 typedef struct {
     uint32_t gateway_ip_addr;
-}icmp_redir_t;
+}__attribute__((packed)) icmp_redir_t;
 
 typedef struct {
     uint8_t icmp_type;
@@ -63,7 +65,7 @@ typedef struct {
         icmp_info_t info;
     }un;
 
-}icmp_header_t;
+}__attribute__((packed)) icmp_header_t;
 
 typedef struct{
     uint8_t icmp_type;
@@ -75,6 +77,14 @@ typedef struct{
     uint32_t extra_payload_len;
 }icmp_send_data_t;
 
+
+/**
+ * get_true_icmp_header_size:
+ * Returns the actually needed icmp header size based on the type
+ * @param icmp_type The ICMP type
+ * @return the headersize
+ */
+uint16_t get_true_icmp_header_size(uint8_t icmp_type);
 
 /**
  * icmp_handle_packet:

@@ -174,7 +174,8 @@ uint8_t send_ip_based_packet(socket_t* sock,uint8_t* usr_data, uint32_t usr_data
     {
     case IP_PROTOCOL_ICMP:;
         icmp_send_data_t* icmp_send = (icmp_send_data_t*)higher_prot_data;
-        total_hdr_len += sizeof(icmp_header_t);
+        uint16_t icmp_hdr_size = get_true_icmp_header_size(icmp_send->icmp_type);
+        total_hdr_len += icmp_hdr_size;
         total_hdr_len += icmp_send->extra_payload_len;
         break;
     case IP_PROTOCOL_UDP:
@@ -207,7 +208,8 @@ uint8_t send_ip_based_packet(socket_t* sock,uint8_t* usr_data, uint32_t usr_data
     uint8_t ret = 0;
     if (higher_prot == IP_PROTOCOL_ICMP){
         icmp_send_data_t* icmp_send = (icmp_send_data_t*)higher_prot_data;
-        post_hdr_len += sizeof(icmp_header_t) + icmp_send->extra_payload_len;
+        uint16_t icmp_hdr_size = get_true_icmp_header_size(icmp_send->icmp_type);
+        post_hdr_len += icmp_hdr_size + icmp_send->extra_payload_len;
 
         ret = icmp_add_hdr(data_buf,
                            &write_off,
