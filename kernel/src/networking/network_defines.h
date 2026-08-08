@@ -40,6 +40,7 @@ typedef enum {
 #define IP_TTL        (SOL_IP << 8 | 0x2)
 #define IP_HDRINCL    (SOL_IP << 8 | 0x3)
 
+// TODO: implement sendbuffer in TCP implementation
 #define SO_RCVTIMEOUT (SOL_SOCKET << 8 | 0x1)
 #define SO_SNDTIMEOUT (SOL_SOCKET << 8 | 0x2)
 #define SO_REUSEADDR  (SOL_SOCKET << 8 | 0x3)
@@ -59,6 +60,6 @@ typedef struct {
 }__attribute__((packed)) sockaddr_t;
 
 
-#define MSG_DONTWAIT (0 << 1)
+#define MSG_DONTWAIT (1 << 0)
 #define MSG_PEEK (1 << 1)
 #endif
