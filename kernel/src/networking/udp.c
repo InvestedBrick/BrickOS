@@ -75,37 +75,7 @@ int udp_sendto(socket_t* sock, void* buf, uint32_t buf_len, uint32_t flags, sock
 
 int udp_recvfrom(socket_t* sock, void* buf, uint32_t buf_len, uint32_t flags, sockaddr_t* src_addr, uint32_t addr_len){
     
-    udp_socket_t* udp_sock = (udp_socket_t*)sock->prot_sock;
-    in_sockaddr_t* in_addr = (in_sockaddr_t*)src_addr;
-
-    udp_recvd_packet_t* packet = nullptr;
-    mutex_wait(&udp_sock->sock.lock,LOCK_TIMEOUT_INF);
-    while(true){
-        packet = (udp_recvd_packet_t*)udp_sock->sock.rx_queue;
-        if (packet) break;
-
-        if (flags & MSG_DONTWAIT) return UDP_RET_FAIL;
-        add_packet_waiting_thread((generic_proto_socket_t*)udp_sock,get_current_thread(),sock->sock_opts.recv_timeout); // awoken when message arrives
-        mutex_signal(&udp_sock->sock.lock);
-        
-        flags |= MSG_DONTWAIT;
-        invoke_scheduler();
-        mutex_wait(&udp_sock->sock.lock,LOCK_TIMEOUT_INF);
-    }
-    
-    if (in_addr && addr_len == sizeof(in_sockaddr_t) ){
-        in_addr->inet_family = INET_FAM_IPv4;
-        in_addr->inet_addr = packet->packet.src_ip;
-        in_addr->inet_port = packet->src_port;
-    }
-    uint32_t copy_len = min(buf_len,packet->packet.data_len);
-    memcpy(buf,packet->packet.data,copy_len);
-
-    if (!(flags & MSG_PEEK) )
-        erase_packet_from_rx_queue((generic_proto_socket_t*)udp_sock, (recvd_packet_t*)packet);
-
-    mutex_signal(&udp_sock->sock.lock);
-    return copy_len;
+    return generic_inet_recvfrom(sock,buf,buf_len,flags,src_addr,addr_len,false);
 }
 
 void udp_cleanup_sock(generic_proto_socket_t* sock){
@@ -129,14 +99,15 @@ udp_socket_t* find_target_udp_socket(uint32_t ip_addr, uint16_t port){
 
 void udp_enqueue_rx_data(udp_socket_t* sock, uint8_t* data, uint16_t data_len, uint32_t src_addr, uint16_t src_port){
     // sock->lock must be locked
-    udp_recvd_packet_t* packet = (udp_recvd_packet_t*)kmalloc(sizeof(udp_recvd_packet_t));
+    recvd_packet_t* packet = (recvd_packet_t*)kmalloc(sizeof(recvd_packet_t));
     uint8_t* data_buffer = (uint8_t*)kmalloc(data_len);
     memcpy(data_buffer,data,data_len);
-    packet->packet.next = nullptr;
-    packet->packet.data = data_buffer;
-    packet->packet.data_len = data_len;
-    packet->packet.src_ip = src_addr;
-    packet->src_port = src_port;
+    packet->next = nullptr;
+    packet->data = data_buffer;
+    packet->data_len = data_len;
+    packet->src_addr.inet_addr = src_addr;
+    packet->src_addr.inet_port = src_port;
+    packet->src_addr.inet_family = INET_FAM_IPv4;
 
     enqueue_rx_data((generic_proto_socket_t*)sock, (recvd_packet_t*)packet);
 }

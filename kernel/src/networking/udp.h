@@ -31,13 +31,6 @@ typedef struct pseudo_ip_hdr{
     uint16_t udp_length;
 }__attribute__((packed)) pseudo_ip_hdr_t; 
 
-typedef struct udp_recvd_packet {
-    recvd_packet_t packet;
-
-    uint16_t src_port;
-
-}udp_recvd_packet_t;
-
 typedef struct udp_socket{
     generic_proto_socket_t sock;
 
