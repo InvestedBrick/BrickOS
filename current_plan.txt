@@ -25,7 +25,8 @@ networking:
     [X] ARP
     [X] IP
     [X] UDP
-    [WIP] ICMP
+    [X] ICMP (minimal implementation)
     [ ] DHCP
     [ ] TCP
+    [ ] DNS
     [X] Userspace API
