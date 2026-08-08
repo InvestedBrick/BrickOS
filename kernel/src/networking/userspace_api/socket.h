@@ -21,7 +21,7 @@ typedef struct packet_waiting_thread{
 typedef struct recvd_packet {
     uint8_t* data;
     uint32_t data_len;
-    uint32_t src_ip;
+    in_sockaddr_t src_addr;
     struct recvd_packet* next;
 }recvd_packet_t;
 
@@ -67,6 +67,11 @@ typedef struct socket {
     generic_proto_socket_t* prot_sock; // protocol specific socket for managing queues etc
     void (*cleanup_prot_sock)(generic_proto_socket_t*);    
 }socket_t;
+
+typedef struct {
+    recvd_packet_t packet;
+    atomic_uint_fast32_t refcnt;
+}refcnt_packet_t;
 #define SOCKET_OPS_INIT_SUCCESS 0x0
 #define SOCKET_OPS_INIT_FAILURE 0x1
 
@@ -78,6 +83,8 @@ typedef struct socket {
 
 #define SOCKET_GETOPTS_SUCCESS 0x0
 #define SOCKET_GETOPTS_FAILURE 0x1
+
+#define SOCKET_GENERIC_RECVFROM_FAIL -1
 extern vfs_handles_t socket_handles;
 
 /**
@@ -222,4 +229,20 @@ void cleanup_socket(generic_proto_socket_t** queue_head,generic_proto_socket_t* 
  * @param queue_head The head of the protocol's socket queue
  */
 void init_prot_socket(generic_proto_socket_t* sock, uint32_t sock_size,generic_proto_socket_t** queue_head,mutex_t* queue_lock);
+
+/**
+ * generic_inet_recvfrom:
+ * Tries to recieve a packet from a socket recieve queue and may wait until packet present. 
+ * @param sock The socket that tries to recieve
+ * @param buf The buffer to copy the packet data into
+ * @param buf_len The length of the buffer
+ * @param flags Flags for recieving (view MSG_*)
+ * @param src_addr An optional value in which the source address and port (if present) will be written to
+ * @param addr_len The length of the src_addr struct
+ * @param ref_packet A boolean whether the recieved packet has multiple references and may only be destroyed after the last one is accessed
+ * 
+ * @return The number of bytes recieved if successful, otherwise SOCKET_GENERIC_RECVFROM_FAIL
+ */
+int generic_inet_recvfrom(socket_t* sock, void* buf, uint32_t buf_len, uint32_t flags, sockaddr_t* src_addr, uint32_t addr_len, uint8_t ref_packet);
+
 #endif
