@@ -1,6 +1,6 @@
 #include "virt_files_util.h"
 #include "virt_files.h"
-#include "../../processes/user_process.h"
+#include "../../processes/process.h"
 #include "../../memory/kmalloc.h"
 
 uint32_t virt_inode_id = FS_ROOT_DIR_ID + 1;

@@ -94,7 +94,7 @@ extern vfs_handles_t socket_handles;
  * @param fd The file descriptor
  * @return The socket at fd_table[fd]->generic_data if success, nullptr otherwise
  */
-socket_t* valid_socket(user_process_t* p, uint32_t fd);
+socket_t* valid_socket(process_t* p, uint32_t fd);
 
 /**
  * handle_socket_setopt:
@@ -117,7 +117,7 @@ uint8_t handle_socket_setopt(socket_t* sock, uint32_t optname, void* optval, uin
  * @param optlen The length of the option value
  * @return SOCKET_SETOPTS_SUCCESS upon success, SOCKET_SETOPTS_FAILURE otherwise
  */
-uint8_t handle_ip_setopt(user_process_t* p,socket_t* sock, uint32_t optname, void* optval, uint32_t optlen);
+uint8_t handle_ip_setopt(process_t* p,socket_t* sock, uint32_t optname, void* optval, uint32_t optlen);
 
 /**
  * handle_ip_getopt:
@@ -150,7 +150,7 @@ uint8_t handle_socket_getopt(socket_t* sock, uint32_t optname, void* optval, uin
  * @param protocol The protocol
  * @return SOCKET_OPS_INIT_SUCCESS upon success, SOCKET_OPS_INIT_FAILURE otherwise 
  */
-uint8_t init_socket(user_process_t* proc,socket_t* sock, socket_domain_e domain, socket_type_e type, uint8_t protocol);
+uint8_t init_socket(process_t* proc,socket_t* sock, socket_domain_e domain, socket_type_e type, uint8_t protocol);
 
 
 /**

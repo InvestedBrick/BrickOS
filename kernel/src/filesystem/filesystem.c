@@ -8,7 +8,7 @@
 #include "../utilities/vector.h"
 #include "devices/devs.h"
 #include "IPC/pipes.h"
-#include "../processes/user_process.h"
+#include "../processes/process.h"
 #include "../processes/scheduler.h"
 #include "../kernel_header.h"
 #include "virt_files/virt_files.h"
@@ -50,7 +50,7 @@ inode_t* get_inode_by_path(unsigned char* path){
     }
 
     kfree(first_name);
-    user_process_t* curr_proc = get_current_user_process();
+    process_t* curr_proc = get_current_process();
     if (file && file->priv_lvl < curr_proc->priv_lvl) return nullptr; // chchcheck your priviledge!
 
     return file;
@@ -1036,7 +1036,7 @@ void change_file_priviledge_level(unsigned char* filename,uint8_t priv){
     inode_t* file = get_inode_by_path(filename);
     if (!file) return;
 
-    user_process_t* curr_proc = get_current_user_process();
+    process_t* curr_proc = get_current_process();
 
     if (priv < curr_proc->priv_lvl) return;
 

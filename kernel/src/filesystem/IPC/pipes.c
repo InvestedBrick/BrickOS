@@ -1,7 +1,7 @@
 #include "pipes.h"
 #include "../../utilities/util.h"
 #include "../../utilities/vector.h"
-#include "../../processes/user_process.h"
+#include "../../processes/process.h"
 #include "../filesystem.h"
 #include "../fs_defines.h"
 #include "../../memory/kmalloc.h"
@@ -31,7 +31,7 @@ int pipe_read(generic_file_t* file, unsigned char* buffer,uint32_t size){
 
     if (pipe->closed) return -1;
     
-    user_process_t* proc = get_current_user_process();
+    process_t* proc = get_current_process();
 
     if (pipe->read_id != proc->process_id) return -1;
 
@@ -56,7 +56,7 @@ int pipe_write(generic_file_t* file, unsigned char* buffer, uint32_t size){
 
     if (pipe->closed) return -1;
 
-    user_process_t* proc = get_current_user_process();
+    process_t* proc = get_current_process();
 
     if (pipe->write_id != proc->process_id) return -1;
 
@@ -132,7 +132,7 @@ generic_file_t* open_pipe(inode_t* inode,uint32_t flags){
 
     if (flags & FILE_FLAG_READ && flags & FILE_FLAG_WRITE) return nullptr;
 
-    user_process_t* proc = get_current_user_process();
+    process_t* proc = get_current_process();
 
     if (flags & FILE_FLAG_READ) {
         if (pipe->read_id != PIPE_DEFAULT_ACCESS_ID) return nullptr;

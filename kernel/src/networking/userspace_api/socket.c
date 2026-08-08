@@ -12,7 +12,7 @@ void init_socket_queues(){
     mutex_init(&icmp_sock_queue_lock);
 }
 
-socket_t* valid_socket(user_process_t* p, uint32_t fd){
+socket_t* valid_socket(process_t* p, uint32_t fd){
     if (fd > MAX_FDS) return nullptr;
 
     generic_file_t* file = p->fd_table[fd];
@@ -63,7 +63,7 @@ uint8_t handle_socket_setopt(socket_t* sock, uint32_t optname, void* optval, uin
     return SOCKET_SETOPTS_SUCCESS;
 }
 
-uint8_t handle_ip_setopt(user_process_t* p,socket_t* sock, uint32_t optname, void* optval, uint32_t optlen){
+uint8_t handle_ip_setopt(process_t* p,socket_t* sock, uint32_t optname, void* optval, uint32_t optlen){
     if (!optval) return SOCKET_SETOPTS_FAILURE;
 
     switch (optname)
@@ -199,7 +199,7 @@ vfs_handles_t socket_handles = {
     .seek = 0,
 };
 
-uint8_t init_socket(user_process_t* proc,socket_t* sock, socket_domain_e domain, socket_type_e type, uint8_t protocol){
+uint8_t init_socket(process_t* proc,socket_t* sock, socket_domain_e domain, socket_type_e type, uint8_t protocol){
     uint32_t merge = ((uint32_t)domain << 16) | ((uint32_t)type << 8) | (uint32_t)protocol;
     switch (merge)
     {

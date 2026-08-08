@@ -1,11 +1,11 @@
 #include "elf_parser.h"
 #include "../tables/syscalls.h"
-#include "../processes/user_process.h"
+#include "../processes/process.h"
 #include "../io/log.h"
 #include "../memory/kmalloc.h"
 void parse_elf(unsigned char* filepath){
     Elf64_Ehdr ehdr;
-    user_process_t* proc = get_current_user_process();
+    process_t* proc = get_current_process();
     uint64_t fd = sys_open(proc,filepath,FILE_FLAG_READ);
     if (fd == SYSCALL_FAIL) return;
 
@@ -59,7 +59,7 @@ void parse_elf(unsigned char* filepath){
 }
 
 bool validate_elf(unsigned char* filepath,Elf64_Ehdr* out_ehdr){
-    user_process_t* proc = get_current_user_process();
+    process_t* proc = get_current_process();
     uint64_t fd = sys_open(proc,filepath,FILE_FLAG_READ);
     if (fd == SYSCALL_FAIL) return false;
 
@@ -85,7 +85,7 @@ bool validate_elf(unsigned char* filepath,Elf64_Ehdr* out_ehdr){
 }
 
 Elf64_Phdr* extract_elf_phdrs(unsigned char* filepath){
-    user_process_t* proc = get_current_user_process();
+    process_t* proc = get_current_process();
     uint64_t fd = sys_open(proc,filepath,FILE_FLAG_READ);
     if (fd == SYSCALL_FAIL) return nullptr;
     

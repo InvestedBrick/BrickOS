@@ -8,7 +8,7 @@
 #include "../../io/log.h"
 #include "../../memory/kmalloc.h"
 #include "../../memory/memory.h"
-#include "../../processes/user_process.h"
+#include "../../processes/process.h"
 #include "../../drivers/PS2/keyboard/keyboard.h"
 #include "../../drivers/PS2/mouse/mouse.h"
 #include "device_defines.h"
@@ -195,7 +195,7 @@ void dev_wm_collect_pipe(){
 }
 
 int dev_wm_ioctl(generic_file_t* file, uint32_t cmd,void* arg){
-    user_process_t* curr_proc = get_current_user_process();
+    process_t* curr_proc = get_current_process();
     typedef struct {
         uint32_t answer_type;
         uint32_t pid;

@@ -16,7 +16,7 @@
 #include "timer_callbacks.h"
 #include "../networking/network_defines.h"
 
-void page_fault_handler(user_process_t* p,uint64_t fault_addr,interrupt_stack_frame_t* stack_frame);
+void page_fault_handler(process_t* p,uint64_t fault_addr,interrupt_stack_frame_t* stack_frame);
 
 interrupt_handler_t* int_head;
 static idt_entry_t idt_entries[IDT_MAX_ENTRIES] __attribute__((aligned(0x10)));
@@ -109,7 +109,7 @@ void page_fault_stub(interrupt_stack_frame_t* stack_frame){
         stack_frame->rip = (uint64_t)sched_fault_fixup; // return label after the drop to here
         switch_task(stack_frame); // does not return
     }
-    page_fault_handler(get_current_user_process(),cr2,stack_frame);
+    page_fault_handler(get_current_process(),cr2,stack_frame);
 }
 
 void set_idt_entry(uint8_t num,uint64_t offset,uint8_t attributes){
@@ -125,7 +125,7 @@ void set_idt_entry(uint8_t num,uint64_t offset,uint8_t attributes){
 
 void handle_software_interrupt(interrupt_stack_frame_t* stack_frame){
     uint64_t rax = 0;
-    user_process_t* p = get_current_user_process();
+    process_t* p = get_current_process();
     switch (stack_frame->rax)
     {
     case SYS_DEBUG:
@@ -216,7 +216,7 @@ void handle_software_interrupt(interrupt_stack_frame_t* stack_frame){
 }
 
 
-uint64_t init_new_page(virt_mem_area_t* vma,user_process_t* p,uint64_t aligned_fault_addr){
+uint64_t init_new_page(virt_mem_area_t* vma,process_t* p,uint64_t aligned_fault_addr){
     uint64_t frame = pmm_alloc_page_frame();        
     mem_map_page(USER_SCRATCH_PAGE,frame,PAGE_FLAG_WRITE | PAGE_FLAG_USER);
     
@@ -233,7 +233,7 @@ uint64_t init_new_page(virt_mem_area_t* vma,user_process_t* p,uint64_t aligned_f
     return frame;
 }
 
-void page_fault_handler(user_process_t* p,uint64_t fault_addr,interrupt_stack_frame_t* stack_frame){
+void page_fault_handler(process_t* p,uint64_t fault_addr,interrupt_stack_frame_t* stack_frame){
     uint8_t int_status = get_interrupt_status();
     disable_interrupts();
     if (handle_phdr_mapping(p,fault_addr)) {
@@ -294,7 +294,7 @@ void interrupt_handler(interrupt_stack_frame_t* stack_frame) {
     interrupt_handler_t* head = int_head;
     while (head && head->int_num != stack_frame->interrupt_number) head = head->next;
     if (!head) {
-        if (stack_frame->interrupt_number < APIC_INTERRUPT_START)logf("Fault occured: %x (%s)",stack_frame->interrupt_number,get_current_user_process()->process_name);
+        if (stack_frame->interrupt_number < APIC_INTERRUPT_START)logf("Fault occured: %x (%s)",stack_frame->interrupt_number,get_current_process()->process_name);
         return;
     }
     head->handler(head->special_arg ? head->special_arg : stack_frame);

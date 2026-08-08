@@ -3,7 +3,7 @@
 #include "../utilities/util.h"
 #include "../memory/memory.h"
 #include "../io/log.h"
-#include "user_process.h"
+#include "process.h"
 #include "../tables/tss.h"
 #include "../kernel_header.h"
 #include "../tables/syscalls.h"
@@ -126,7 +126,7 @@ thread_t* get_thread_by_tid(uint32_t tid){
     return 0;
 }
 
-thread_t* create_thread(user_process_t* owner_proc){
+thread_t* create_thread(process_t* owner_proc){
     if (!t_queue) {
         error("Process queue not initialized");
         return nullptr;
@@ -152,7 +152,7 @@ void enqueue_thread(thread_t* thread){
     // add to main thread queue
     thread_t* last = t_queue;
 
-    user_process_t* owner_proc = thread->owner_proc;
+    process_t* owner_proc = thread->owner_proc;
 
     while(last->next) {last = last->next;}
     last->next = thread;
@@ -166,7 +166,7 @@ void enqueue_thread(thread_t* thread){
     }
 }
 
-int add_thread(struct user_process* usr_proc){
+int add_thread(struct process* usr_proc){
 
     thread_t* thread = create_thread(usr_proc);
     if (!thread) return -1;
@@ -268,7 +268,7 @@ void remove_thread(thread_t* thread){
         // thread is main thread
         thread->owner_proc->main_thread = thread->next_proc_thread;
         if (thread->next_proc_thread == 0) {// this was the last thread
-            if (kill_user_process(thread->owner_proc->process_id) < 0) warnf("Failed to kill user process '%s'", thread->owner_proc->process_name);           
+            if (kill_process(thread->owner_proc->process_id) < 0) warnf("Failed to kill user process '%s'", thread->owner_proc->process_name);           
         }
         kfree(thread);
         return;

@@ -1,7 +1,7 @@
 #include "syscalls.h"
 #include "syscall_defines.h"
 #include "../filesystem/vfs/vfs.h"
-#include "../processes/user_process.h"
+#include "../processes/process.h"
 #include "../filesystem/file_operations.h"
 #include "interrupts.h"
 #include "../memory/memory.h"
@@ -15,7 +15,7 @@
 #include <stdbool.h>
 
 //TODO: provide actually helpful error messages
-uint64_t sys_write(user_process_t* p,uint32_t fd, unsigned char* buf, uint32_t size){
+uint64_t sys_write(process_t* p,uint32_t fd, unsigned char* buf, uint32_t size){
     if (fd >= MAX_FDS) return SYSCALL_FAIL;
 
     generic_file_t* file = p->fd_table[fd];
@@ -24,7 +24,7 @@ uint64_t sys_write(user_process_t* p,uint32_t fd, unsigned char* buf, uint32_t s
 
     return file->ops->write(file,buf,size);
 }
-uint64_t sys_read(user_process_t* p,uint32_t fd, unsigned char* buf, uint32_t size){
+uint64_t sys_read(process_t* p,uint32_t fd, unsigned char* buf, uint32_t size){
     if (fd >= MAX_FDS) return SYSCALL_FAIL;
 
     generic_file_t* file = p->fd_table[fd];
@@ -34,7 +34,7 @@ uint64_t sys_read(user_process_t* p,uint32_t fd, unsigned char* buf, uint32_t si
     return file->ops->read(file,buf,size);
 }
 
-uint64_t sys_open(user_process_t* p,unsigned char* filepath, uint8_t flags){
+uint64_t sys_open(process_t* p,unsigned char* filepath, uint8_t flags){
 
     generic_file_t* file = fs_open(filepath,flags);
 
@@ -43,7 +43,7 @@ uint64_t sys_open(user_process_t* p,unsigned char* filepath, uint8_t flags){
     return assign_fd(p,file);
 }
 
-uint64_t sys_close(user_process_t* p, uint32_t fd){
+uint64_t sys_close(process_t* p, uint32_t fd){
     if (fd >= MAX_FDS) return SYSCALL_FAIL;
 
     generic_file_t* file = p->fd_table[fd];
@@ -57,7 +57,7 @@ uint64_t sys_close(user_process_t* p, uint32_t fd){
     return ret_val;
 }
 
-uint64_t sys_seek(user_process_t* p,uint32_t fd, uint32_t offset, uint32_t whence){
+uint64_t sys_seek(process_t* p,uint32_t fd, uint32_t offset, uint32_t whence){
     if (fd >= MAX_FDS) return SYSCALL_FAIL;
 
     generic_file_t* file = p->fd_table[fd];
@@ -67,7 +67,7 @@ uint64_t sys_seek(user_process_t* p,uint32_t fd, uint32_t offset, uint32_t whenc
     return file->ops->seek(file,offset,whence);
 }
 
-uint64_t sys_ioctl(user_process_t* p, uint32_t fd,uint32_t cmd, void* arg){
+uint64_t sys_ioctl(process_t* p, uint32_t fd,uint32_t cmd, void* arg){
     if (fd >= MAX_FDS) return SYSCALL_FAIL;
 
     generic_file_t* file = p->fd_table[fd];
@@ -77,7 +77,7 @@ uint64_t sys_ioctl(user_process_t* p, uint32_t fd,uint32_t cmd, void* arg){
     return file->ops->ioctl(file,cmd,arg);
 }
 
-uint64_t sys_exit(user_process_t* p,interrupt_stack_frame_t* stack_frame){
+uint64_t sys_exit(process_t* p,interrupt_stack_frame_t* stack_frame){
     uint32_t pid = p->process_id;
 
     logf("PID %d (%s) exited with %d",p->process_id,p->process_name,stack_frame->rdi);
@@ -91,7 +91,7 @@ uint64_t sys_exit(user_process_t* p,interrupt_stack_frame_t* stack_frame){
     return 0; // will never get reached 
 }
 
-uint64_t sys_mmap(user_process_t *p, uint64_t addr, uint64_t size,uint32_t prot, uint32_t flags, uint32_t fd, uint64_t offset){
+uint64_t sys_mmap(process_t *p, uint64_t addr, uint64_t size,uint32_t prot, uint32_t flags, uint32_t fd, uint64_t offset){
     if (addr == MMAP_UNSPEC_ADDR) addr = p->page_alloc_start;
     if (addr + size >= HHDM) return SYSCALL_FAIL;
     if (size == 0 || (addr % MEMORY_PAGE_SIZE)) return SYSCALL_FAIL;
@@ -158,7 +158,7 @@ uint64_t sys_mmap(user_process_t *p, uint64_t addr, uint64_t size,uint32_t prot,
     return addr;
 }
 
-uint64_t sys_munmap(user_process_t* p, uint64_t addr, uint64_t size){
+uint64_t sys_munmap(process_t* p, uint64_t addr, uint64_t size){
     if (addr >= HHDM) return SYSCALL_FAIL; // nice try
     if (size == 0 || (addr % MEMORY_PAGE_SIZE)) return SYSCALL_FAIL;
 
@@ -265,7 +265,7 @@ uint64_t sys_getcwd(unsigned char* buffer, uint32_t buf_len){
     return get_full_active_path(buffer,buf_len);
 }
 
-uint64_t sys_getdents(user_process_t* p,uint32_t fd,dirent_t* ent_buffer,uint32_t size){
+uint64_t sys_getdents(process_t* p,uint32_t fd,dirent_t* ent_buffer,uint32_t size){
     if (!p->fd_table[fd]) return SYSCALL_FAIL;
     generic_file_t* file = p->fd_table[fd];
 
@@ -358,8 +358,8 @@ uint64_t sys_mknod(unsigned char* filename,mknod_params_t* params){
         return SYSCALL_FAIL;
     }
     if (params->flags & MNODE_FLAG_PID_DEFINED_PIPE){
-        user_process_t* write_proc = get_user_process_by_pid(params->write_pid);
-        user_process_t* read_proc = get_user_process_by_pid(params->read_pid);
+        process_t* write_proc = get_process_by_pid(params->write_pid);
+        process_t* read_proc = get_process_by_pid(params->read_pid);
         
         if (!write_proc || !read_proc) {
             delete_file_by_inode(creation_dir,get_inode_by_path(file_name));
@@ -394,7 +394,7 @@ uint64_t sys_spawn(unsigned char* filename, unsigned char* argv[],process_fds_in
     return run(filename,argv,start_fds,PRIV_STD);
 }
 
-uint64_t sys_getpid(user_process_t* p){
+uint64_t sys_getpid(process_t* p){
     return p->process_id;
 }
 
@@ -402,7 +402,7 @@ uint64_t sys_gettimeofday(){
     return current_timestamp;
 }
 
-uint64_t sys_settimezone(user_process_t* p,int utc_timezone){
+uint64_t sys_settimezone(process_t* p,int utc_timezone){
     if (p->priv_lvl > PRIV_SPECIAL) return SYSCALL_FAIL;
     if (utc_timezone < -12 || utc_timezone > 12) return SYSCALL_FAIL;
     timezone_adjustment = utc_timezone * 3600;
@@ -416,12 +416,12 @@ uint64_t sys_settimezone(user_process_t* p,int utc_timezone){
     return SYSCALL_SUCCESS;
 }
 
-uint64_t sys_clone(user_process_t* p,int (*fn)(void*),void* stack,int flags, void* arg){
+uint64_t sys_clone(process_t* p,int (*fn)(void*),void* stack,int flags, void* arg){
     // TODO:
     return (uint64_t)0;
 }
 
-uint64_t sys_socket(user_process_t* p, uint32_t domain, uint32_t sock_type, uint8_t protocol){
+uint64_t sys_socket(process_t* p, uint32_t domain, uint32_t sock_type, uint8_t protocol){
 
     if (domain >= SOCKET_UNUSED) return SYSCALL_FAIL;
     if (sock_type >= SOCKET_TYPE_UNUSED) return SYSCALL_FAIL;
@@ -445,28 +445,28 @@ uint64_t sys_socket(user_process_t* p, uint32_t domain, uint32_t sock_type, uint
 
 }
 
-uint64_t sys_bind(user_process_t* p, uint32_t fd, sockaddr_t* sock_addr, uint32_t sock_addr_len){
+uint64_t sys_bind(process_t* p, uint32_t fd, sockaddr_t* sock_addr, uint32_t sock_addr_len){
     socket_t* sock = valid_socket(p,fd);
     if (!sock || !sock->prot_sock || !sock->proto_ops || !sock->proto_ops->bind) return SYSCALL_FAIL;
 
     return sock->proto_ops->bind(sock,sock_addr,sock_addr_len);
 }
 
-uint64_t sys_recvfrom(user_process_t* p, uint32_t fd, void* buf, uint32_t buf_len, uint32_t flags, sockaddr_t* src_addr, uint32_t addr_len){
+uint64_t sys_recvfrom(process_t* p, uint32_t fd, void* buf, uint32_t buf_len, uint32_t flags, sockaddr_t* src_addr, uint32_t addr_len){
     socket_t* sock = valid_socket(p, fd);
     if (!sock || !sock->prot_sock || !sock->proto_ops || !sock->proto_ops->recvfrom) return SYSCALL_FAIL;
 
     return sock->proto_ops->recvfrom(sock, buf, buf_len, flags,src_addr,addr_len);
 }
 
-uint64_t sys_sendto(user_process_t* p, uint32_t fd, void* buf, uint32_t buf_len, uint32_t flags, sockaddr_t* dst_addr, uint32_t addr_len){
+uint64_t sys_sendto(process_t* p, uint32_t fd, void* buf, uint32_t buf_len, uint32_t flags, sockaddr_t* dst_addr, uint32_t addr_len){
     socket_t* sock = valid_socket(p,fd);
     if (!sock || !sock->prot_sock || !sock->proto_ops || !sock->proto_ops->sendto) return SYSCALL_FAIL;
 
     return sock->proto_ops->sendto(sock, buf, buf_len, flags,dst_addr,addr_len);
 }
 
-uint64_t sys_setsockopt(user_process_t* p, uint32_t fd, uint32_t level, uint32_t optname, void* optval, uint32_t optlen){
+uint64_t sys_setsockopt(process_t* p, uint32_t fd, uint32_t level, uint32_t optname, void* optval, uint32_t optlen){
     socket_t* sock = valid_socket(p,fd);
     if (!sock) return SYSCALL_FAIL;
 
@@ -486,7 +486,7 @@ uint64_t sys_setsockopt(user_process_t* p, uint32_t fd, uint32_t level, uint32_t
     return SYSCALL_SUCCESS;
 }
 
-uint64_t sys_getsockopt(user_process_t* p, uint32_t fd, uint32_t level, uint32_t optname, void* optval, uint32_t* optlen){
+uint64_t sys_getsockopt(process_t* p, uint32_t fd, uint32_t level, uint32_t optname, void* optval, uint32_t* optlen){
     socket_t* sock = valid_socket(p,fd);
     if (!sock) return SYSCALL_FAIL;
 

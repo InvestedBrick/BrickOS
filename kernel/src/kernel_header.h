@@ -2,7 +2,7 @@
 #ifndef INCLUDE_KERNEL_PROCESS_H
 #define INCLUDE_KERNEL_PROCESS_H
 
-#include "processes/user_process.h"
+#include "processes/process.h"
 #include "../limine-protocol/include/limine.h"
 
 typedef struct  {
@@ -21,7 +21,7 @@ typedef struct {
 }limine_data_t;
 
 extern limine_data_t limine_data;
-extern struct user_process global_kernel_process;
+extern struct process global_kernel_process;
 void shutdown();
 void parse_bootloader_data();
 

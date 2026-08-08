@@ -1,6 +1,6 @@
 
-#ifndef INCLUDE_USER_PROCESS_H
-#define INCLUDE_USER_PROCESS_H
+#ifndef INCLUDE_PROCESS_H
+#define INCLUDE_PROCESS_H
 
 #include "../filesystem/vfs/vfs.h"
 #include "../utilities/vector.h"
@@ -14,7 +14,7 @@
 #define FD_STDOUT 0x1
 #define FD_STDERR 0x2
 
-typedef struct user_process{
+typedef struct process{
     uint32_t process_id;
     unsigned char* process_name;
     
@@ -33,7 +33,7 @@ typedef struct user_process{
     uint32_t n_phdrs; 
     inode_t* file_inode;
 
-} user_process_t;
+} process_t;
 
 
 typedef struct {
@@ -47,56 +47,61 @@ typedef struct {
 
 #define USER_STACK_PAGES_PER_PROCESS 5
 
-extern vector_t user_process_vector;
+extern vector_t process_vector;
 
 #define PRIV_STD 2
 #define PRIV_SPECIAL 1
 #define PRIV_ALUCARD 0
 
 #define MAX_PIDS 32768
+
+void create_root_process(uint64_t stack_top);
+
+void finish_up_root_process();
+
 /**
- * create_user_process:
- * Allocates the needed memory for a user process and loads the binary into memory
+ * create_process:
+ * Allocates the needed memory for a process and loads the binary into memory
  * 
  * @param file_path The path to the executable
- * @param priv_lvl The priviledge level of the user process (0 highest)
+ * @param priv_lvl The priviledge level of the process (0 highest)
  * @param argv An array of null terminated strings with the last index of the array being null
  * @return The proccess ID of the created process
  */
-uint32_t create_user_process(unsigned char* file_path,uint8_t priv_lvl,unsigned char* argv[],process_fds_init_t* start_fds);
+uint32_t create_process(unsigned char* file_path,uint8_t priv_lvl,unsigned char* argv[],process_fds_init_t* start_fds);
 /**
- * init_user_process_vector:
- * Sets up the user process vector
+ * init_process_vector:
+ * Sets up the process vector
  */
-void init_user_process_vector();
+void init_process_vector();
 /**
- * kill_user_process:
- * Neutralizes the user process
+ * kill_process:
+ * Neutralizes the process
  * @return Returns how successful the killing was
  */
-int kill_user_process(uint32_t pid);
+int kill_process(uint32_t pid);
 
 /**
- * get_user_process_by_pid:
- * Returns a user_process_t struct pointer for the process with the given pid
+ * get_process_by_pid:
+ * Returns a process_t struct pointer for the process with the given pid
  * @param pid The process ID
  * 
- * @return The user process struct
+ * @return The process struct
  */
-user_process_t* get_user_process_by_pid(uint32_t pid);
+process_t* get_process_by_pid(uint32_t pid);
 
 /**
- * dispatch_user_process:
- * Enters the user process if it is not already running
+ * dispatch_process:
+ * Enters the process if it is not already running
  * @param pid The process id
  */
-void dispatch_user_process(uint32_t pid);
+void dispatch_process(uint32_t pid);
 
-int assign_fd(user_process_t* proc,generic_file_t* file);
+int assign_fd(process_t* proc,generic_file_t* file);
 
-void free_fd(user_process_t* proc, generic_file_t* file);
+void free_fd(process_t* proc, generic_file_t* file);
 
-user_process_t* get_current_user_process();
+process_t* get_current_process();
 
 int get_pid();
 
@@ -104,7 +109,7 @@ void free_pid(uint32_t pid);
 
 /**
  * run:
- * Executes a user process
+ * Executes a process
  * @param filepath The path to the executable
  * @param argv An array of null terminated strings with the last index of the array being null
  * @param priv_lvl The priviledge level of the executable (0 highest priviledge level)
@@ -115,7 +120,7 @@ void free_pid(uint32_t pid);
  */
 int run(char* filepath,unsigned char* argv[],process_fds_init_t* start_fds,uint8_t priv_lvl);
 
-void overwrite_current_proc(user_process_t* proc);
+void overwrite_current_proc(process_t* proc);
 
 void restore_active_proc();
 
@@ -143,7 +148,7 @@ void enter_kernel_thread(struct thread* thread);
  * @param virt_addr The virtual memory address
  * @return The phdr that corresponds to the virtual memory address or nullptr if it doesn't exist
  */
-Elf64_Phdr* find_responsible_phdr(user_process_t* p, uint64_t virt_addr);
+Elf64_Phdr* find_responsible_phdr(process_t* p, uint64_t virt_addr);
 
 /**
  * handle_phdr_mapping:
@@ -152,5 +157,5 @@ Elf64_Phdr* find_responsible_phdr(user_process_t* p, uint64_t virt_addr);
  * @param fault_addr The address where the process faulted
  * @return Whether the mapping was successful
  */
-bool handle_phdr_mapping(user_process_t* p, uint64_t fault_addr);
+bool handle_phdr_mapping(process_t* p, uint64_t fault_addr);
 #endif

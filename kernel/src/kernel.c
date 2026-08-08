@@ -16,7 +16,7 @@
 #include "filesystem/IPC/pipes.h"
 #include "filesystem/filesystem.h"
 #include "networking/networking.h"
-#include "processes/user_process.h"
+#include "processes/process.h"
 #include "modules/module_handler.h"
 #include "filesystem/devices/devs.h"
 #include "drivers/PS2/mouse/mouse.h"
@@ -26,43 +26,10 @@
 #include "filesystem/virt_files/virt_files.h"
 #include <stdint.h>
 
-struct user_process global_kernel_process;
 extern uint8_t check_SSE();
 extern uint8_t check_FPU();
 extern void enable_SSE();
 extern void setup_FPU();
-
-void finish_up_kernel_proc(){
-    global_kernel_process.fd_table[FD_STDIN] = fs_open("dev/kb0",FILE_FLAG_NONE);
-    global_kernel_process.fd_table[FD_STDOUT] = fs_open("dev/null",FILE_FLAG_NONE);
-
-}
-
-void create_kernel_process(uint64_t stack_top){
-    init_user_process_vector();
-
-    memset(global_kernel_process.fd_table,0,MAX_FDS * sizeof(generic_file_t*));
-
-    global_kernel_process.kernel_stack_top = stack_top;
-    global_kernel_process.pml4 = mem_get_current_pml4_table();
-    global_kernel_process.process_id = get_pid();
-    global_kernel_process.vm_areas = 0;
-    global_kernel_process.priv_lvl = PRIV_ALUCARD; // the all-powerful
-    global_kernel_process.process_name = kmalloc(sizeof("root"));
-    global_kernel_process.page_alloc_start = 0x0;
-
-    memcpy(global_kernel_process.process_name,"root",sizeof("root"));
-    global_kernel_process.running = 1;
-    
-    global_kernel_process.main_thread = (thread_t*)kmalloc(sizeof(thread_t));
-    memset(global_kernel_process.main_thread,0x0,sizeof(thread_t));
-    global_kernel_process.main_thread->tid = get_pid();
-    global_kernel_process.main_thread->owner_proc = &global_kernel_process;
-    global_kernel_process.main_thread->exec_state = EXEC_STATE_DONT_SCHEDULE;
-
-    vector_append(&user_process_vector,(vector_data_t)&global_kernel_process);
-
-}
 
 void shutdown(){
     disable_interrupts();
@@ -118,7 +85,7 @@ void kmain()
     init_kmalloc(MEMORY_PAGE_SIZE);
     log("Initialized kmalloc");
     
-    create_kernel_process(stack_top);
+    create_root_process(stack_top);
     log("Set up kernel process");
     
     init_scheduler();
@@ -154,7 +121,7 @@ void kmain()
     initialize_devices(); // needs the global kernel process
     log("Initialized devices");
 
-    finish_up_kernel_proc(); // needs devices
+    finish_up_root_process(); // needs devices
 
     // save the modules binaries to "modules/"
     write_module_binaries_to_file();

@@ -4,7 +4,7 @@
 #include <stdint.h>
 
 #include "networking.h"
-#include "../processes/user_process.h"
+#include "../processes/process.h"
 #include "../processes/spinlocks.h"
 #include "../processes/scheduler.h"
 #include "userspace_api/socket.h"

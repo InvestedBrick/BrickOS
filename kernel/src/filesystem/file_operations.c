@@ -7,7 +7,7 @@
 #include "fs_defines.h"
 #include "devices/devs.h"
 #include "IPC/pipes.h"
-#include "../processes/user_process.h"
+#include "../processes/process.h"
 #include "../processes/scheduler.h"
 #include "virt_files/virt_files.h"
 #include "../io/log.h"
@@ -116,7 +116,7 @@ uint32_t get_sector_for_rw(inode_t* inode, uint32_t sector_idx, uint8_t is_write
 
 generic_file_t* fs_open_inode(inode_t* inode,uint8_t flags,unsigned char* filepath){
     
-    user_process_t* active_proc = get_current_user_process();
+    process_t* active_proc = get_current_process();
     if (inode && active_proc->priv_lvl > inode->priv_lvl) return nullptr;
     if (inode && inode->type == FS_TYPE_VIRT_FILE) return virt_file_open(inode);
     if (inode && inode->type == FS_TYPE_DEV) return dev_open(inode);

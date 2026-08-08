@@ -1,4 +1,4 @@
-#include "user_process.h"
+#include "process.h"
 #include "../memory/memory.h"
 #include "../memory/kmalloc.h"
 #include "../utilities/vector.h"
@@ -19,21 +19,56 @@
 #include "scheduler.h"
 #include "../tables/timer_callbacks.h"
 #include "../utilities/elf_parser.h"
-vector_t user_process_vector;
+vector_t process_vector;
 static uint8_t pid_used[MAX_PIDS] = {0};
 static uint32_t next_pid = 1;
-user_process_t* overwrite_proc = 0;
+process_t* overwrite_proc = 0;
+struct process global_kernel_process;
 
-user_process_t* get_user_process_by_pid(uint32_t pid){
-    for (uint32_t i = 0; i < user_process_vector.size;i++){
-        if (((user_process_t*)(user_process_vector.data[i]))->process_id == pid){
-            return (user_process_t*)(user_process_vector.data[i]);
+
+void finish_up_root_process(){
+    global_kernel_process.fd_table[FD_STDIN] = fs_open("dev/kb0",FILE_FLAG_NONE);
+    global_kernel_process.fd_table[FD_STDOUT] = fs_open("dev/null",FILE_FLAG_NONE);
+
+}
+
+void create_root_process(uint64_t stack_top){
+    init_process_vector();
+
+    memset(global_kernel_process.fd_table,0,MAX_FDS * sizeof(generic_file_t*));
+
+    global_kernel_process.kernel_stack_top = stack_top;
+    global_kernel_process.pml4 = mem_get_current_pml4_table();
+    global_kernel_process.process_id = get_pid();
+    global_kernel_process.vm_areas = 0;
+    global_kernel_process.priv_lvl = PRIV_ALUCARD; // the all-powerful
+    global_kernel_process.process_name = kmalloc(sizeof("root"));
+    global_kernel_process.page_alloc_start = 0x0;
+
+    memcpy(global_kernel_process.process_name,"root",sizeof("root"));
+    global_kernel_process.running = 1;
+    
+    global_kernel_process.main_thread = (thread_t*)kmalloc(sizeof(thread_t));
+    memset(global_kernel_process.main_thread,0x0,sizeof(thread_t));
+    global_kernel_process.main_thread->tid = get_pid();
+    global_kernel_process.main_thread->owner_proc = &global_kernel_process;
+    global_kernel_process.main_thread->exec_state = EXEC_STATE_DONT_SCHEDULE;
+
+    vector_append(&process_vector,(vector_data_t)&global_kernel_process);
+
+}
+
+
+process_t* get_process_by_pid(uint32_t pid){
+    for (uint32_t i = 0; i < process_vector.size;i++){
+        if (((process_t*)(process_vector.data[i]))->process_id == pid){
+            return (process_t*)(process_vector.data[i]);
         }
     }
     return 0;
 }
 
-user_process_t* get_current_user_process(){
+process_t* get_current_process(){
 
     if (overwrite_proc) return overwrite_proc;
 
@@ -44,7 +79,7 @@ user_process_t* get_current_user_process(){
 }
 
 // this is the stuff that is created when you just want stuff to work
-void overwrite_current_proc(user_process_t* proc){
+void overwrite_current_proc(process_t* proc){
     overwrite_proc = proc;
 }
 
@@ -64,7 +99,7 @@ int get_pid(){
     return -1;
 }
 
-int assign_fd(user_process_t* proc,generic_file_t* file){
+int assign_fd(process_t* proc,generic_file_t* file){
     for (int i = 3; i < MAX_FDS; ++i) {
         if (proc->fd_table[i] == 0) {
             proc->fd_table[i] = file;
@@ -74,7 +109,7 @@ int assign_fd(user_process_t* proc,generic_file_t* file){
     return -1; 
 }
 
-void free_fd(user_process_t* proc, generic_file_t* file){
+void free_fd(process_t* proc, generic_file_t* file){
     for (int i = 3; i < MAX_FDS; ++i) {
         if (proc->fd_table[i] == file) {
             proc->fd_table[i] = 0;
@@ -88,7 +123,7 @@ void free_pid(uint32_t pid){
     }
 }
 
-Elf64_Phdr* find_responsible_phdr(user_process_t* p, uint64_t virt_addr){
+Elf64_Phdr* find_responsible_phdr(process_t* p, uint64_t virt_addr){
     for (uint32_t i = 0; i < p->n_phdrs;i++){
         if (p->phdrs[i].p_vaddr <= virt_addr && virt_addr < p->phdrs[i].p_vaddr + p->phdrs[i].p_memsz){
             return &p->phdrs[i];
@@ -96,7 +131,7 @@ Elf64_Phdr* find_responsible_phdr(user_process_t* p, uint64_t virt_addr){
     }
     return nullptr;
 }
-Elf64_Phdr* find_lowest_responsible_phdr(user_process_t* p, uint64_t low){
+Elf64_Phdr* find_lowest_responsible_phdr(process_t* p, uint64_t low){
     uint64_t high = ALIGN_UP(low + 1,MEMORY_PAGE_SIZE); // low + 1 to handle when low is exactly the start of a page
     uint32_t min = high;
     if (low >= high) error("phdr alignment broke somehow");
@@ -114,7 +149,7 @@ Elf64_Phdr* find_lowest_responsible_phdr(user_process_t* p, uint64_t low){
 }
 
 
-bool handle_phdr_mapping(user_process_t* p, uint64_t fault_addr){
+bool handle_phdr_mapping(process_t* p, uint64_t fault_addr){
     uint64_t aligned_fault_addr = ALIGN_DOWN(fault_addr,MEMORY_PAGE_SIZE);
     uint64_t page_top = aligned_fault_addr + MEMORY_PAGE_SIZE;
 
@@ -173,7 +208,7 @@ bool handle_phdr_mapping(user_process_t* p, uint64_t fault_addr){
 }
 
 
-void setup_arguments(user_process_t* proc,unsigned char* argv[]){
+void setup_arguments(process_t* proc,unsigned char* argv[]){
     uint64_t page_phys = pmm_alloc_page_frame();
     thread_t* main_thread = proc->main_thread;
     if (!main_thread) error("Failed to get main thread");
@@ -241,7 +276,7 @@ void setup_arguments(user_process_t* proc,unsigned char* argv[]){
     kfree(arg_ptrs); // might be null, but kfree does check that
 }
 
-uint32_t create_user_process(unsigned char* file_path,uint8_t priv_lvl, unsigned char* argv[],process_fds_init_t* start_fds) {
+uint32_t create_process(unsigned char* file_path,uint8_t priv_lvl, unsigned char* argv[],process_fds_init_t* start_fds) {
     uint32_t int_save = get_interrupt_status();
     disable_interrupts();
 
@@ -257,7 +292,7 @@ uint32_t create_user_process(unsigned char* file_path,uint8_t priv_lvl, unsigned
     //allocate a kernel stack
     uint64_t kernel_stack = (uint64_t)kmalloc(MEMORY_PAGE_SIZE);
     
-    user_process_t* process = (user_process_t*)kmalloc(sizeof(user_process_t));
+    process_t* process = (process_t*)kmalloc(sizeof(process_t));
     
     process->process_id = pid;
     
@@ -308,7 +343,7 @@ uint32_t create_user_process(unsigned char* file_path,uint8_t priv_lvl, unsigned
     
     process->page_alloc_start = code_data_pages * MEMORY_PAGE_SIZE;
     
-    vector_append(&user_process_vector,(vector_data_t)process); // too lazy to implement a vector for structs
+    vector_append(&process_vector,(vector_data_t)process); // too lazy to implement a vector for structs
     
     uint64_t* pml4 = create_user_pml4_table();
     
@@ -354,8 +389,8 @@ void load_registers(thread_t* main_thread){
     set_interrupt_status(int_save);
 }
 
-void dispatch_user_process(uint32_t pid){
-    user_process_t* process = get_user_process_by_pid(pid);
+void dispatch_process(uint32_t pid){
+    process_t* process = get_process_by_pid(pid);
     if (process->running) return;
     process->running = 1;
     uint64_t* old_pml4 = mem_get_current_pml4_table();
@@ -363,17 +398,17 @@ void dispatch_user_process(uint32_t pid){
 }
 
 
-void init_user_process_vector(){
-    init_vector(&user_process_vector);
+void init_process_vector(){
+    init_vector(&process_vector);
 }
 
-int kill_user_process(uint32_t pid){
+int kill_process(uint32_t pid){
     if (!(pid > 0 && pid < MAX_PIDS && pid_used[pid])) return SYSCALL_FAIL;
-    user_process_t* process;
-    for (uint32_t i = 0; i < user_process_vector.size;i++){
-        if (((user_process_t*)(user_process_vector.data[i]))->process_id == pid){
-            process = (user_process_t*)(user_process_vector.data[i]);
-            vector_erase(&user_process_vector,i);
+    process_t* process;
+    for (uint32_t i = 0; i < process_vector.size;i++){
+        if (((process_t*)(process_vector.data[i]))->process_id == pid){
+            process = (process_t*)(process_vector.data[i]);
+            vector_erase(&process_vector,i);
             break;
         }
     }
@@ -459,14 +494,14 @@ int run(char* filepath,unsigned char* argv[],process_fds_init_t* start_fds,uint8
     uint8_t old_int_status = get_interrupt_status();
     disable_interrupts();
 
-    uint32_t pid = create_user_process(filepath,priv_lvl,argv,start_fds);
+    uint32_t pid = create_process(filepath,priv_lvl,argv,start_fds);
     
     if (!pid) {
         error("Creating user process failed");
         return -1;
     }
 
-    dispatch_user_process(pid);
+    dispatch_process(pid);
     set_interrupt_status(old_int_status);
 
     return 0;

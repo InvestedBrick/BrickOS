@@ -4,7 +4,7 @@
 
 #include "../tables/interrupts.h"
 #include "../drivers/timer/pit.h"
-#include "user_process.h"
+#include "process.h"
 #include "../filesystem/filesystem.h"
 #include <stdbool.h>
 
@@ -26,7 +26,7 @@ typedef struct thread{
 
     interrupt_stack_frame_t regs;
 
-    struct user_process* owner_proc; 
+    struct process* owner_proc; 
     uint64_t kernel_rsp; 
     uint64_t init_rsp;
     uint64_t init_user_ss;
@@ -70,7 +70,7 @@ void switch_task(interrupt_stack_frame_t* regs);
  * @param usr_proc The user process struct
  * @return The thread id
  */
-int add_thread(struct user_process* usr_proc);
+int add_thread(struct process* usr_proc);
 
 /**
  * remove_thread:
