@@ -8,6 +8,9 @@
 
 static atomic_uint_fast16_t icmp_id;
 
+icmp_socket_t* icmp_sock_head = nullptr;
+mutex_t icmp_sock_queue_lock;
+
 uint16_t get_new_icmp_ident(){
     return atomic_fetch_add(&icmp_id,1);
 }
@@ -116,7 +119,9 @@ void icmp_handle_packet(uint8_t* data, uint32_t len){
     switch (icmp_hdr->icmp_type)
     {
     case ICMP_TYPE_ECHO_REPLY:
-        icmp_handle_echo_reply(ip_hdr, ip_hlen, len);
+    case ICMP_TYPE_TIMESTMP_REPLY:
+        // stuff to just send to every ICMP socket
+        icmp_handle_socket_packet(ip_hdr,ip_hlen, len);
         break;
     case ICMP_TYPE_DEST_UNR_MSG:
         icmp_handle_dest_unreachable(ip_hdr,ip_hlen, len);
@@ -139,9 +144,6 @@ void icmp_handle_packet(uint8_t* data, uint32_t len){
     case ICMP_TYPE_TIMESTMP_MSG:
         icmp_handle_timestamp(ip_hdr,ip_hlen, len);
         break;
-    case ICMP_TYPE_TIMESTMP_REPLY:
-        icmp_handle_timestamp_reply(ip_hdr,ip_hlen, len);
-        break;
     case ICMP_TYPE_INFO_REQ_MSG:
         icmp_handle_info_request(ip_hdr, ip_hlen, len);
         break;
@@ -154,8 +156,35 @@ void icmp_handle_packet(uint8_t* data, uint32_t len){
 
 }
 
-void icmp_handle_echo_reply(ipv4_header_t* ip_hdr, uint8_t ip_hlen, uint32_t total_len){
-    // WIP
+void icmp_handle_socket_packet(ipv4_header_t* ip_hdr, uint8_t ip_hlen, uint32_t total_len){
+    mutex_wait(&icmp_sock_queue_lock,LOCK_TIMEOUT_INF);
+
+    icmp_socket_t* sock = icmp_sock_head;
+    if (!sock) {
+        mutex_signal(&icmp_sock_queue_lock);
+        return;
+    }
+
+    refcnt_packet_t* packet = (refcnt_packet_t*)kmalloc(sizeof(refcnt_packet_t));
+    uint8_t* data_buffer = (uint8_t*)kmalloc(total_len);
+    memcpy(data_buffer,(void*)ip_hdr,total_len);
+    packet->refcnt = 0;
+    packet->packet.data = data_buffer;
+    packet->packet.data_len = total_len;
+    packet->packet.next = nullptr;
+    packet->packet.src_addr.inet_addr = switch_endian32(ip_hdr->src_ip);
+    packet->packet.src_addr.inet_port = 0;
+    packet->packet.src_addr.inet_family = INET_FAM_IPv4;
+
+    while(sock){
+        mutex_wait(&sock->sock.lock,LOCK_TIMEOUT_INF);
+        atomic_fetch_add(&packet->refcnt,1);
+        enqueue_rx_data((generic_proto_socket_t*)sock,(recvd_packet_t*)packet);
+        mutex_signal(&sock->sock.lock);
+        sock = (icmp_socket_t*)sock->sock.next;
+    }
+
+    mutex_signal(&icmp_sock_queue_lock);
 }
 
 void icmp_handle_dest_unreachable(ipv4_header_t* ip_hdr, uint8_t ip_hlen, uint32_t total_len){
@@ -250,10 +279,6 @@ void icmp_handle_timestamp(ipv4_header_t* ip_hdr, uint8_t ip_hlen, uint32_t tota
     // WIP
 }
 
-void icmp_handle_timestamp_reply(ipv4_header_t* ip_hdr, uint8_t ip_hlen, uint32_t total_len){
-    // WIP
-}
-
 void icmp_handle_info_request(ipv4_header_t* ip_hdr,uint8_t ip_hlen, uint32_t total_len){
     // OBSOLETE
 }
@@ -263,11 +288,19 @@ void icmp_handle_info_reply(ipv4_header_t* ip_hdr,uint8_t ip_hlen, uint32_t tota
 }
 
 int icmp_sendto(socket_t* sock, void* buf, uint32_t buf_len, uint32_t flags, sockaddr_t* dst_addr, uint32_t addr_len){
+    icmp_socket_t* icmp_sock = (icmp_socket_t*)sock->prot_sock;
+    in_sockaddr_t* in_addr = (in_sockaddr_t*)dst_addr;
 
+    if (addr_len != sizeof(in_sockaddr_t)) return RAW_IP_RET_FAIL;
+
+    if (send_ip_based_packet(sock,buf,buf_len,in_addr->inet_addr,IP_PROTOCOL_ICMP,nullptr) != IP_SEND_RET_SUCCESS)
+        return ICMP_RET_FAIL;
+
+    return buf_len;
 }
 
 int icmp_recvfrom(socket_t* sock, void* buf, uint32_t buf_len, uint32_t flags, sockaddr_t* src_addr, uint32_t addr_len){
-
+    return generic_inet_recvfrom(sock,buf,buf_len,flags,src_addr,addr_len,true);
 }
 
 proto_handles_t icmp_proto_handles = {

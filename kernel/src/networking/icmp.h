@@ -79,10 +79,15 @@ typedef struct{
     uint32_t extra_payload_len;
 }icmp_send_data_t;
 
-
 typedef struct {
     generic_proto_socket_t sock;
 }icmp_socket_t;
+
+extern icmp_socket_t* icmp_sock_head;
+extern mutex_t icmp_sock_queue_lock;
+
+#define ICMP_RET_FAIL -1
+#define ICMP_RET_SUCCESS 0
 
 /**
  * get_true_icmp_header_size:
@@ -114,7 +119,6 @@ void icmp_handle_packet(uint8_t* data, uint32_t len);
 uint8_t icmp_add_hdr(uint8_t* data, uint32_t* write_off, uint8_t icmp_type, uint8_t icmp_code, uint32_t may_be_used_dword, uint8_t* extra_payload, uint32_t extra_payload_len);
 
 
-void icmp_handle_echo_reply(ipv4_header_t* ip_hdr, uint8_t ip_hlen,uint32_t total_len);
 void icmp_handle_dest_unreachable(ipv4_header_t* ip_hdr, uint8_t ip_hlen,uint32_t total_len);
 void icmp_handle_source_quench(ipv4_header_t* ip_hdr, uint8_t ip_hlen,uint32_t total_len);
 void icmp_handle_redirect(ipv4_header_t* ip_hdr, uint8_t ip_hlen,uint32_t total_len);
@@ -122,8 +126,16 @@ void icmp_handle_echo_request(ipv4_header_t* ip_hdr, uint8_t ip_hlen,uint32_t to
 void icmp_handle_time_exceeded(ipv4_header_t* ip_hdr, uint8_t ip_hlen,uint32_t total_len);
 void icmp_handle_parameter_problem(ipv4_header_t* ip_hdr, uint8_t ip_hlen,uint32_t total_len);
 void icmp_handle_timestamp(ipv4_header_t* ip_hdr, uint8_t ip_hlen,uint32_t total_len);
-void icmp_handle_timestamp_reply(ipv4_header_t* ip_hdr, uint8_t ip_hlen,uint32_t total_len);
 void icmp_handle_info_request(ipv4_header_t* ip_hdr, uint8_t ip_hlen,uint32_t total_len);
 void icmp_handle_info_reply(ipv4_header_t* ip_hdr, uint8_t ip_hlen,uint32_t total_len);
+
+/**
+ * icmp_handle_socket_packet:
+ * Handles all icmp packets that need to be delivered to sockets
+ * @param ip_hdr The IP header of the passed-along data
+ * @param ip_hlen The IP header length
+ * @param total_len The total length of the data
+ */
+void icmp_handle_socket_packet(ipv4_header_t* ip_hdr, uint8_t ip_hlen, uint32_t total_len);
 
 #endif
