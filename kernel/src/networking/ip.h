@@ -75,9 +75,9 @@ typedef struct ipv4_ll_link {
 
 typedef struct raw_ip_recvd_packet {
     recvd_packet_t packet;
-
-    uint8_t protocol;
     atomic_uint_fast32_t refcnt;
+    
+    uint8_t protocol;
 
 }raw_ip_recvd_packet_t;
 
@@ -91,7 +91,7 @@ typedef struct raw_ip_socket {
 
 extern proto_handles_t raw_ip_proto_handles;
 extern raw_ip_socket_t* raw_ip_sock_head;
-extern mutex_t raw_ip_sock_lock;
+extern mutex_t raw_ip_sock_queue_lock;
 
 void init_ip_linked_lists();
 
