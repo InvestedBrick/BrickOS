@@ -161,7 +161,10 @@ void cmd_nwtest(command_t* cmd){
     if (sent_bytes < 0)
     print("Failed to send message\n");
     
-
+    uint64_t timeout = 3000; // timeout in ms
+    if (setsockopt(sock_fd,SOL_SOCKET,SO_RCVTIMEOUT,&timeout,sizeof(timeout)) < 0){
+        print("Failed to set socket timeout\n");
+    }
     unsigned char buffer[128] = {0};
 
     int n_read = recvfrom(sock_fd,buffer,sizeof(buffer),0,0,0);
