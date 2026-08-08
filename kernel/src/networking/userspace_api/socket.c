@@ -1,5 +1,6 @@
 #include "socket.h"
 #include "../udp.h"
+#include "../icmp.h"
 #include "../ip.h"
 #include "../../filesystem/vfs/vfs.h"
 #include "../../memory/kmalloc.h"
@@ -7,7 +8,8 @@
 
 void init_socket_queues(){
     mutex_init(&udp_sock_queue_lock);
-    mutex_init(&raw_ip_sock_lock);
+    mutex_init(&raw_ip_sock_queue_lock);
+    mutex_init(&icmp_sock_queue_lock);
 }
 
 socket_t* valid_socket(user_process_t* p, uint32_t fd){
@@ -176,12 +178,15 @@ uint8_t handle_ip_getopt(socket_t* sock, uint32_t optname, void* optval, uint32_
 
     return SOCKET_GETOPTS_SUCCESS;
 }
+
 int socket_close(generic_file_t* file){
     socket_t* sock = (socket_t*)file->generic_data;
 
     if (sock->prot_sock && sock->cleanup_prot_sock){
         sock->cleanup_prot_sock(sock->prot_sock);
     }
+
+    kfree(sock);
     
     return 0;
 } 
@@ -213,7 +218,7 @@ uint8_t init_socket(user_process_t* proc,socket_t* sock, socket_domain_e domain,
         sock->prot_sock = (generic_proto_socket_t*)kmalloc(sizeof(raw_ip_socket_t));
         sock->proto_ops = &raw_ip_proto_handles;
         sock->cleanup_prot_sock = raw_ip_cleanup_sock;
-        init_prot_socket(sock->prot_sock,sizeof(raw_ip_socket_t),(generic_proto_socket_t**)&raw_ip_sock_head,&raw_ip_sock_lock);
+        init_prot_socket(sock->prot_sock,sizeof(raw_ip_socket_t),(generic_proto_socket_t**)&raw_ip_sock_head,&raw_ip_sock_queue_lock);
         ((raw_ip_socket_t*)sock->prot_sock)->protocol = protocol;
         break;
     case (SOCKET_INET << 16 | SOCKET_TYPE_RAW | IP_PROTOCOL_ICMP):
@@ -238,7 +243,7 @@ uint8_t init_socket(user_process_t* proc,socket_t* sock, socket_domain_e domain,
     return SOCKET_OPS_INIT_SUCCESS;
 }
 
-void erase_packet_from_rx_queue(generic_proto_socket_t* sock, recvd_packet_t* packet){
+void remove_packet_from_rx_queue(generic_proto_socket_t* sock, recvd_packet_t* packet){
     recvd_packet_t* curr = sock->rx_queue;
     if (curr == packet){
         sock->rx_queue = curr->next;
@@ -252,8 +257,7 @@ void erase_packet_from_rx_queue(generic_proto_socket_t* sock, recvd_packet_t* pa
     curr->next = packet->next;
 cleanup:
     sock->rx_queue_size -= packet->data_len;
-    kfree(packet->data);
-    kfree(packet);
+    // Freeing not done here since 
 }
 
 void socket_clear_rx_queue(generic_proto_socket_t* sock){
@@ -339,8 +343,9 @@ void cleanup_socket(generic_proto_socket_t** queue_head,generic_proto_socket_t* 
         }
         prev->next = sock->next;
     }
-    mutex_signal(queue_lock);
+
     mutex_wait(&sock->lock,LOCK_TIMEOUT_INF);
+    mutex_signal(queue_lock);
     
     socket_clear_rx_queue(sock);
     socket_clear_wait_queue(sock);
@@ -354,4 +359,54 @@ void init_prot_socket(generic_proto_socket_t* sock, uint32_t sock_size,generic_p
 
 
     insert_socket(queue_head,sock,queue_lock);
+}
+
+int generic_inet_recvfrom(socket_t* sock, void* buf, uint32_t buf_len, uint32_t flags, sockaddr_t* src_addr, uint32_t addr_len, uint8_t ref_packet){
+    
+    generic_proto_socket_t* gen_sock = sock->prot_sock;
+    in_sockaddr_t* in_addr = (in_sockaddr_t*)src_addr;
+
+    recvd_packet_t* packet = nullptr;
+    mutex_wait(&gen_sock->lock,LOCK_TIMEOUT_INF);
+    while (true){
+        packet = gen_sock->rx_queue;
+        if (packet) break;
+
+        if (flags & MSG_DONTWAIT) {
+            mutex_signal(&gen_sock->lock);
+            return SOCKET_GENERIC_RECVFROM_FAIL;
+        }
+
+        add_packet_waiting_thread(gen_sock,get_current_thread(),sock->sock_opts.recv_timeout);
+        
+        flags |= MSG_DONTWAIT;
+
+        mutex_signal(&gen_sock->lock);
+
+        invoke_scheduler();
+        mutex_wait(&gen_sock->lock,LOCK_TIMEOUT_INF);
+    }
+
+    if (in_addr && addr_len == sizeof(in_sockaddr_t)){
+        in_addr->inet_family = packet->src_addr.inet_family;
+        in_addr->inet_addr = packet->src_addr.inet_addr;
+        in_addr->inet_port = packet->src_addr.inet_port;
+    }
+
+    uint32_t cpy_len = min(buf_len, packet->data_len);
+    memcpy(buf,packet->data,cpy_len);
+
+    if (!(flags & MSG_PEEK)){
+        remove_packet_from_rx_queue(gen_sock,packet);
+    }
+
+    if (ref_packet && atomic_fetch_sub(&((refcnt_packet_t*)packet)->refcnt,1) == 1) {
+        kfree(packet->data);
+        kfree(packet);
+    }
+    mutex_signal(&gen_sock->lock);
+
+
+    return cpy_len;
+
 }
