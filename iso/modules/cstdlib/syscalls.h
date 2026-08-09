@@ -254,11 +254,11 @@ int bind(uint32_t sockfd, sockaddr_t* addr, uint32_t addrlen);
  * @param len The maximum number of bytes to read
  * @param flags Flags for the receive operation (e. g. MSG_DONTWAIT)
  * @param src_addr A pointer to a sockaddr_t struct to write the source address into (may be null)
- * @param addrlen The size of the src_addr struct (must be sizeof(sockaddr_t) if src_addr is not null)
+ * @param addrlen The variable to write the size of src_addr to
  * 
  * @return The number of bytes received, or -1 on error
  */
-int recvfrom(uint32_t sockfd, void* buf, uint32_t len, uint32_t flags, sockaddr_t* src_addr, uint32_t addrlen);
+int recvfrom(uint32_t sockfd, void* buf, uint32_t len, uint32_t flags, sockaddr_t* src_addr, uint32_t* addrlen);
 
 /**
  * sendto:

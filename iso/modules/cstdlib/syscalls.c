@@ -244,12 +244,12 @@ int bind(uint32_t sockfd, sockaddr_t* addr, uint32_t addrlen){
     return ret;
 }
 
-int recvfrom(uint32_t sockfd, void* buf, uint32_t len, uint32_t flags, sockaddr_t* src_addr, uint32_t addrlen){
+int recvfrom(uint32_t sockfd, void* buf, uint32_t len, uint32_t flags, sockaddr_t* src_addr, uint32_t* addrlen){
     int ret;
 
     register uint64_t r10 asm("r10") = flags;
     register uint64_t r8  asm("r8")  = (uint64_t)src_addr;
-    register uint64_t r9  asm("r9")  = addrlen;
+    register uint64_t r9  asm("r9")  = (uint64_t)addrlen;
 
     asm volatile (
         "int $0x30"
