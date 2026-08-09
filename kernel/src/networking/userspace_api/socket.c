@@ -221,9 +221,13 @@ uint8_t init_socket(process_t* proc,socket_t* sock, socket_domain_e domain, sock
         init_prot_socket(sock->prot_sock,sizeof(raw_ip_socket_t),(generic_proto_socket_t**)&raw_ip_sock_head,&raw_ip_sock_queue_lock);
         ((raw_ip_socket_t*)sock->prot_sock)->protocol = protocol;
         break;
-    case (SOCKET_INET << 16 | SOCKET_TYPE_RAW | IP_PROTOCOL_ICMP):
-        if (proc->priv_lvl > PRIV_SPECIAL) return  SOCKET_OPS_INIT_FAILURE; 
-
+    case (SOCKET_INET << 16 | SOCKET_TYPE_RAW << 8 | IP_PROTOCOL_ICMP):
+        //if (proc->priv_lvl > PRIV_SPECIAL) return  SOCKET_OPS_INIT_FAILURE; 
+        sock->prot_sock = (icmp_socket_t*)kmalloc(sizeof(icmp_socket_t));
+        sock->proto_ops = &icmp_proto_handles;
+        sock->cleanup_prot_sock = icmp_cleanup_sock;
+        init_prot_socket(sock->prot_sock,sizeof(icmp_socket_t),(generic_proto_socket_t**)&icmp_sock_head,&icmp_sock_queue_lock);
+        break;
     default:
         return SOCKET_OPS_INIT_FAILURE;
     }
@@ -361,7 +365,7 @@ void init_prot_socket(generic_proto_socket_t* sock, uint32_t sock_size,generic_p
     insert_socket(queue_head,sock,queue_lock);
 }
 
-int generic_inet_recvfrom(socket_t* sock, void* buf, uint32_t buf_len, uint32_t flags, sockaddr_t* src_addr, uint32_t addr_len, uint8_t ref_packet){
+int generic_inet_recvfrom(socket_t* sock, void* buf, uint32_t buf_len, uint32_t flags, sockaddr_t* src_addr, uint32_t* addr_len, uint8_t ref_packet){
     
     generic_proto_socket_t* gen_sock = sock->prot_sock;
     in_sockaddr_t* in_addr = (in_sockaddr_t*)src_addr;
@@ -387,10 +391,11 @@ int generic_inet_recvfrom(socket_t* sock, void* buf, uint32_t buf_len, uint32_t 
         mutex_wait(&gen_sock->lock,LOCK_TIMEOUT_INF);
     }
 
-    if (in_addr && addr_len == sizeof(in_sockaddr_t)){
+    if (in_addr){
         in_addr->inet_family = packet->src_addr.inet_family;
         in_addr->inet_addr = packet->src_addr.inet_addr;
         in_addr->inet_port = packet->src_addr.inet_port;
+        *addr_len = sizeof(*in_addr);
     }
 
     uint32_t cpy_len = min(buf_len, packet->data_len);
