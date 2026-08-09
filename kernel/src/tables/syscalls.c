@@ -452,7 +452,7 @@ uint64_t sys_bind(process_t* p, uint32_t fd, sockaddr_t* sock_addr, uint32_t soc
     return sock->proto_ops->bind(sock,sock_addr,sock_addr_len);
 }
 
-uint64_t sys_recvfrom(process_t* p, uint32_t fd, void* buf, uint32_t buf_len, uint32_t flags, sockaddr_t* src_addr, uint32_t addr_len){
+uint64_t sys_recvfrom(process_t* p, uint32_t fd, void* buf, uint32_t buf_len, uint32_t flags, sockaddr_t* src_addr, uint32_t* addr_len){
     socket_t* sock = valid_socket(p, fd);
     if (!sock || !sock->prot_sock || !sock->proto_ops || !sock->proto_ops->recvfrom) return SYSCALL_FAIL;
 

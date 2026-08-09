@@ -7,20 +7,6 @@
 #include "../processes/spinlocks.h"
 #include "network_defines.h"
 
-#define IP_VERSION_4 0x4
-
-#define IP_TOS_DELAY_LOW        (1 << 3)
-#define IP_TOS_THROUGHPUT_HIGH  (1 << 4)
-#define IP_TOS_RELIABILITY_HIGH (1 << 5)
-
-#define IP_TOS_PREC_ROUTINE         0b000
-#define IP_TOS_PREC_PRIORITY        0b001
-#define IP_TOS_PREC_IMMEDIATE       0b010
-#define IP_TOS_PREC_FLASH           0b011
-#define IP_TOS_PREC_FLASH_OVERRIDE  0b100
-#define IP_TOS_PREC_CRITIC_ECP      0b101
-#define IP_TOS_PREC_INTERNETWORK    0b110
-#define IP_TOS_PREC_NETWORK_CONTROL 0b111
 
 #define IP_TOS_PREC_MASK 0x1f
 // routine with no special requests
@@ -42,18 +28,7 @@
 
 // 15 secs for the whole packet to arrive
 #define IP_PACKET_TIMEOUT 15
-typedef struct {
-    uint8_t version_ihl; // 4 bits version, 4 bits internet header length (in 32 bit words)
-    uint8_t type_of_service;
-    uint16_t total_length; // len of data in 8-bit bytes
-    uint16_t ident; // chosen by sender
-    uint16_t flags_fragment_offset; // 3 bits flags, 13 bits fragment offset
-    uint8_t time_to_live;
-    uint8_t protocol;
-    uint16_t header_checksum;
-    uint32_t src_ip;
-    uint32_t dst_ip;
-}__attribute__((packed)) ipv4_header_t;
+
 
 typedef struct ipv4_packet_part{
     uint8_t no_more_frags;

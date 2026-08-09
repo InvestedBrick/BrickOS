@@ -53,7 +53,7 @@ uint64_t sys_socket(process_t* p, uint32_t domain, uint32_t sock_type, uint8_t p
 
 uint64_t sys_bind(process_t* p, uint32_t fd, sockaddr_t* sock_addr, uint32_t sock_addr_len);
 
-uint64_t sys_recvfrom(process_t* p, uint32_t fd, void* buf, uint32_t buf_len, uint32_t flags, sockaddr_t* src_addr, uint32_t addr_len);
+uint64_t sys_recvfrom(process_t* p, uint32_t fd, void* buf, uint32_t buf_len, uint32_t flags, sockaddr_t* src_addr, uint32_t* addr_len);
 
 uint64_t sys_sendto(process_t* p, uint32_t fd, void* buf, uint32_t buf_len, uint32_t flags, sockaddr_t* dst_addr, uint32_t addr_len);
 

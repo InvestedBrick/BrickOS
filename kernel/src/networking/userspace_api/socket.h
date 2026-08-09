@@ -39,7 +39,7 @@ typedef struct generic_proto_socket {
 typedef struct {
     int (*bind)     (socket_t* sock, sockaddr_t* addr, uint32_t len);
     int (*sendto)   (socket_t* sock, void* buf, uint32_t buf_len, uint32_t flags, sockaddr_t* dst_addr, uint32_t addr_len);
-    int (*recvfrom) (socket_t* sock, void* buf, uint32_t buf_len, uint32_t flags, sockaddr_t* src_addr, uint32_t addr_len);
+    int (*recvfrom) (socket_t* sock, void* buf, uint32_t buf_len, uint32_t flags, sockaddr_t* src_addr, uint32_t* addr_len);
 }proto_handles_t;
 
 typedef struct {
@@ -243,6 +243,6 @@ void init_prot_socket(generic_proto_socket_t* sock, uint32_t sock_size,generic_p
  * 
  * @return The number of bytes recieved if successful, otherwise SOCKET_GENERIC_RECVFROM_FAIL
  */
-int generic_inet_recvfrom(socket_t* sock, void* buf, uint32_t buf_len, uint32_t flags, sockaddr_t* src_addr, uint32_t addr_len, uint8_t ref_packet);
+int generic_inet_recvfrom(socket_t* sock, void* buf, uint32_t buf_len, uint32_t flags, sockaddr_t* src_addr, uint32_t* addr_len, uint8_t ref_packet);
 
 #endif

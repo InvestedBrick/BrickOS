@@ -303,6 +303,10 @@ int icmp_recvfrom(socket_t* sock, void* buf, uint32_t buf_len, uint32_t flags, s
     return generic_inet_recvfrom(sock,buf,buf_len,flags,src_addr,addr_len,true);
 }
 
+
+void icmp_cleanup_sock(generic_proto_socket_t* sock){
+    cleanup_socket((generic_proto_socket_t**)&icmp_sock_head,sock,&icmp_sock_queue_lock);
+}
 proto_handles_t icmp_proto_handles = {
     .bind = 0, // not needed rn
     .sendto = icmp_sendto,

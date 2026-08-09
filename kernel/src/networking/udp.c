@@ -73,7 +73,7 @@ int udp_sendto(socket_t* sock, void* buf, uint32_t buf_len, uint32_t flags, sock
     return buf_len;
 }
 
-int udp_recvfrom(socket_t* sock, void* buf, uint32_t buf_len, uint32_t flags, sockaddr_t* src_addr, uint32_t addr_len){
+int udp_recvfrom(socket_t* sock, void* buf, uint32_t buf_len, uint32_t flags, sockaddr_t* src_addr, uint32_t* addr_len){
     
     return generic_inet_recvfrom(sock,buf,buf_len,flags,src_addr,addr_len,false);
 }

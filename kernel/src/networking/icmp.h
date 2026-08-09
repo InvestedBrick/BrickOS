@@ -3,18 +3,8 @@
 
 #include <stdint.h>
 #include "userspace_api/socket.h"
+#include "network_defines.h"
 #include "ip.h"
-#define ICMP_TYPE_ECHO_REPLY 0
-#define ICMP_TYPE_DEST_UNR_MSG 3
-#define ICMP_TYPE_SRC_QUENCH_MSG 4
-#define ICMP_TYPE_REDIR_MSG 5
-#define ICMP_TYPE_ECHO_MSG 8
-#define ICMP_TYPE_TIME_EXC_MSG 11
-#define ICMP_TYPE_PARAM_PRBLM_MSG 12
-#define ICMP_TYPE_TIMESTMP_MSG 13
-#define ICMP_TYPE_TIMESTMP_REPLY 14
-#define ICMP_TYPE_INFO_REQ_MSG 15
-#define ICMP_TYPE_INFO_REPLY_MSG 16
 
 #define ICMP_HDR_RET_SUCCESS 0x0
 #define ICMP_HDR_RET_DATA_OVERFLOW 0x1
@@ -28,46 +18,6 @@
 
 #define DEFAULT_ICMP_HDR_SIZE 8
 
-typedef struct {
-    uint16_t echo_ident;
-    uint16_t echo_seq;
-}__attribute__((packed)) icmp_echo_t;
-
-typedef struct {
-    uint16_t info_ident;
-    uint16_t info_seq;
-}__attribute__((packed)) icmp_info_t;
-
-typedef struct {
-    uint16_t time_stmp_ident;
-    uint16_t time_stmp_seq;
-    uint32_t originate_timestmp;
-    uint32_t recv_timestmp;
-    uint32_t transmit_timestmp;
-}__attribute__((packed)) icmp_timestamp_t;
-
-typedef struct {
-    uint8_t ptr;
-}__attribute__((packed)) icmp_param_problem_t;
-
-typedef struct {
-    uint32_t gateway_ip_addr;
-}__attribute__((packed)) icmp_redir_t;
-
-typedef struct {
-    uint8_t icmp_type;
-    uint8_t icmp_code;
-    uint16_t checksum;
-    union {
-        uint32_t unused;
-        icmp_echo_t echo;
-        icmp_redir_t redir;
-        icmp_param_problem_t param_problem;
-        icmp_timestamp_t timestamp;
-        icmp_info_t info;
-    }un;
-
-}__attribute__((packed)) icmp_header_t;
 
 typedef struct{
     uint8_t icmp_type;
@@ -85,6 +35,7 @@ typedef struct {
 
 extern icmp_socket_t* icmp_sock_head;
 extern mutex_t icmp_sock_queue_lock;
+extern proto_handles_t icmp_proto_handles;
 
 #define ICMP_RET_FAIL -1
 #define ICMP_RET_SUCCESS 0
@@ -138,4 +89,5 @@ void icmp_handle_info_reply(ipv4_header_t* ip_hdr, uint8_t ip_hlen,uint32_t tota
  */
 void icmp_handle_socket_packet(ipv4_header_t* ip_hdr, uint8_t ip_hlen, uint32_t total_len);
 
+void icmp_cleanup_sock(generic_proto_socket_t* sock);
 #endif
