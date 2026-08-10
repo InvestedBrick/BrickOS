@@ -105,15 +105,7 @@ typedef struct {
     uint8_t icmp_type;
     uint8_t icmp_code;
     uint16_t checksum;
-    union {
-        uint32_t unused;
-        icmp_echo_t echo;
-        icmp_redir_t redir;
-        icmp_param_problem_t param_problem;
-        icmp_timestamp_t timestamp;
-        icmp_info_t info;
-    }un;
-
+    // any specific headers after this need to be manually accessed
 }__attribute__((packed)) icmp_header_t;
 
 #define IP_VERSION_4 0x4

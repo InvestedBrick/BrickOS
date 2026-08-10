@@ -223,7 +223,7 @@ uint8_t init_socket(process_t* proc,socket_t* sock, socket_domain_e domain, sock
         break;
     case (SOCKET_INET << 16 | SOCKET_TYPE_RAW << 8 | IP_PROTOCOL_ICMP):
         //if (proc->priv_lvl > PRIV_SPECIAL) return  SOCKET_OPS_INIT_FAILURE; 
-        sock->prot_sock = (icmp_socket_t*)kmalloc(sizeof(icmp_socket_t));
+        sock->prot_sock = (generic_proto_socket_t*)kmalloc(sizeof(icmp_socket_t));
         sock->proto_ops = &icmp_proto_handles;
         sock->cleanup_prot_sock = icmp_cleanup_sock;
         init_prot_socket(sock->prot_sock,sizeof(icmp_socket_t),(generic_proto_socket_t**)&icmp_sock_head,&icmp_sock_queue_lock);
