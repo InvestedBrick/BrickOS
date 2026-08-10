@@ -253,7 +253,6 @@ void i8254x_interrupt_handler(interrupt_stack_frame_t* frame){
         if (!(tx_desc->status & I8254x_TX_STAT_DD)) break;
 
         pmm_free_page_frame(tx_desc->buff_addr);
-        tx_desc->status = 0;
         tx_desc->cmd = 0;
         i82540em->tx_cleanup = (i82540em->tx_cleanup + 1) % I8254x_N_TX_DESCRS;
     }
