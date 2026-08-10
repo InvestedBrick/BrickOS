@@ -196,7 +196,7 @@ void handle_software_interrupt(interrupt_stack_frame_t* stack_frame){
         rax =  sys_bind(p,stack_frame->rdi,(sockaddr_t*)stack_frame->rsi,stack_frame->rdx);
         break;
     case SYS_RECVFROM:
-        rax =  sys_recvfrom(p,stack_frame->rdi,(void*)stack_frame->rsi,stack_frame->rdx,stack_frame->r10,(sockaddr_t*)stack_frame->r8,stack_frame->r9);
+        rax =  sys_recvfrom(p,stack_frame->rdi,(void*)stack_frame->rsi,stack_frame->rdx,stack_frame->r10,(sockaddr_t*)stack_frame->r8,(uint32_t*)stack_frame->r9);
         break;
     case SYS_SENDTO:
         rax =  sys_sendto(p,stack_frame->rdi,(void*)stack_frame->rsi,stack_frame->rdx,stack_frame->r10,(sockaddr_t*)stack_frame->r8,stack_frame->r9);
@@ -252,7 +252,7 @@ void page_fault_handler(process_t* p,uint64_t fault_addr,interrupt_stack_frame_t
         if (stack_frame->error_code & 0x10) error("Non-Executable instruction fetch");
         if (stack_frame->error_code & 0x20) error("Protection key violation");
 
-        stack_frame->rbx = 1; // exit code
+        stack_frame->rdi = 1; // exit code
         set_interrupt_status(int_status);
         sys_exit(p,stack_frame);
     }
