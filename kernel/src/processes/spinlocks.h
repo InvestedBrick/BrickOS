@@ -5,39 +5,52 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-typedef atomic_flag Spinlock;
+typedef atomic_flag spinlock_t;
+
+struct thread;
+typedef struct thread thread_t;
+
+typedef struct lock_waiting_thread {
+    struct lock_waiting_thread* next;
+    thread_t* thread;
+    bool signaled;
+
+}lock_waiting_thread_t;
 
 typedef struct {
-    Spinlock lock;
-    int32_t cnt;
+    spinlock_t lock;
+    uint32_t cnt;
+    lock_waiting_thread_t* wait_queue;
 } semaphore_t;
 
 typedef struct {
-    Spinlock lock;
+    spinlock_t lock;
+    lock_waiting_thread_t* wait_queue;
+    thread_t* owner;
     bool free;
 }mutex_t;
 
-#define LOCK_TIMEOUT_INF (uint32_t)-1
+#define LOCK_TIMEOUT_INF (uint64_t)-1
 
 /**
- * spinlock_aquire:
- * Tries to aquire a spinlock and switches to another task if currently locked
+ * spinlock_acquire:
+ * Tries to acquire a spinlock and switches to another task if currently locked
  * @param lock The spinlock to acquire
  */
-void spinlock_aquire(Spinlock* lock);
+void spinlock_acquire(spinlock_t* lock);
 /**
  * spinlock_release:
  * Releases a spinlock
  * @param lock The spinlock to release
  */
-void spinlock_release(Spinlock* lock);
+void spinlock_release(spinlock_t* lock);
 
 /**
  * spinlock_init:
  * Initializes a spinlock
  * @param lock The spinlock to initialize
  */
-void spinlock_init(Spinlock* lock);
+void spinlock_init(spinlock_t* lock);
 
 /**
  * mutex_wait:
@@ -46,7 +59,7 @@ void spinlock_init(Spinlock* lock);
  * @param timeout The timeout in milliseconds
  * @return true if the mutex was acquired, false if timed out
  */
-bool mutex_wait(mutex_t* mutex,uint32_t timeout);
+bool mutex_wait(mutex_t* mutex,uint64_t timeout);
 
 /**
  * mutex_signal:
@@ -70,7 +83,7 @@ void mutex_init(mutex_t* mutex);
  * @param timeout The timeout in milliseconds
  * @return true if the semaphore was acquired, false if timed out
  */
-bool semaphore_wait(semaphore_t* sem, uint32_t timeout);
+bool semaphore_wait(semaphore_t* sem, uint64_t timeout);
 
 /**
  * semaphore_signal:
@@ -85,5 +98,5 @@ void semaphore_signal(semaphore_t* sem);
  * @param sem The semaphore to initialize
  * @param n The initial count of the semaphore
  */
-void semaphore_init(semaphore_t* sem, int32_t n);
+void semaphore_init(semaphore_t* sem, uint32_t n);
 #endif
