@@ -18,31 +18,27 @@ void spinlock_release(spinlock_t* lock){
 
 void mutex_init(mutex_t* mutex){
     spinlock_init(&mutex->lock);
-    mutex->free = true;
     mutex->wait_queue = nullptr;
 }
 
-lock_waiting_thread_t* block_current_thread(lock_waiting_thread_t** wait_queue, uint64_t timeout, spinlock_t* wait_lock){
+lock_waiting_thread_t* block_current_thread(lock_waiting_thread_t** wait_queue, uint64_t timeout){
     thread_t* curr_thread = get_current_thread();
-    lock_waiting_thread_t* wthread = (lock_waiting_thread_t*)kmalloc(sizeof(lock_waiting_thread_t));
-    wthread->next = nullptr;
-    wthread->signaled = false;
-    wthread->thread = curr_thread;
+    curr_thread->lock_wthread.next = nullptr;
+    curr_thread->lock_wthread.wait_state = WAITING;
+    
+    lock_waiting_thread_t* curr = *wait_queue;
+    if (!curr) *wait_queue = &curr_thread->lock_wthread;
+    else{
+        while(curr->next) curr = curr->next;
+        curr->next = &curr_thread->lock_wthread;
+    }
     
     uint64_t timeout_ticks = MS_TO_TICKS(timeout);
     if (timeout == LOCK_TIMEOUT_INF) timeout_ticks = THREAD_ETERNAL_SLEEP;
 
     add_sleeping_thread(curr_thread,timeout_ticks);
-    spinlock_acquire(wait_lock);
-    lock_waiting_thread_t* curr = *wait_queue;
-    if (!curr) *wait_queue = wthread;
-    else{
-        while(curr->next) curr = curr->next;
-        curr->next = wthread;
-    }
-    spinlock_release(wait_lock);
 
-    return wthread;
+    return &curr_thread->lock_wthread;
 }
 
 void unlink_waiting_thread(lock_waiting_thread_t** wait_queue, lock_waiting_thread_t* target){
@@ -61,28 +57,32 @@ void unlink_waiting_thread(lock_waiting_thread_t** wait_queue, lock_waiting_thre
 
 bool mutex_wait(mutex_t* mutex,uint64_t timeout){
     spinlock_acquire(&mutex->lock);
-    if (mutex->free){
-        mutex->free = false;
-        mutex->owner = get_current_thread();
+    thread_t* curr_thread = get_current_thread();
+    if (!mutex->owner){
+        mutex->owner = curr_thread;
         spinlock_release(&mutex->lock);
         return true;
     }
-    spinlock_release(&mutex->lock);
-    if (!timeout) return false; 
+    
+    if (!timeout || mutex->owner == curr_thread) {
+        spinlock_release(&mutex->lock);    
+        return false; 
+    }
 
-    lock_waiting_thread_t* wthread = block_current_thread(&mutex->wait_queue,timeout,&mutex->lock);
+    lock_waiting_thread_t* wthread = block_current_thread(&mutex->wait_queue,timeout);
+    spinlock_release(&mutex->lock);
     invoke_scheduler();
 
     spinlock_acquire(&mutex->lock);
-    uint8_t signaled = wthread->signaled;
+    uint8_t signaled = wthread->wait_state == SIGNALED;
     if (!signaled) {
         unlink_waiting_thread(&mutex->wait_queue, wthread);
     }
     spinlock_release(&mutex->lock);
-    kfree(wthread);
 
     return signaled;
 }
+
 void mutex_signal(mutex_t* mutex){
     spinlock_acquire(&mutex->lock);
     thread_t* curr_thread = get_current_thread();
@@ -95,10 +95,9 @@ void mutex_signal(mutex_t* mutex){
         lock_waiting_thread_t* wthread = mutex->wait_queue;
         mutex->wait_queue = wthread->next;
         mutex->owner = wthread->thread;
-        wthread->signaled = true;
+        if (wthread->wait_state == WAITING) wthread->wait_state = SIGNALED;
         wakeup_thread(wthread->thread);
     }else{
-        mutex->free = true;
         mutex->owner = nullptr;
     }
 
@@ -118,28 +117,31 @@ bool semaphore_wait(semaphore_t* sem, uint64_t timeout){
         spinlock_release(&sem->lock);
         return true;
     }
-    spinlock_release(&sem->lock);
-    if (!timeout) return false;
+    if (!timeout) {
+        spinlock_release(&sem->lock);
+        return false;
+    }
 
-    lock_waiting_thread_t* wthread = block_current_thread(&sem->wait_queue,timeout,&sem->lock);
+    lock_waiting_thread_t* wthread = block_current_thread(&sem->wait_queue,timeout);
+    spinlock_release(&sem->lock);
     invoke_scheduler();
     
     spinlock_acquire(&sem->lock);
-    uint8_t signaled = wthread->signaled;
+    uint8_t signaled = wthread->wait_state == SIGNALED;
     if (!signaled) {
         unlink_waiting_thread(&sem->wait_queue, wthread);
     }
     spinlock_release(&sem->lock);
-    kfree(wthread);
 
     return signaled;
 }
+
 void semaphore_signal(semaphore_t* sem){
     spinlock_acquire(&sem->lock);
     if (sem->wait_queue){
         lock_waiting_thread_t* wthread = sem->wait_queue;
         sem->wait_queue = wthread->next;
-        wthread->signaled = true;
+        if (wthread->wait_state == WAITING) wthread->wait_state = SIGNALED;
         wakeup_thread(wthread->thread);
     }else{
         sem->cnt++;

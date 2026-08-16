@@ -4,18 +4,15 @@
 #include <stdatomic.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include "scheduler.h"
 
 typedef atomic_flag spinlock_t;
 
 struct thread;
 typedef struct thread thread_t;
 
-typedef struct lock_waiting_thread {
-    struct lock_waiting_thread* next;
-    thread_t* thread;
-    bool signaled;
-
-}lock_waiting_thread_t;
+struct lock_waiting_thread;
+typedef struct lock_waiting_thread lock_waiting_thread_t;
 
 typedef struct {
     spinlock_t lock;
@@ -27,7 +24,6 @@ typedef struct {
     spinlock_t lock;
     lock_waiting_thread_t* wait_queue;
     thread_t* owner;
-    bool free;
 }mutex_t;
 
 #define LOCK_TIMEOUT_INF (uint64_t)-1
