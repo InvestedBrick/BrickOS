@@ -307,7 +307,7 @@ uacpi_status uacpi_kernel_uninstall_interrupt_handler(uacpi_interrupt_handler ha
 }
 
 uacpi_handle uacpi_kernel_create_spinlock(void){
-    Spinlock* lock = (Spinlock*)kmalloc(sizeof(Spinlock));
+    spinlock_t* lock = (spinlock_t*)kmalloc(sizeof(spinlock_t));
     spinlock_init(lock);
     return (uacpi_handle)lock;
 }
@@ -315,12 +315,12 @@ uacpi_handle uacpi_kernel_create_spinlock(void){
 void uacpi_kernel_free_spinlock(uacpi_handle handle){ kfree(handle); }
 
 uacpi_cpu_flags uacpi_kernel_lock_spinlock(uacpi_handle handle){
-    Spinlock* lock = (Spinlock*)handle;
+    spinlock_t* lock = (spinlock_t*)handle;
     uacpi_cpu_flags flags;
 
     asm volatile("pushfq; popq %0; cli" : "=r"(flags) :: "memory");
 
-    spinlock_aquire(handle);
+    spinlock_acquire(handle);
 
     return flags;
 }
