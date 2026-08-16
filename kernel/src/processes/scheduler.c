@@ -10,14 +10,16 @@
 #include "../filesystem/filesystem.h"
 #include "../kernel_header.h"
 #include "../utilities/vector.h"
-#include <stdbool.h>
 #include "../ACPI/apic.h"
 #include "../tables/timer_callbacks.h"
+#include "spinlocks.h"
+#include <stdbool.h>
 
 thread_t* t_queue;
-thread_t* current_thread;
-uint8_t first_switch = 1;
 sleeping_thread_t* sleeping_thread_head;
+thread_t* current_thread;
+
+uint8_t first_switch = 1;
 extern uint32_t stack_top;
 
 void invoke_scheduler(){
@@ -35,52 +37,35 @@ void invoke_scheduler(){
     );
 }
 
+//TODO: sort sleeping threads after wakeup tick, so that wakeup() becomes O(1)
 void add_sleeping_thread(thread_t* thread, uint64_t sleep_ticks){
-    sleeping_thread_t* sleepy_thread = (sleeping_thread_t*)kmalloc(sizeof(sleeping_thread_t));
+    if (thread->exec_state == EXEC_STATE_SLEEPING) return;
     thread->exec_state = EXEC_STATE_SLEEPING;
-    sleepy_thread->thread = thread;
-    if (sleep_ticks == THREAD_ETERNAL_SLEEP) 
-        sleepy_thread->wakeup_tick = THREAD_ETERNAL_SLEEP;
-    else
-        sleepy_thread->wakeup_tick = ticks + sleep_ticks;
+    thread->sleeping_thread.thread = thread;
+    thread->sleeping_thread.wakeup_tick = ticks + min(UINT64_MAX - ticks, sleep_ticks);
+    thread->sleeping_thread.next = sleeping_thread_head;
+    sleeping_thread_head = &thread->sleeping_thread;
 
-    sleepy_thread->next = sleeping_thread_head;
-    sleeping_thread_head = sleepy_thread;
-}
-
-void remove_sleeping_thread_with_prev(sleeping_thread_t* prev, sleeping_thread_t* sleepy_thread){
-    if (prev == nullptr) {
-        sleeping_thread_head = sleepy_thread->next;
-    }else {
-        prev->next = sleepy_thread->next;
-    }
-    kfree(sleepy_thread);
-}
-
-void remove_sleeping_thread(sleeping_thread_t* sleepy_thread){
-    sleeping_thread_t* prev = nullptr;
-    sleeping_thread_t* curr = sleeping_thread_head;
-
-    while (curr != nullptr) {
-        if (curr == sleepy_thread) {
-            remove_sleeping_thread_with_prev(prev, curr);
-            return;
-        }
-        prev = curr;
-        curr = curr->next;
-    }
 }
 
 void wakeup_thread(thread_t* thread){
     if (thread->exec_state != EXEC_STATE_SLEEPING) return;
 
+    sleeping_thread_t* prev = nullptr;
     sleeping_thread_t* curr = sleeping_thread_head;
     while(curr){
         if (curr->thread == thread) {
-            remove_sleeping_thread(curr);
+
+            if (prev)
+                prev->next = curr->next;
+            else
+                sleeping_thread_head = curr->next;
+            
+            thread->sleeping_thread.next = nullptr;
             thread->exec_state = EXEC_STATE_RUNNING;
-            break;
+            return;
         }
+        prev = curr;
         curr = curr->next;
     }
 }
@@ -89,17 +74,24 @@ void manage_sleeping_threads(){
     sleeping_thread_t* prev = nullptr;
     sleeping_thread_t* curr = sleeping_thread_head;
 
-    while (curr != nullptr) {
-        sleeping_thread_t* next = curr->next;
-
+    while (curr) {
         if (curr->wakeup_tick <= ticks) {
+            sleeping_thread_t* next = curr->next;
+
+            if (prev)
+                prev->next = next;
+            else
+                sleeping_thread_head = next;
+
+            curr->next = nullptr;
+            curr->thread->lock_wthread.wait_state = TIMED_OUT;
             curr->thread->exec_state = EXEC_STATE_RUNNING;
-            remove_sleeping_thread_with_prev(prev, curr);
+
+            curr = next;
         } else {
             prev = curr;
+            curr = curr->next;
         }
-
-        curr = next;
     }
 }
 
@@ -207,6 +199,7 @@ thread_t* find_schedule_candidate(){
         if (dead_thread) remove_thread(dead_thread);
 
         if (!t_queue->next->next) {
+            //TODO: install actually correct shutdown procedure
             current_thread = global_kernel_process.main_thread;
             shutdown();
         }
@@ -218,10 +211,13 @@ thread_t* find_schedule_candidate(){
 
 void switch_task(interrupt_stack_frame_t* regs){
     // only switch when the scheduler was set up 
+    uint8_t int_status = get_interrupt_status();
+    disable_interrupts();
     if (!t_queue->next){
+        set_interrupt_status(int_status);
         return;
     }
-
+    
     thread_t* old_thread = current_thread;
     old_thread->kernel_rsp = (uint64_t)regs;
 
@@ -230,6 +226,8 @@ void switch_task(interrupt_stack_frame_t* regs){
     } else{first_switch = 0;} // dont copy kernel rip etc
 
     current_thread = find_schedule_candidate();
+
+    set_interrupt_status(int_status);
 
     if (old_thread->owner_proc->process_id != current_thread->owner_proc->process_id){
         set_kernel_stack(current_thread->owner_proc->kernel_stack_top);
@@ -258,6 +256,9 @@ void switch_task(interrupt_stack_frame_t* regs){
 
 void remove_thread(thread_t* thread){
     if (!thread) return;
+    uint8_t status = get_interrupt_status();
+    disable_interrupts();
+
     thread_t* before_thread = t_queue;
     while(before_thread->next && before_thread->next != thread) before_thread = before_thread->next;
         
@@ -267,9 +268,10 @@ void remove_thread(thread_t* thread){
     if (before_thread == thread){
         // thread is main thread
         thread->owner_proc->main_thread = thread->next_proc_thread;
-        if (thread->next_proc_thread == 0) {// this was the last thread
-            if (kill_process(thread->owner_proc->process_id) < 0) warnf("Failed to kill user process '%s'", thread->owner_proc->process_name);           
+        if (!thread->next_proc_thread) {// this was the last thread
+            if (kill_process(thread->owner_proc->process_id) < 0) warnf("Failed to kill user process '%s'", thread->owner_proc->process_name);      
         }
+
         kfree(thread);
         return;
     }
@@ -282,4 +284,5 @@ void remove_thread(thread_t* thread){
     }
 
     kfree(thread);
+    set_interrupt_status(status);
 }

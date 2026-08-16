@@ -8,19 +8,42 @@
 #include "../filesystem/filesystem.h"
 #include <stdbool.h>
 
-#define EXEC_STATE_INIT 0x1
-#define EXEC_STATE_RUNNING 0x2
-#define EXEC_STATE_SLEEPING 0x3
-#define EXEC_STATE_DEAD 0x4
-#define EXEC_STATE_FINALIZED 0x5
-#define EXEC_STATE_DONT_SCHEDULE 0x6
-
 #define KERNEL_THREAD_CREAT_SUCCESS 0x0
 #define KERNEL_THREAD_CREAT_FAILURE 0x1
 
+typedef enum {
+    WAITING,
+    TIMED_OUT,
+    SIGNALED
+}wait_state_e;
+
+struct thread;
+typedef struct thread thread_t;
+
+typedef enum {
+    EXEC_STATE_INIT,
+    EXEC_STATE_RUNNING,
+    EXEC_STATE_SLEEPING,
+    EXEC_STATE_DEAD,
+    EXEC_STATE_FINALIZED,
+    EXEC_STATE_DONT_SCHEDULE
+}exec_state_e;
+
+typedef struct sleeping_thread {
+    struct sleeping_thread* next;
+    uint64_t wakeup_tick;
+    thread_t* thread;
+}sleeping_thread_t;
+
+typedef struct lock_waiting_thread{
+    struct lock_waiting_thread* next;
+    wait_state_e wait_state;
+    thread_t* thread;
+}lock_waiting_thread_t;
+
 typedef struct thread{
     uint32_t tid;
-    uint8_t exec_state;
+    exec_state_e exec_state;
     bool expect_sched_fault;
     uint64_t sched_resume_rip; 
 
@@ -32,16 +55,13 @@ typedef struct thread{
     uint64_t init_user_ss;
     inode_t* active_dir;
 
+   sleeping_thread_t sleeping_thread;
+
+    lock_waiting_thread_t lock_wthread;
+
     struct thread* next;
     struct thread* next_proc_thread;
 } thread_t;
-
-typedef struct sleeping_thread {
-    thread_t* thread;
-    uint64_t wakeup_tick; 
-
-    struct sleeping_thread* next;
-}sleeping_thread_t;
 
 #define TASK_SWITCH_DELAY_MS 10
 #define MS_TO_TICKS(ms) (((ms) * DESIRED_STANDARD_FREQ) / 1000)
