@@ -134,13 +134,12 @@ void kmain()
     
     // Everything is now set up
     run("modules/terminal.elf",nullptr,nullptr,PRIV_STD);
-    //run("modules/terminal.bin",nullptr,nullptr,PRIV_STD);
     
-    run("modules/win_man.elf",nullptr,nullptr,PRIV_SPECIAL); // window manager should open dev/kb0
-    setup_timer_switch();
-    // need to manually enable since run just restores whatever was before that
+    run("modules/win_man.elf",nullptr,nullptr,PRIV_SPECIAL); // window manager should be able to open dev/kb0
+
     log("Shell setup complete");
     enable_interrupts();
+    yield();
     
     panic("Not set up beyond here");
 
