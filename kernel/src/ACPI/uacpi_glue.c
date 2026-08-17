@@ -209,7 +209,8 @@ void *uacpi_kernel_alloc(uacpi_size size){ return kmalloc((uint32_t)size); }
 void uacpi_kernel_free(void *mem){ kfree(mem); }
 
 uacpi_u64 uacpi_kernel_get_nanoseconds_since_boot(void){
-    return ticks * 1000 * 1000; // only works because ticks are in ms
+    uint64_t ms_since_boot = TICKS_TO_MS(ticks);
+    return ms_since_boot * 1000 * 1000;
 }
 
 void uacpi_kernel_stall(uacpi_u8 usec){
@@ -217,14 +218,15 @@ void uacpi_kernel_stall(uacpi_u8 usec){
     if (!start) return;
 
     uint64_t end = start +  usec * 1000;
-    while (uacpi_kernel_get_nanoseconds_since_boot() < end) invoke_scheduler();
+    while (uacpi_kernel_get_nanoseconds_since_boot() < end) yield();
 }
 
 
 void uacpi_kernel_sleep(uacpi_u64 msec){
     uint64_t start = ticks;
     if (!start) return;
-    while (ticks < (start + msec)) invoke_scheduler();
+    uint64_t wait_ticks = MS_TO_TICKS(msec);
+    while (ticks < (start + wait_ticks)) yield();
 }
 
 uacpi_handle uacpi_kernel_create_mutex(){
@@ -247,11 +249,10 @@ uacpi_thread_id uacpi_kernel_get_thread_id(void){
     thread_t* curr_thread = get_current_thread();
     return (uacpi_thread_id)((uintptr_t)curr_thread->tid);
 }
-
 uacpi_status uacpi_kernel_acquire_mutex(uacpi_handle handle, uacpi_u16 timeout){
     mutex_t* mutex = (mutex_t*)handle;
-    uint32_t adj_timeout = timeout;
-    if (timeout == 0xfff) adj_timeout = (uint32_t)-1; //effectively infinite
+    uint64_t adj_timeout = timeout;
+    if (timeout == 0xffff) adj_timeout = LOCK_TIMEOUT_INF; //effectively infinite
     if (!mutex_wait(mutex,adj_timeout)) return UACPI_STATUS_TIMEOUT;
 
     return UACPI_STATUS_OK;
@@ -263,8 +264,8 @@ void uacpi_kernel_release_mutex(uacpi_handle handle){
 
 uacpi_bool uacpi_kernel_wait_for_event(uacpi_handle handle, uacpi_u16 timeout){
     semaphore_t* sem = (semaphore_t*)handle;
-    uint32_t adj_timeout = timeout;
-    if (timeout == 0xffff) adj_timeout = (uint32_t)-1;
+    uint64_t adj_timeout = timeout;
+    if (timeout == 0xffff) adj_timeout = LOCK_TIMEOUT_INF;
     if (!semaphore_wait(sem,adj_timeout)) return UACPI_FALSE;
 
     return UACPI_TRUE;
