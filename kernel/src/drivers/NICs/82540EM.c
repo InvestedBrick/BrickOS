@@ -200,7 +200,7 @@ void i8254x_send_packet(i82540em_t* nic, void* data, uint64_t len,bool EOP){
     i8254x_tx_descriptor_t* tx_desc = &nic->tx_ring[tx_tail];
 
     while(!(tx_desc->status & I8254x_TX_STAT_DD)){
-        invoke_scheduler();
+        yield();
     }
 
     // allocate buffer (cleaned up in int handler)

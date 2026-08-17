@@ -387,7 +387,7 @@ int generic_inet_recvfrom(socket_t* sock, void* buf, uint32_t buf_len, uint32_t 
 
         mutex_signal(&gen_sock->lock);
 
-        invoke_scheduler();
+        yield();
         mutex_wait(&gen_sock->lock,LOCK_TIMEOUT_INF);
     }
 

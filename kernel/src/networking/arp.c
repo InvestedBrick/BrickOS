@@ -201,7 +201,7 @@ void arp_lookup(uint32_t ip_addr,uint8_t* mac_out){
         }
         mutex_signal(&route->iface->mac_cache_mutex);
 
-        invoke_scheduler();
+        yield();
     }
 }
 

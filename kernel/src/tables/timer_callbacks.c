@@ -18,7 +18,7 @@ void kthread_worker_timer_callbacks(){
         }
         
         add_sleeping_thread(kworker_timer_callbacks, THREAD_ETERNAL_SLEEP);
-        invoke_scheduler();
+        yield();
     }
 }
 
