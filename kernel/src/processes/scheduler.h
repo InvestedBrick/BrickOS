@@ -44,8 +44,6 @@ typedef struct lock_waiting_thread{
 typedef struct thread{
     uint32_t tid;
     exec_state_e exec_state;
-    bool expect_sched_fault;
-    uint64_t sched_resume_rip; 
 
     interrupt_stack_frame_t regs;
 
@@ -69,9 +67,6 @@ typedef struct thread{
 #define TASK_SWITCH_TICKS MS_TO_TICKS(TASK_SWITCH_DELAY_MS)
 
 #define THREAD_ETERNAL_SLEEP (uint64_t)-1
-
-// magic return label from invoke_scheduler
-extern char sched_fault_fixup[];
 
 /**
  * init_scheduler:
@@ -130,10 +125,10 @@ void add_sleeping_thread(thread_t* thread,uint64_t sleep_ticks);
 void wakeup_thread(thread_t* thread);
 
 /**
- * invoke_scheduler:
- * invokes the scheduler to try and switch to another thread than the current one
+ * yield:
+ * Runs the yield interrupt to switch execution to another thread
  */
-void invoke_scheduler();
+void yield();
 
 /**
  * create_kernel_worker_thread.

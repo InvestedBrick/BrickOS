@@ -22,19 +22,10 @@ thread_t* current_thread;
 uint8_t first_switch = 1;
 extern uint32_t stack_top;
 
-void invoke_scheduler(){
+void yield(){
     if (!get_interrupt_status()) return;
 
-    thread_t* curr_thread = get_current_thread();
-    curr_thread->expect_sched_fault = true;
-    asm volatile(
-        ".global sched_fault_ip\n\t"
-        ".global sched_fault_fixup\n\t"
-        "sched_fault_ip:\n\t"
-        "movb (%0), %%al\n\t"
-        "sched_fault_fixup:\n\t"
-        : : "r"((uint64_t)MAGIC_SCHED_FAULT_ADDR) : "al"
-    );
+    asm volatile ("int $" STR(INT_YIELD));
 }
 
 //TODO: sort sleeping threads after wakeup tick, so that wakeup() becomes O(1)
@@ -125,7 +116,6 @@ thread_t* create_thread(process_t* owner_proc){
     }
     thread_t* thread = (thread_t*)kmalloc(sizeof(thread_t));
     memset(thread,0x0,sizeof(thread_t));
-    thread->expect_sched_fault = false;
     thread->next = 0;
     
     int tid = get_pid(); // need to put it here so that compiler does not generate weird opcode for some reason
@@ -211,6 +201,8 @@ thread_t* find_schedule_candidate(){
 
 void switch_task(interrupt_stack_frame_t* regs){
     // only switch when the scheduler was set up 
+    if (!t_queue) return;
+
     uint8_t int_status = get_interrupt_status();
     disable_interrupts();
     if (!t_queue->next){
