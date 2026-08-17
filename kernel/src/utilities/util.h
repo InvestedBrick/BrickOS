@@ -12,6 +12,9 @@
 #define COMBINE_WORDS(lsb,msb) ((uint32_t)(msb) >> 16 | (lsb))
 #define nullptr 0
 
+#define STR2(x) #x
+#define STR(x) STR2(x)
+
 typedef struct {
     uint32_t length;
     unsigned char* str;
