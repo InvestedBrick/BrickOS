@@ -126,11 +126,12 @@ no_error_code_interrupt_handler 45
 no_error_code_interrupt_handler 46
 no_error_code_interrupt_handler 47
 no_error_code_interrupt_handler 48
+no_error_code_interrupt_handler 49
 
 global idt_code_table
 idt_code_table:
 %assign i 0
-%rep    49
+%rep    50
     dq interrupt_handler_%+i
 %assign i i+1
 %endrep
