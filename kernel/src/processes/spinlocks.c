@@ -9,7 +9,7 @@ void spinlock_init(spinlock_t* lock){
 
 void spinlock_acquire(spinlock_t* lock){
     while(atomic_flag_test_and_set_explicit(lock,memory_order_acquire))
-        invoke_scheduler();
+        yield();
 }
 
 void spinlock_release(spinlock_t* lock){
@@ -19,12 +19,15 @@ void spinlock_release(spinlock_t* lock){
 void mutex_init(mutex_t* mutex){
     spinlock_init(&mutex->lock);
     mutex->wait_queue = nullptr;
+    mutex->owner = nullptr;
 }
 
 lock_waiting_thread_t* block_current_thread(lock_waiting_thread_t** wait_queue, uint64_t timeout){
     thread_t* curr_thread = get_current_thread();
+
     curr_thread->lock_wthread.next = nullptr;
     curr_thread->lock_wthread.wait_state = WAITING;
+    curr_thread->lock_wthread.thread = curr_thread;
     
     lock_waiting_thread_t* curr = *wait_queue;
     if (!curr) *wait_queue = &curr_thread->lock_wthread;
@@ -71,7 +74,7 @@ bool mutex_wait(mutex_t* mutex,uint64_t timeout){
 
     lock_waiting_thread_t* wthread = block_current_thread(&mutex->wait_queue,timeout);
     spinlock_release(&mutex->lock);
-    invoke_scheduler();
+    yield();
 
     spinlock_acquire(&mutex->lock);
     uint8_t signaled = wthread->wait_state == SIGNALED;
@@ -124,7 +127,7 @@ bool semaphore_wait(semaphore_t* sem, uint64_t timeout){
 
     lock_waiting_thread_t* wthread = block_current_thread(&sem->wait_queue,timeout);
     spinlock_release(&sem->lock);
-    invoke_scheduler();
+    yield();
     
     spinlock_acquire(&sem->lock);
     uint8_t signaled = wthread->wait_state == SIGNALED;
