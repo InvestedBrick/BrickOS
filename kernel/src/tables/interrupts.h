@@ -34,8 +34,11 @@
 #define ICW4_SFMN 0x10  // special fully nested
 
 #define INT_SOFTWARE 0x30
-
+#define INT_YIELD 0x31
 #define INT_PAGE_FAULT 0xe
+
+#define ACTIVE_IDT_ENTRIES 50
+
 typedef struct
 {
     uint16_t offset_low;
@@ -125,14 +128,6 @@ uint8_t get_interrupt_status();
  * @param int_enable A boolean to determine if interrupts should be enabled or not
  */
 void set_interrupt_status(uint8_t int_enable);
-
-
-/**
- * setup_timer_switch:
- * Forces the next timer interrupt to switch tasks
- */
-void setup_timer_switch();
-
 
 /**
  * register_irq:

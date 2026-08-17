@@ -30,10 +30,6 @@ uint64_t ticks = 0;
 uint64_t current_timestamp = 0;
 int timezone_adjustment;
 static volatile uint8_t interrupts_enabled = 1;
-static volatile uint8_t force_switch = 0;
-void setup_timer_switch(){
-    force_switch = 1;
-}
 
 void enable_interrupts(){
     asm volatile ("sti");
@@ -94,8 +90,7 @@ void timer_stub(interrupt_stack_frame_t* stack_frame){
     current_timestamp = limine_data.boot_time + CEIL_DIV((ticks << 32),timer_freq) + timezone_adjustment;
     manage_sleeping_threads();
     handle_timer_callbacks();
-    if (ticks % TASK_SWITCH_TICKS == 0 || force_switch) {
-        if (force_switch) force_switch = 0;
+    if (ticks % TASK_SWITCH_TICKS == 0) {
         switch_task(stack_frame);
     }
 }
@@ -104,12 +99,7 @@ void page_fault_stub(interrupt_stack_frame_t* stack_frame){
     uint64_t cr2;
     asm volatile ("mov %%cr2, %0" : "=r"(cr2));
     thread_t* curr_thread = get_current_thread();
-    if (cr2 == MAGIC_SCHED_FAULT_ADDR && curr_thread->expect_sched_fault){
-        curr_thread->expect_sched_fault = false;
-        stack_frame->rip = (uint64_t)sched_fault_fixup; // return label after the drop to here
-        switch_task(stack_frame); // does not return
-    }
-    page_fault_handler(get_current_process(),cr2,stack_frame);
+    page_fault_handler(curr_thread->owner_proc,cr2,stack_frame);
 }
 
 void set_idt_entry(uint8_t num,uint64_t offset,uint8_t attributes){
@@ -307,7 +297,7 @@ void interrupt_handler(interrupt_stack_frame_t* stack_frame) {
 void init_idt(){
     idt.base = (uint64_t)&idt_entries[0];
     idt.limit = sizeof(idt_entry_t) * IDT_MAX_ENTRIES - 1;
-    for(uint8_t v = 0; v < 49;v++){
+    for(uint8_t v = 0; v < ACTIVE_IDT_ENTRIES;v++){
         if(v == INT_SOFTWARE){
             set_idt_entry(v,(uint64_t)idt_code_table[v],STANDARD_USER_ATTRIBUTES); // user software interrupt call (syscall)
         }else{
@@ -324,6 +314,7 @@ void init_idt(){
 void register_basic_interrupts(){
     register_irq(INT_SOFTWARE,handle_software_interrupt);
     register_irq(INT_PAGE_FAULT,page_fault_stub);
+    register_irq(INT_YIELD,switch_task);
 
     uint8_t timer_irq = ioapic_redirect_legacy_irq(0);
     register_irq(timer_irq,timer_stub);
