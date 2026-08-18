@@ -5,6 +5,8 @@
 #define STANDARD_KERNEL_ATTRIBUTES 0x8e // Present, DPL=0, 32-bit interrupt gate 
 #define STANDARD_USER_ATTRIBUTES 0xee // Present, DPL = 3, 32-bit interrupt gate
 
+#define EFLAGS_IF (1 << 9)
+
 #define IDT_MAX_ENTRIES 256
 
 #define PIC1 0x20
@@ -117,18 +119,24 @@ void enable_interrupts();
 void disable_interrupts();
 
 /**
- * get_interrupt_status:
- * @return whether interrupts are enabled (return val 1) or not (return val 0)
+ * interrupts_enabled:
+ * @return Whether interrupts are disabled (return val = 0) or enabled (val != 0)
  */
-uint8_t get_interrupt_status();
+uint32_t interrupts_enabled();
 
 /**
- * set_interrupt_status:
- * Enbales or disables interrupts based on whether int_enable > 0
- * @param int_enable A boolean to determine if interrupts should be enabled or not
+ * irq_save:
+ * disables interrupts and returns eflags from before the cli instruction
+ * @return eflags
  */
-void set_interrupt_status(uint8_t int_enable);
+uint32_t irq_save();
 
+/**
+ * irq_restore:
+ * Restores eflags and enables interrupts if EFLAGS.IF = 1
+ * @param eflags eflags
+ */
+void irq_restore(uint32_t eflags);
 /**
  * register_irq:
  * Registers an IRQ and returns the handler
@@ -153,4 +161,7 @@ void unregister_irq(uint32_t int_num);
  */
 void register_basic_interrupts();
 
+uint32_t read_eflags();
+
+void write_eflags(uint32_t eflags);
 #endif

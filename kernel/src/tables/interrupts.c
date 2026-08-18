@@ -4,6 +4,7 @@
 #include "../drivers/PS2/mouse/mouse.h"
 #include "../drivers/PS2/ps2_controller.h"
 #include "../processes/scheduler.h"
+#include "../processes/kworker.h"
 #include "../memory/memory.h"
 #include "syscalls.h"
 #include "syscall_defines.h"
@@ -29,28 +30,28 @@ static idt_t idt;
 uint64_t ticks = 0;
 uint64_t current_timestamp = 0;
 int timezone_adjustment;
-static volatile uint8_t interrupts_enabled = 1;
 
 void enable_interrupts(){
     asm volatile ("sti");
-    interrupts_enabled = 1;
 }
 
 void disable_interrupts(){
     asm volatile ("cli");
-    interrupts_enabled = 0;
 }
 
-uint8_t get_interrupt_status(){
-    return interrupts_enabled;
+uint32_t interrupts_enabled(){
+    uint32_t eflags = read_eflags();
+    return (eflags & EFLAGS_IF);
 }
 
-void set_interrupt_status(uint8_t int_enable){
-    if (int_enable){
-        enable_interrupts();
-    }else{
-        disable_interrupts();
-    }
+uint32_t irq_save(){
+    uint32_t eflags = read_eflags();
+    asm volatile ("cli");
+    return eflags;
+}
+
+void irq_restore(uint32_t eflags){
+    write_eflags(eflags);
 }
 
 interrupt_handler_t* register_irq(uint32_t int_num, interrupt_function_ptr int_handler){
@@ -86,13 +87,20 @@ void unregister_irq(uint32_t int_num){
 }
 
 void timer_stub(interrupt_stack_frame_t* stack_frame){
+    uint32_t f = irq_save();
+
     ticks++;
     current_timestamp = limine_data.boot_time + CEIL_DIV((ticks << 32),timer_freq) + timezone_adjustment;
-    manage_sleeping_threads();
+    
+    enqueue_kernel_work(manage_sleeping_threads,nullptr);
     handle_timer_callbacks();
+
+    irq_restore(f);
+
     if (ticks % TASK_SWITCH_TICKS == 0) {
         switch_task(stack_frame);
     }
+
 }
 
 void page_fault_stub(interrupt_stack_frame_t* stack_frame){
@@ -224,10 +232,10 @@ uint64_t init_new_page(virt_mem_area_t* vma,process_t* p,uint64_t aligned_fault_
 }
 
 void page_fault_handler(process_t* p,uint64_t fault_addr,interrupt_stack_frame_t* stack_frame){
-    uint8_t int_status = get_interrupt_status();
-    disable_interrupts();
+    uint32_t f = irq_save();
+
     if (handle_phdr_mapping(p,fault_addr)) {
-        set_interrupt_status(int_status);
+        irq_restore(f);
         return;
     }
     virt_mem_area_t* vma = find_virt_mem_area(p->vm_areas,fault_addr);
@@ -243,7 +251,7 @@ void page_fault_handler(process_t* p,uint64_t fault_addr,interrupt_stack_frame_t
         if (stack_frame->error_code & 0x20) error("Protection key violation");
 
         stack_frame->rdi = 1; // exit code
-        set_interrupt_status(int_status);
+        irq_restore(f);
         sys_exit(p,stack_frame);
     }
 
@@ -275,7 +283,7 @@ void page_fault_handler(process_t* p,uint64_t fault_addr,interrupt_stack_frame_t
     vector_append(&vma->mapped_pages,(vector_data_t)aligned_fault_addr);
 
     mem_map_page(aligned_fault_addr,frame,page_flags);
-    set_interrupt_status(int_status);
+    irq_restore(f);
 }
 
 void interrupt_handler(interrupt_stack_frame_t* stack_frame) {
@@ -284,9 +292,12 @@ void interrupt_handler(interrupt_stack_frame_t* stack_frame) {
     interrupt_handler_t* head = int_head;
     while (head && head->int_num != stack_frame->interrupt_number) head = head->next;
     enable_interrupts();
-    
+
     if (!head) {
-        if (stack_frame->interrupt_number < APIC_INTERRUPT_START)logf("Fault occured: %x (%s)",stack_frame->interrupt_number,get_current_process()->process_name);
+        if (stack_frame->interrupt_number < APIC_INTERRUPT_START){
+            logf("Fault occured: %x (%s)",stack_frame->interrupt_number,get_current_process()->process_name);
+            sys_exit(get_current_process(),stack_frame);
+        }
         return;
     }
     head->handler(head->special_arg ? head->special_arg : stack_frame);
