@@ -41,6 +41,10 @@ typedef struct {
 
 #define TSS_FLAGS 0x40 
 
+#define KERNEL_CS 0x08
+#define KERNEL_DS 0x10
+#define USER_CS (0x18 | 0x3)
+#define USER_DS (0x20 | 0x3)
 #define N_GDT_ENTRIES 7
 /**
  * load_gdt - loads global descriptor table
