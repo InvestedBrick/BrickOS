@@ -19,6 +19,7 @@
 #include "scheduler.h"
 #include "../tables/timer_callbacks.h"
 #include "../utilities/elf_parser.h"
+#include "../tables/gdt.h"
 vector_t process_vector;
 static uint8_t pid_used[MAX_PIDS] = {0};
 static uint32_t next_pid = 1;
@@ -50,6 +51,7 @@ void create_root_process(uint64_t stack_top){
     
     global_kernel_process.main_thread = (thread_t*)kmalloc(sizeof(thread_t));
     memset(global_kernel_process.main_thread,0x0,sizeof(thread_t));
+    global_kernel_process.main_thread->active_dir = get_inode_by_id(FS_ROOT_DIR_ID);
     global_kernel_process.main_thread->tid = get_pid();
     global_kernel_process.main_thread->owner_proc = &global_kernel_process;
     global_kernel_process.main_thread->exec_state = EXEC_STATE_DONT_SCHEDULE;
@@ -277,17 +279,20 @@ void setup_arguments(process_t* proc,unsigned char* argv[]){
 }
 
 uint32_t create_process(unsigned char* file_path,uint8_t priv_lvl, unsigned char* argv[],process_fds_init_t* start_fds) {
-    uint32_t int_save = get_interrupt_status();
-    disable_interrupts();
+    uint32_t f = irq_save();
 
     Elf64_Ehdr ehdr;
     if (!validate_elf(file_path,&ehdr)){
         errorf("Tried to spawn invalid ELF: %s",file_path);
+        irq_restore(f);
         return 0;
     }
 
     int pid = get_pid();
-    if (pid == -1) return 0;
+    if (pid == -1){
+        irq_restore(f);
+        return 0;
+    }
 
     //allocate a kernel stack
     uint64_t kernel_stack = (uint64_t)kmalloc(MEMORY_PAGE_SIZE);
@@ -350,7 +355,10 @@ uint32_t create_process(unsigned char* file_path,uint8_t priv_lvl, unsigned char
     process->pml4 = pml4;
     process->main_thread = nullptr;
     int tid = add_thread(process);
-    if (tid == -1) return 0;
+    if (tid == -1) {
+        irq_restore(f);
+        return 0;
+    }
     process->main_thread = get_thread_by_tid(tid);
 
     process->n_phdrs = ehdr.e_phnum;
@@ -366,27 +374,25 @@ uint32_t create_process(unsigned char* file_path,uint8_t priv_lvl, unsigned char
         mem_map_page_in_pml4(process->pml4, stack_base - (i * MEMORY_PAGE_SIZE), stack_mem, PAGE_FLAG_WRITE | PAGE_FLAG_USER);
     }
 
-    set_interrupt_status(int_save);
+    irq_restore(f);
 
     return process->process_id;
 
 }
 
 void load_registers(thread_t* main_thread){
-    uint32_t int_save = get_interrupt_status();
-    disable_interrupts();
+    uint32_t f = irq_save();
     // we do a little pretending here so that when the scheduler returns with these values, everything starts
-    const uint64_t user_mode_data_segment_selector = (0x20 | 0x3);
     
-    main_thread->regs.fs = user_mode_data_segment_selector;
-    main_thread->regs.gs = user_mode_data_segment_selector;
+    main_thread->regs.fs = USER_DS;
+    main_thread->regs.gs = USER_DS;
 
-    main_thread->regs.cs = (0x18 | 0x3);
-    main_thread->regs.rflags = (1 << 9); // enable interrupts for user
+    main_thread->regs.cs = USER_CS;
+    main_thread->regs.rflags = EFLAGS_IF; // enable interrupts for user
     //esp and ebp are already set up
-    main_thread->init_user_ss = user_mode_data_segment_selector;
+    main_thread->init_user_ss = USER_DS;
     main_thread->exec_state = EXEC_STATE_FINALIZED;
-    set_interrupt_status(int_save);
+    irq_restore(f);
 }
 
 void dispatch_process(uint32_t pid){
@@ -432,9 +438,8 @@ int kill_process(uint32_t pid){
     }
     // Threads are already dead since we should be coming from remove_thread
     free_user_pml4_table(process->pml4);
-    inode_t* file = get_inode_by_path(process->process_name);
-    if (file)
-        file->perms |= FS_FILE_PERM_WRITABLE;
+    if (process->file_inode);
+        process->file_inode->perms |= FS_FILE_PERM_WRITABLE;
     kfree((void*)(process->kernel_stack_top - MEMORY_PAGE_SIZE));
     kfree(process->phdrs);
     logf("Killed '%s'",process->process_name);
@@ -491,18 +496,18 @@ int run(char* filepath,unsigned char* argv[],process_fds_init_t* start_fds,uint8
         error("File not executable");
         return -1;
     }
-    uint8_t old_int_status = get_interrupt_status();
-    disable_interrupts();
+    uint32_t f = irq_save();
 
     uint32_t pid = create_process(filepath,priv_lvl,argv,start_fds);
     
     if (!pid) {
         error("Creating user process failed");
+        irq_restore(f);
         return -1;
     }
 
     dispatch_process(pid);
-    set_interrupt_status(old_int_status);
+    irq_restore(f);
 
     return 0;
 
