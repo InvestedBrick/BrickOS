@@ -1,12 +1,13 @@
 #include "syscalls.h"
 #include "syscall_defines.h"
 #include "../filesystem/vfs/vfs.h"
-#include "../processes/process.h"
 #include "../filesystem/file_operations.h"
 #include "interrupts.h"
 #include "../memory/memory.h"
 #include "../io/log.h"
+#include "../processes/process.h"
 #include "../processes/scheduler.h"
+#include "../processes/kworker.h"
 #include "../utilities/util.h"
 #include "../filesystem/fsutil.h"
 #include "../filesystem/filesystem.h"
@@ -80,11 +81,11 @@ uint64_t sys_ioctl(process_t* p, uint32_t fd,uint32_t cmd, void* arg){
 uint64_t sys_exit(process_t* p,interrupt_stack_frame_t* stack_frame){
     uint32_t pid = p->process_id;
 
-    logf("PID %d (%s) exited with %d",p->process_id,p->process_name,stack_frame->rdi);
+    logf("Process %d (%s) exited with %d",p->process_id,p->process_name,stack_frame->rdi);
     thread_t* thread = p->main_thread;
     while(thread) {
-        // mark as dead and let the scheduler clean them up
         thread->exec_state = EXEC_STATE_DEAD;
+        enqueue_kernel_work((work_func_t)remove_thread, (void*)thread);
         thread = thread->next_proc_thread;
     }
     switch_task(stack_frame);
