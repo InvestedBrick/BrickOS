@@ -1,0 +1,300 @@
+#ifndef INCLUDE_SYSCALLS_H
+#define INCLUDE_SYSCALLS_H
+
+#include "fs.h"
+
+#define FD_STDIN 0x0
+#define FD_STDOUT 0x1
+#define FD_STDERR 0x2
+
+typedef struct {
+    unsigned char* stdin_filename;
+    unsigned char* stdout_filename;
+    unsigned char* stderr_filename;
+}process_fds_init_t;
+
+#include "../../../kernel/src/tables/syscall_defines.h"
+#include "../../../kernel/src/networking/network_defines.h"
+#include <stdint.h>
+#include <stdbool.h>
+/**
+ * write:
+ * Writes a buffer to a file
+ * @param fd The file descriptor to the file
+ * @param buffer The buffer to write
+ * @param count The length of the buffer
+ * 
+ * @return The number of bytes written
+ */
+int write(uint32_t fd, const char* buffer, uint32_t count);
+
+/**
+ * read:
+ * Reads data from a file into a buffer
+ * @param fd The file descriptor to the file
+ * @param buffer The buffer to read into
+ * @param count The maximum number of bytes to read
+ * 
+ * @return The number of bytes read
+ */
+int read(uint32_t fd, const char* buffer, uint32_t count);
+
+/**
+ * open:
+ * Opens a file
+ * @param pathname The path to the file
+ * @param flags Flags for opening the file
+ * 
+ * @return The file descriptor for the opened file
+ */
+int open(const char* pathname, uint8_t flags);
+
+/**
+ * close:
+ * Closes a file descriptor
+ * @param fd The file descriptor to close
+ * 
+ * @return 0 on success, or -1 on error
+ */
+int close(uint32_t fd);
+
+/**
+ * exit:
+ * Exits the current process
+ * @param error_code The exit code
+ * 
+ * @return Does not return
+ */
+int exit(uint32_t error_code);
+
+/**
+ * mmap:
+ * maps memory region into the current process
+ * 
+ * @param size The size of the memory region to allocate (Will be rounded up to the next page border)
+ * @param prot The protections of the page
+ * @param flags The page flags
+ * @param fd The file descriptor if the mapping is backed by a file
+ * @param offset The offset into the file
+ * 
+ * @return Pointer to the memory region
+ */
+void* mmap(uint32_t size, uint32_t prot, uint32_t flags, uint32_t fd, uint32_t offset);
+
+/**
+ * munmap:
+ * Unmaps memory region from currecnt process
+ * @param addr The address at which to start unmapping (must be page aligned)
+ * @param size The size of the unmapping region
+ */
+void munmap(void* addr, uint64_t size);
+
+/**
+ * getcwd:
+ * Writes a null terminated string of the current working directory to a buffer
+ * 
+ * @param buffer The buffer in which to write the string
+ * @param size The size of the buffer
+ * 
+ */
+void getcwd(unsigned char* buffer, uint32_t size);
+
+/**
+ * getdents:
+ * Reads the entries of a directory to a buffer of dirent_t (see fs.h) structs
+ *
+ * @param fd The fd of the directory
+ * @param buffer The buffer to write into
+ * @param size The size of the buffer
+ * 
+ * @return The number of directory entries read 
+ */
+int getdents(uint32_t fd,dirent_t* buffer,uint32_t size);
+
+/**
+ * chdir:
+ * Changes the currently active directory
+ * 
+ * @param dir_name The full or relative path of the new directory
+ * 
+ * @return SYSCALL_FAIL if something failed, 
+ * 
+ *  else SYSCALL_SUCCESS
+ */
+int chdir(unsigned char* dir_name);
+
+/**
+ * rmfile:
+ * Deletes a file or empty directory
+ * @param filename The full or relative path to the file
+ * @return SYSCALL_FAIL if something failed, 
+ * 
+ *  else SYSCALL_SUCCESS
+ */
+int rmfile(unsigned char* filename);
+
+
+/**
+ * seek:
+ * Sets the read-write pointer of a file
+ * @param fd The file descriptor to the file
+ * @param offset The new offset of the rw pointer
+ * @param whence The mode in which to seek (SET, CUR or END)
+ * 
+ * @return The offset (may be capped at the filesize)
+ */
+int seek(uint32_t fd,uint32_t offset,uint32_t whence);
+
+/**
+ * ioctl:
+ * Sends a device specific command to a device file
+ * @param fd The file descriptor to the device file
+ * @param cmd The command to send
+ * @param arg An argument for the command
+ * 
+ * @return SYSCALL_FAIL if something failed, 
+ * 
+ *  else SYSCALL_SUCCESS
+ */
+int ioctl(uint32_t fd, uint32_t cmd,void* arg);
+
+/**
+ * mssleep:
+ * Sends the current process to sleep for at least the specified time
+ * @param time The number of milliseconds to go to sleep
+ * @return SYSCALL_SUCCESS
+ */
+int mssleep(uint32_t time);
+
+/**
+ * spawn:
+ * Spawns a new process, which is completely independant of the spawning process
+ * @param filename The name of the file, which contains the binary for the process
+ * @param argv The argument vector for the new process, can either be 0 for no arguments or an array of null-terminated strings which the last entry is a null-entry
+ *      e. g. unsigned char* argv[] = {"arg_one", "arg_two",...,0}
+ * @param start_fds The stdin / stdout / stderr filenames (may be null which causes the file descriptor / all file descriptors to be /dev/null)
+ * @return SYSCALL_FAIL if something failed, 
+ * 
+ *  else SYSCALL_SUCCESS
+ */
+int spawn(unsigned char* filename, unsigned char* argv[],process_fds_init_t* start_fds);
+
+/**
+ * mknod:
+ * Creates a file system node (currently just for making pipes)
+ * @param filename The name of the newly created file
+ * @param params Parameters for the new node, including the type, flags (MNODE_FLAG_*), various data depending on flags
+ * 
+ * for MNODE_FLAG_PID_DEFINED_PIPE:
+ * 
+ *         read_pid: The process id of the process which should open the pipe as the reader ( will be replaced by the reader fd when returning)
+ *   
+ *         write_pid: The process id of the process which should open the pipe as the writer ( will be replaced by the writer fd when returning)
+ * 
+ * @return SYSCALL_FAIL if something failed, 
+ * 
+ *  else SYSCALL_SUCCESS
+ */
+int mknod(unsigned char* filename, mknod_params_t* params);
+/**
+ * getpid:
+ * Returns the process id of the calling process
+ * @return The pid
+ */
+int getpid();
+
+/**
+ * debug:
+ * Writes a debug message to the serial output log
+ */
+void debug(unsigned char* msg);
+
+/**
+ * gettimeofday:
+ * Returns the current Unix timestamp
+ */
+uint64_t gettimeofday();
+
+/**
+ * settimezone:
+ * Sets the timezone 
+ * @param utc_timezone The Timezone based on UTC (e. g. utc_timezone=2 for UTC+2)
+ * 
+ * @note Calling process must have necessary permissions
+ */
+void settimezone(int utc_timezone);
+
+/**
+ * socket:
+ * Creates a new socket
+ * @param domain The domain of the socket (e. g. SOCKET_INET)
+ * @param type The type of the socket (e. g. SOCKET_TYPE_DGRAM)
+ * @param protocol The protocol of the socket (e. g. 0 for default)
+ * 
+ * @return The file descriptor of the new socket
+ */
+int socket(uint32_t domain, uint32_t type, uint32_t protocol);
+
+/**
+ * bind:
+ * Binds a socket to an address
+ * @param sockfd The file descriptor of the socket
+ * @param addr A pointer to a sockaddr_t struct containing the address to bind to
+ * @param addrlen The size of the addr struct (must be sizeof(sockaddr_t))
+ * 
+ * @return 0 on success, or -1 on error
+ */
+int bind(uint32_t sockfd, sockaddr_t* addr, uint32_t addrlen);
+
+/**
+ * recvfrom:
+ * Receives data from a socket
+ * @param sockfd The file descriptor of the socket
+ * @param buf The buffer to write the data into
+ * @param len The maximum number of bytes to read
+ * @param flags Flags for the receive operation (e. g. MSG_DONTWAIT)
+ * @param src_addr A pointer to a sockaddr_t struct to write the source address into (may be null)
+ * @param addrlen The variable to write the size of src_addr to
+ * 
+ * @return The number of bytes received, or -1 on error
+ */
+int recvfrom(uint32_t sockfd, void* buf, uint32_t len, uint32_t flags, sockaddr_t* src_addr, uint32_t* addrlen);
+
+/**
+ * sendto:
+ * Sends data to a socket
+ * @param sockfd The file descriptor of the socket
+ * @param buf The buffer to read the data from
+ * @param len The number of bytes to send
+ * @param flags Flags for the send operation (e. g. MSG_DONTWAIT)
+ * @param dest_addr A pointer to a sockaddr_t struct containing the destination address (may be null for connected sockets)
+ * @param addrlen The size of the dest_addr struct (must be sizeof(sockaddr_t) if dest_addr is not null)
+ * 
+ * @return The number of bytes sent, or -1 on error
+ */
+int sendto(uint32_t sockfd, void* buf, uint32_t len, uint32_t flags, sockaddr_t* dest_addr, uint32_t addrlen);
+
+/**
+ * setsockopt:
+ * Sets a socket option
+ * @param sockfd The file descriptor of the socket
+ * @param level The level at which the option is defined (e. g. SOL_SOCKET)
+ * @param optname The name of the option (e. g. SO_REUSEADDR)
+ * @param optval A pointer to the option value
+ * @param optlen The size of the option value
+ * @return 0 on success, or -1 on error
+ */
+int setsockopt(uint32_t sockfd, uint32_t level, uint32_t optname, void* optval, uint32_t optlen);
+
+/**
+ * getsockopt:
+ * Gets a socket option
+ * @param sockfd The file descriptor of the socket
+ * @param level The level at which the option is defined (e. g. SOL_SOCKET)
+ * @param optname The name of the option (e. g. SO_REUSEADDR)
+ * @param optval A pointer to the option value
+ * @param optlen A pointer to the size of the option value
+ * @return 0 on success, or -1 on error
+ */
+int getsockopt(uint32_t sockfd, uint32_t level, uint32_t optname, void* optval, uint32_t* optlen);
+#endif
