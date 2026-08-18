@@ -1,4 +1,5 @@
-.text
+bits 64
+section .text
 global check_SSE
 check_SSE:
     mov rax, 0x1
@@ -41,9 +42,9 @@ check_FPU:
     xor rax,rax
     ret
 
-.data
+section .data
     value_37A dw 0x37a
-.text
+section .text
 global setup_FPU
 setup_FPU:
     fldcw [value_37A]
@@ -66,4 +67,17 @@ read_msr:
     rdmsr
     mov dword [rsi], eax
     mov dword [rdx], edx
+    ret
+
+global read_eflags
+read_eflags:
+    pushf
+    pop rax
+    ret
+
+global write_eflags
+write_eflags:
+    ; rdi = eflags
+    push rdi
+    popf
     ret
