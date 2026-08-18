@@ -2,7 +2,6 @@
 #define INCLUDE_TIMER_CB_H
 
 #include <stdint.h>
-#include "../utilities/vector.h"
 #include "../processes/scheduler.h"
 
 typedef struct timer_callback {
@@ -14,7 +13,6 @@ typedef struct timer_callback {
 
 }timer_callback_t;
 
-extern vector_t timer_callbacks_vec;
 extern thread_t* kworker_timer_callbacks;
 
 /**
@@ -38,5 +36,4 @@ void unregister_timer_callback(void (*callback)());
  */
 void handle_timer_callbacks();
 
-void kthread_worker_timer_callbacks();
 #endif

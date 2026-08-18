@@ -1,26 +1,11 @@
 #include "timer_callbacks.h"
 #include "../processes/scheduler.h"
+#include "../processes/kworker.h"
 #include "../memory/kmalloc.h"
 #include "../io/log.h"
 #include <stdint.h>
 
 timer_callback_t* timer_callback_head;
-vector_t timer_callbacks_vec;
-thread_t* kworker_timer_callbacks;
-
-void kthread_worker_timer_callbacks(){
-    while(1){
-        enable_interrupts(); // gets disabled by the iretq from kernel to kernel
-        
-        while (timer_callbacks_vec.size > 0){
-            void (*cb)() = (void (*)())vector_pop(&timer_callbacks_vec);
-            cb();
-        }
-        
-        add_sleeping_thread(kworker_timer_callbacks, THREAD_ETERNAL_SLEEP);
-        yield();
-    }
-}
 
 void handle_timer_callbacks(){
     timer_callback_t* head = timer_callback_head;
@@ -28,17 +13,15 @@ void handle_timer_callbacks(){
         head->running_ticks++;
         if (head->running_ticks >= head->period_ticks){
             head->running_ticks = 0;
-            vector_append(&timer_callbacks_vec,(vector_data_t)head->callback);
+            enqueue_kernel_work(head->callback,nullptr);
         }
 
         head = head->next;
     } 
-    if (timer_callbacks_vec.size > 0) wakeup_thread(kworker_timer_callbacks);
 }
 
 void register_timer_callback(void (*callback)(),uint32_t period_ms){
-    uint8_t status = get_interrupt_status();
-    disable_interrupts();
+    uint32_t f = irq_save();
    
     timer_callback_t* cb = (timer_callback_t*)kmalloc(sizeof(timer_callback_t));
     cb->callback = callback;
@@ -53,12 +36,11 @@ void register_timer_callback(void (*callback)(),uint32_t period_ms){
         prev->next = cb;
     }
 
-    set_interrupt_status(status);
+    irq_restore(f);
 }
 
 void unregister_timer_callback(void (*callback)()){
-    uint8_t status = get_interrupt_status();
-    disable_interrupts();
+    uint32_t f = irq_save();
 
     if (!timer_callback_head) return;
 
@@ -77,5 +59,5 @@ void unregister_timer_callback(void (*callback)()){
         kfree(to_del);
     }
 
-    set_interrupt_status(status);
+    irq_restore(f);
 }
