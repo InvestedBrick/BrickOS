@@ -38,12 +38,11 @@ int serial_is_transmit_fifo_empty(uint32_t com){
 }
 
 void serial_write(const unsigned char* data, uint16_t com){
-    uint8_t old_int = get_interrupt_status();
-    disable_interrupts();
+    uint32_t f = irq_save();
     for(uint32_t i = 0; data[i] != '\0';++i){
         // wait until transmit FIFO is empty
         while(!serial_is_transmit_fifo_empty(com));
         outb(SERIAL_DATA_PORT(com),data[i]);
     }
-    set_interrupt_status(old_int);
+    irq_restore(f);
 }

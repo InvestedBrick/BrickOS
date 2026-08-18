@@ -17,8 +17,8 @@ void ata_poll(uint16_t bus){
     await_drq_set(bus);
 }
 void init_disk_driver(){
-    uint8_t old_int_status = get_interrupt_status();
-    disable_interrupts();
+    uint32_t f = irq_save();
+
     uint16_t identify_info[(ATA_SECTOR_SIZE / 2)];
     // select drive 0
     outb(ATA_DRIVE_SELECT_PORT(ATA_PRIMARY_BUS_IO),ATA_INIT_DRIVE_ONE);
@@ -61,13 +61,13 @@ void init_disk_driver(){
     addressable_LBA28_sectors <<= 16;
     addressable_LBA28_sectors |= identify_info[60];
     logf("Number of addressable LBA28 sectors: %d",addressable_LBA28_sectors);
-    set_interrupt_status(old_int_status);
+    irq_restore(f);
 
 }
 
 void read_sectors(uint16_t bus,uint8_t n_sectors, unsigned char* buf, uint32_t lba){
-    uint8_t old_int_status = get_interrupt_status();
-    disable_interrupts();
+    uint32_t f = irq_save();
+
     outb(ATA_DRIVE_SELECT_PORT(bus), ATA_SELECT_DRIVE_ONE | ((lba >> 24) & 0x0f));
     outb(ATA_FEATURE_PORT(bus),0x00); // waste of CPU time
     outb(ATA_SECTOR_COUNT_PORT(bus),n_sectors);
@@ -87,12 +87,12 @@ void read_sectors(uint16_t bus,uint8_t n_sectors, unsigned char* buf, uint32_t l
     
     uint8_t errors = inb(ATA_STATUS_PORT(bus));
     if (errors & 0x1) warn("An error has occured during reading a disk sector");
-    set_interrupt_status(old_int_status);
+    irq_restore(f);
 }
 
 void write_sectors(uint16_t bus, uint8_t n_sectors, unsigned char* buf,uint32_t lba){
-    uint8_t old_int_status = get_interrupt_status();
-    disable_interrupts();
+    uint32_t f = irq_save();
+
     outb(ATA_DRIVE_SELECT_PORT(bus), ATA_SELECT_DRIVE_ONE | ((lba >> 24) & 0x0f));
     outb(ATA_FEATURE_PORT(bus),0x00); // waste of CPU time
     outb(ATA_SECTOR_COUNT_PORT(bus),n_sectors);
@@ -120,5 +120,5 @@ void write_sectors(uint16_t bus, uint8_t n_sectors, unsigned char* buf,uint32_t 
 
     uint8_t errors = inb(ATA_STATUS_PORT(bus));
     if (errors & 0x1) warn("An error has occured during write or flush of a disk sector");
-    set_interrupt_status(old_int_status);
+    irq_restore(f);
 }

@@ -11,6 +11,7 @@
 #include "../../networking/ethernet.h"
 #include "../../networking/networking.h"
 #include "../../processes/scheduler.h"
+#include "../../processes/kworker.h"
 #include <uacpi/uacpi.h>
 #include <uacpi/utilities.h>
 
@@ -234,7 +235,7 @@ void i8254x_interrupt_handler(interrupt_stack_frame_t* frame){
     uint32_t icr = i82540em_mmio_reg_read(i82540em,I8254x_REG_ICR);
     if (icr & I8254x_IMS_RXT0){
         //packet recieved
-        i8254x_recv_packets(i82540em);
+        enqueue_kernel_work(i8254x_recv_packets,(void*)i82540em);
     }
 
     if (icr & I8254x_IMS_LSC){
@@ -248,6 +249,7 @@ void i8254x_interrupt_handler(interrupt_stack_frame_t* frame){
     }
 
     // cleanup TX buffers
+    uint32_t f = irq_save();
     while (i82540em->tx_cleanup != i82540em_mmio_reg_read(i82540em,I8254x_REG_TDT)){
         i8254x_tx_descriptor_t* tx_desc = &i82540em->tx_ring[i82540em->tx_cleanup];
         if (!(tx_desc->status & I8254x_TX_STAT_DD)) break;
@@ -256,6 +258,7 @@ void i8254x_interrupt_handler(interrupt_stack_frame_t* frame){
         tx_desc->cmd = 0;
         i82540em->tx_cleanup = (i82540em->tx_cleanup + 1) % I8254x_N_TX_DESCRS;
     }
+    irq_restore(f);
 
 }
 void i82540em_rx_setup(i82540em_t* nic){
