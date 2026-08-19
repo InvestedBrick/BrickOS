@@ -1,7 +1,9 @@
 
-ASM_SOURCES = $(shell find kernel/src/ -type f -name '*.asm')
-C_SOURCES   = $(shell find kernel/src/ -type f -name '*.c')
-C_SOURCES  += $(shell find kernel/acpi/ -type f -name '*.c')
+ASM_SOURCES  = $(shell find kernel/src/ -type f -name '*.asm')
+ASM_SOURCES += $(shell find shared/src/ -type f -name '*.asm')
+C_SOURCES    = $(shell find kernel/src/ -type f -name '*.c')
+C_SOURCES   += $(shell find kernel/acpi/ -type f -name '*.c')
+C_SOURCES   += $(shell find shared/src/ -type f -name '*.c')
 
 LD_SCRIPT = link.ld
 
@@ -24,7 +26,7 @@ CFLAGS = -target x86_64-elf -ffreestanding -m64 -nostdlib \
          -fno-builtin -fno-stack-protector -fno-exceptions -g \
          -Wno-pointer-sign -fno-pic -fno-pie -mcmodel=kernel -O1
           # idgaf about casting const char* to char*
-CFLAGS += -Ikernel/acpi/uacpi/include -DUACPI_ARCH_X86_64
+CFLAGS += -Ikernel/acpi/uacpi/include -DUACPI_ARCH_X86_64  -Ishared/include
 LDFLAGS = \
     -nostdlib \
 	-static \
@@ -37,7 +39,7 @@ all: $(ISO)
 .PHONY: always_run
 
 always_run:
-	make -C iso/modules
+	make -C userland/modules
 	bash limine_conf_gen.sh
 
 %.o: %.asm
@@ -68,8 +70,8 @@ $(ISO): always_run kernel/.deps-obtained $(TARGET)
 	cp -v $(TARGET) iso_root/boot/
 	mkdir -p iso_root/modules
 	mkdir -p iso_root/modules/images
-	cp -v iso/modules/*.elf iso_root/modules
-	cp -v iso/modules/images/*.qoi iso_root/modules/images
+	cp -v userland/modules/*.elf iso_root/modules
+	cp -v userland/modules/images/*.qoi iso_root/modules/images
 	mkdir -p iso_root/boot/limine
 	cp -v limine.conf iso_root/boot/limine
 	mkdir -p iso_root/EFI/BOOT
@@ -101,5 +103,5 @@ run: $(ISO)
 clean:
 	rm -f $(ASM_OBJS) $(C_OBJS) $(TARGET) $(ISO)
 	rm -rf limine
-	make -C iso/modules clean
+	make -C userland/modules clean
 	rm hdd.img
