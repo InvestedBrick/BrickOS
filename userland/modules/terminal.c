@@ -1,6 +1,7 @@
 // handles the actual text printing / mapping of buffers
 #include "cstdlib/syscalls.h"
-#include "cstdlib/stdutils.h"
+#include <shared/util.h>
+#include <shared/format.h>
 #include "cstdlib/malloc.h"
 #include "cstdlib/stdio.h"
 #include "cstdlib/window.h"
@@ -119,8 +120,8 @@ typedef struct{
 }pipe_return_t;
 
 pipe_return_t create_io_pipes(){
-    int pid = getpid();
-    unsigned char* pid_str = uint32_to_ascii((uint32_t)pid);
+    unsigned char pid_str[6] ={0};
+    write_bufferf(pid_str,sizeof(pid_str),"%d",getpid());
     uint32_t pid_strlen = strlen(pid_str);
 
     unsigned char* stdin = (unsigned char*)malloc(sizeof("tmp/stdin_") + pid_strlen);
@@ -130,7 +131,6 @@ pipe_return_t create_io_pipes(){
     unsigned char* stdout = (unsigned char*)malloc(sizeof("tmp/stdout_") + pid_strlen);
     memcpy(stdout,"tmp/stdout_",sizeof("tmp/stdout_") - 1);
     memcpy(&stdout[sizeof("tmp/stdout_") - 1],pid_str,pid_strlen + 1);
-    free(pid_str);
 
     mknod_params_t params = {
         .type = TYPE_PIPE,

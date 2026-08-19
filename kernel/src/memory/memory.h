@@ -2,6 +2,7 @@
 #ifndef INCLUDE_MEMORY_H
 #define INCLUDE_MEMORY_H
 #include <stdint.h>
+#include <stdbool.h>
 #include "../filesystem/vfs/vfs.h"
 #include "../kernel_header.h"
 
@@ -79,9 +80,37 @@ typedef struct virt_mem_area{
 
 } virt_mem_area_t;
 
+/**
+ * @note This struct is used for when a memory page has been mapped multiple times by uACPI and therefore might unmap too much
+ * to prevent that, use the shared_address_add and shared_address_remove functions to manage these pages
+ */
+typedef struct {
+    void* addr;
+    uint32_t cntr;
+}shared_addr_t; 
+
 void init_shm_obj_vector();
 
 void append_shared_object(shared_object_t* shrd_obj);
+
+
+/**
+ * shared_address_add:
+ * Adds a new shared address to a vector or increments its counter if it already exists
+ * @param vec The vector of shared addresses
+ * @param addr The address
+ * @return A boolean that is true if the address has just been added and false if only its counter got incremented
+ */
+bool shared_address_add(vector_t* vec,void* addr);
+
+/**
+ * shared_address_remove:
+ * Decrements the counter of a shared address and frees it if that was the last holder of the address
+ * @param vec The vector of shared addresses
+ * @param addr The address
+ * @return A boolean that is true if the address was freed and false if only its counter was decreased
+ */
+bool shared_address_remove(vector_t* vec, void* addr);
 
 /**
  * find_shared_object_by_id:

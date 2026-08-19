@@ -1,6 +1,6 @@
 #include "kmalloc.h"
 #include "memory.h"
-#include "../utilities/util.h"
+#include <shared/util.h>
 #include "../io/log.h"
 #include <stdint.h>
 static uint64_t heap_size;

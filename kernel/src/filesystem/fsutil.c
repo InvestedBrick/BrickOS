@@ -1,7 +1,7 @@
 #include "fsutil.h"
 #include "filesystem.h"
 #include "../memory/kmalloc.h"
-#include "../utilities/util.h"
+#include <shared/util.h>
 int get_full_active_path(unsigned char* path_buffer, uint32_t buf_len){
     string_array_t* str_arr = (string_array_t*)kmalloc(sizeof(string_array_t));
     inode_t* inode = get_active_dir();
@@ -89,4 +89,12 @@ string_array_t* split_filepath(unsigned char* path){
     str_arr->strings[1].str[str_arr->strings[1].length] = '\0';
 
     return str_arr;
+}
+
+void free_string_arr(string_array_t* str_arr){
+    for (uint32_t i = 0; i < str_arr->n_strings;i++){
+        kfree(str_arr->strings[i].str);
+    }
+    if (str_arr->n_strings > 0) kfree(str_arr->strings);
+    kfree(str_arr);
 }

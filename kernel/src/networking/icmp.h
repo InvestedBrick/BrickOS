@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 #include "userspace_api/socket.h"
-#include "network_defines.h"
+#include <shared/network_defines.h>
 #include "ip.h"
 
 #define ICMP_HDR_RET_SUCCESS 0x0

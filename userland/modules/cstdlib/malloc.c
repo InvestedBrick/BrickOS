@@ -1,6 +1,6 @@
 #include "malloc.h"
 #include "syscalls.h"
-#include "stdutils.h"
+#include <shared/util.h>
 memory_block_t* malloc_head = 0;
 
 memory_block_t* find_free_block(uint32_t size){

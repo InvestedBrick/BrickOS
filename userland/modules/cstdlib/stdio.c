@@ -1,30 +1,34 @@
 #include <stdint.h>
 
 #include "stdio.h"
-#include "stdutils.h"
+#include <shared/util.h>
+#include <shared/format.h>
 #include "syscalls.h"
 
-void print(const char* str){
+void print(unsigned char* str){
     uint32_t str_len = strlen(str);
 
     write(FD_STDOUT,str,str_len);
 }
-void print_uint(uint32_t num){
-    //convert num to ASCII
-    char ascii[11] = {0};
-    if(num == 0){
-        print("0");
-        return;
-    }
-    uint32_t temp,count = 0,i;
-    for(temp=num;temp != 0; temp /= 10,count++);
-    for (i = count - 1, temp=num;i < 0xffffffff;i--){
-        ascii[i] = (temp%10) + 0x30;
-        temp /= 10;
-    }
-    
-    print(ascii);
+
+void printf(unsigned char* fmt,...){
+    unsigned char buf[256] = {0};
+    va_list ap;
+    va_start(ap,fmt);
+    simple_vsnprintf(buf, sizeof(buf),(const char*) fmt,ap);
+    va_end(ap);
+    print(buf);
 }
+
+void debugf(unsigned char* fmt, ...){
+    unsigned char buf[256] = {0};
+    va_list ap;
+    va_start(ap,fmt);
+    simple_vsnprintf(buf, sizeof(buf),(const char*) fmt,ap);
+    va_end(ap);
+    debug(buf);
+}
+
 int read_input(char* buffer,uint32_t buffer_size){
     int read_chars = 0;
     char c;

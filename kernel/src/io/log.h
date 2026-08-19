@@ -27,33 +27,12 @@ void warn(const unsigned char* msg);
 void error(const unsigned char* msg);
 
 /**
- * log_uint64:
- * Writes an unsigned 64-bit integer to the COM1 serial port
- * 
- * @param num The integer
- */
-void log_uint64(uint64_t num);
-
-/**
- * log_hex64:
- * Writes an unsigned 64-bit integer as hex (0x...) to the COM1 serial port
- *
- * @param num The integer
- */
-void log_hex64(uint64_t num);
-
-/**
  * printf-style helpers
  */
 void logf(const unsigned char* fmt, ...);
 void warnf(const unsigned char* fmt, ...);
 void errorf(const unsigned char* fmt, ...);
 
-/**
- * write_bufferf:
- * Fancy formatting of strings into a buffer
- */
-void write_bufferf(unsigned char* buf, uint32_t buf_size, unsigned char* fmt, ...);
 /**
  * panic: 
  * Something went really wrong, spins in place eternally

@@ -5,7 +5,7 @@
 #include <stdatomic.h>
 #include "networking.h"
 #include "../processes/spinlocks.h"
-#include "network_defines.h"
+#include <shared/network_defines.h>
 
 
 #define IP_TOS_PREC_MASK 0x1f

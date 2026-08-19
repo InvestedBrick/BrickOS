@@ -5,7 +5,7 @@
 #include <stdint.h>
 #include "../vfs/vfs.h"
 #include "../filesystem.h"
-#include "device_defines.h"
+#include <shared/device_defines.h>
 
 // Internal-exclusive structs
 typedef struct {

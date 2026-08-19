@@ -2,7 +2,7 @@
 #ifndef INCLUDE_FILESYSTEM_H
 #define INCLUDE_FILESYSTEM_H
 
-#include "../utilities/util.h"
+#include <shared/util.h>
 #include "../drivers/ATA_PIO/ata.h"
 #include <stdint.h>
 // must be set so that the inode struct is exactly 64 bytes wide
@@ -69,7 +69,7 @@ typedef struct{
 #define INTERNAL_FUNCTION_SUCCESS 0
 #define INTERNAL_FUNCTION_FAIL -1
 
-#include "fs_defines.h"
+#include <shared/fs_defines.h>
 
 extern uint8_t first_time_fs_init;
 
@@ -94,12 +94,6 @@ typedef struct {
     unsigned char* name;
 }inode_name_pair_t;
 
-typedef struct {
-    uint32_t inode_id;
-    uint32_t len;
-    uint32_t type;
-    unsigned char name[];
-} dirent_t;
 // This should be 8
 #define FS_INODES_PER_SECTOR (ATA_SECTOR_SIZE / sizeof(inode_t)) 
 

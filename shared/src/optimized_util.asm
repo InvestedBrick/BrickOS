@@ -38,10 +38,29 @@ strlen:
     inc rax
     cmp byte [rdi + rax],0
     jne .loop
-    ret
 .done:
     ret 
-    
+
+; rdi = str1, rsi = str2
+global streq
+streq:
+    xor rax, rax
+    test rdi, rdi
+    jz .done
+    test rdi, rdi
+    jz .done
+.loop:
+    mov dl, byte [rsi]
+    cmp byte [rdi], dl
+    jne .done
+    inc rsi
+    inc rdi
+    test dl, dl
+    jnz .loop
+    mov rax, 1
+.done:
+    ret
+
 ; rdi = str, rsi = char
 global find_char
 find_char:

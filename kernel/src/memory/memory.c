@@ -1,5 +1,5 @@
 #include "memory.h"
-#include "../utilities/util.h"
+#include <shared/util.h>
 #include "../io/log.h"
 #include "../utilities/vector.h"
 #include "../kernel_header.h"
@@ -15,6 +15,46 @@ vector_t shm_obj_vec;
 static uint64_t* kernel_pml4;
 
 void free_dynamic_mapping(uint64_t virt);
+
+shared_addr_t* shared_address_find(vector_t* vec, void* addr){
+    for (uint32_t i = 0; i < vec->size; i++){
+        shared_addr_t* shrd_addr = (shared_addr_t*)vec->data[i];
+        if (shrd_addr->addr == addr){
+            return shrd_addr;
+        }
+    }
+    return nullptr;
+}
+
+bool shared_address_add(vector_t* vec,void* addr){
+
+    shared_addr_t* shrd_addr = shared_address_find(vec,addr);
+    if (!shrd_addr){
+        shrd_addr = (shared_addr_t*)kmalloc(sizeof(shared_addr_t));
+        shrd_addr->addr = addr;
+        shrd_addr->cntr = 1;
+        vector_append(vec,(vector_data_t)shrd_addr);
+        return true;
+    }
+    shrd_addr->cntr++;
+    return false;
+}
+
+bool shared_address_remove(vector_t* vec, void* addr){
+    shared_addr_t* shrd_addr = shared_address_find(vec,addr);
+    if (!shrd_addr) return false;
+
+    shrd_addr->cntr--;
+    if (shrd_addr->cntr == 0){
+        // last address holder
+        vector_erase_item(vec,(vector_data_t)shrd_addr);
+        kfree(shrd_addr);
+        return true;
+    }
+    return false;
+}
+
+
 void init_shm_obj_vector(){
     init_vector(&shm_obj_vec);
 }
@@ -360,14 +400,14 @@ uint64_t pmm_alloc_page_frame() {
     return 0;
 }
 
-void get_usable_memory_region(uint64_pair_t* pair){
+void get_usable_memory_region(uint64_t* low, uint64_t* len){
     struct limine_memmap_entry **mmap = limine_data.mmap_data.memmap_entries; 
     uint64_t n_entries = limine_data.mmap_data.n_entries;
     uint64_t largest_size = 0;
     for(uint64_t i = 0; i < n_entries;i++){
         if (mmap[i]->type == LIMINE_MEMMAP_USABLE && mmap[i]->length > largest_size) {
-            pair->first = mmap[i]->base;
-            pair->second = mmap[i]->length;
+            *low = mmap[i]->base;
+            *len = mmap[i]->length;
             largest_size = mmap[i]->length;
         }
     }
@@ -375,13 +415,14 @@ void get_usable_memory_region(uint64_pair_t* pair){
 
 void init_memory(){
     mem_number_vpages = 0;
-    uint64_pair_t pair;
-    get_usable_memory_region(&pair);
+    uint64_t low = 0;
+    uint64_t len = 0;
+    get_usable_memory_region(&low, &len);
     
     uint64_t pml4_phys = mem_get_current_pml4_phys();
     kernel_pml4 = (uint64_t*)(pml4_phys + HHDM);
     
-    pmm_init(pair.first,pair.first + pair.second);
+    pmm_init(low,low + len);
 
     // map the bitmap page for the map_somewhere function
     uint64_t phys = pmm_alloc_page_frame();

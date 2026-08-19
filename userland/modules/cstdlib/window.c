@@ -1,5 +1,6 @@
 #include "window.h"
-
+#include <shared/format.h>
+#include "stdio.h"
 void request_window(user_fb_t* user_fb,uint32_t width,uint32_t height){
     int wm_fd = open("dev/wm",FILE_FLAG_NONE);
     chdir("tmp"); 
@@ -16,7 +17,8 @@ void request_window(user_fb_t* user_fb,uint32_t width,uint32_t height){
     memset(answer,0x0,sizeof(window_creation_wm_answer_t) + 256);
     
     while (ioctl(wm_fd,DEV_WM_REQUEST_WINDOW_CREATION_ANSWER,answer) < 0){}
-    unsigned char* pid_str = uint32_to_ascii(getpid());
+    unsigned char pid_str[6] = {0};
+    write_bufferf(pid_str,sizeof(pid_str),"%d",getpid());
     chdir("wm");
     chdir(pid_str);
 
@@ -34,7 +36,6 @@ void request_window(user_fb_t* user_fb,uint32_t width,uint32_t height){
     close(backing_fd);
     rmfile(answer->filename); // dispose of the connector
     chdir("../../..");
-    free(pid_str);
     free(answer);
     close(wm_fd);
     

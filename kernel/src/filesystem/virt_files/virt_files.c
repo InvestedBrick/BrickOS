@@ -7,6 +7,7 @@
 #include "../../kernel_header.h"
 #include "../../tables/syscalls.h"
 #include "../../filesystem/filesystem.h"
+#include <shared/format.h>
 vector_t virt_dirs;
 vector_t virt_files;
 

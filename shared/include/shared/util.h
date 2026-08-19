@@ -8,7 +8,6 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
-#include "vector.h"
 #define COMBINE_WORDS(lsb,msb) ((uint32_t)(msb) >> 16 | (lsb))
 #define nullptr 0
 
@@ -21,24 +20,9 @@ typedef struct {
 } string_t;
 
 typedef struct {
-    uint64_t first;
-    uint64_t second;
-} uint64_pair_t;
-
-typedef struct {
     uint32_t n_strings;
     string_t* strings;
 }string_array_t;
-
-
-/**
- * @note This struct is used for when a memory page has been mapped multiple times by uACPI and therefore might unmap too much
- * to prevent that, use the shared_address_add and shared_address_remove functions to manage these pages
- */
-typedef struct {
-    void* addr;
-    uint32_t cntr;
-}shared_addr_t; 
 
 /**
  * memset:
@@ -105,12 +89,6 @@ uint8_t strneq(const unsigned char* str1, const unsigned char* str2, uint32_t le
 uint32_t strlen(unsigned char* str);
 
 /**
- * Frees a string array assuming the array, the strings and the char* are heap allocated
- * @param str_arr The string array
- */
-void free_string_arr(string_array_t* str_arr);
-
-/**
  * find_char: 
  * Finds the first occurance of a byte in a C-Style string and returns the index of it
  * @param str The string
@@ -133,24 +111,6 @@ uint32_t find_char(unsigned char* str,unsigned char c);
 uint32_t rfind_char(unsigned char* str, unsigned char c);
 
 /**
- * shared_address_add:
- * Adds a new shared address to a vector or increments its counter if it already exists
- * @param vec The vector of shared addresses
- * @param addr The address
- * @return A boolean that is true if the address has just been added and false if only its counter got incremented
- */
-bool shared_address_add(vector_t* vec,void* addr);
-
-/**
- * shared_address_remove:
- * Decrements the counter of a shared address and frees it if that was the last holder of the address
- * @param vec The vector of shared addresses
- * @param addr The address
- * @return A boolean that is true if the address was freed and false if only its counter was decreased
- */
-bool shared_address_remove(vector_t* vec, void* addr);
-
-/**
  * memcmp:
  * Compares two memory regions 
  * @param ptr1 The first memory region
@@ -166,9 +126,9 @@ int memcmp(const void* ptr1, const void* ptr2, size_t num);
  *  ipv4_to_str:
  *  Converts an IPv4 address from a 32-bit integer (little endian) to a string representation
  * @param ip_addr The IPv4 address as a 32-bit integer
- * @return A pointer to a null-terminated string representing the IPv4 address in dotted-decimal notation 
+ * @param out_buffer A string buffer in which the string will be written (must be at least 16 bytes) 
  */
-unsigned char* ipv4_to_str(uint32_t ip_addr);
+void ipv4_to_str(uint32_t ip_addr, unsigned char* out_buffer);
 
 /**
  * ipv4_to_uint32:
@@ -180,12 +140,21 @@ uint32_t ipv4_to_uint32(unsigned char* str);
 
 
 /**
- * log_MAC:
- * Logs the MAC address in a human-readable format
+ * mac_to_str:
+ * Writes a MAC address into a buffer in a human readable format
  * @param mac_addr A pointer to the MAC address (6 bytes)
+ * @param out_buffer The string buffer in which to write (must be at least 18 bytes)
  */
-void log_MAC(uint8_t* mac_addr);
+void mac_to_str(uint8_t* mac_addr, unsigned char* out_buffer);
 
 uint64_t min(uint64_t a, uint64_t b);
 uint64_t max(int64_t a, int64_t b);
+
+/**
+ * ascii_to_uint32:
+ * Converts an ASCII string representation of a number into an uint32_t
+ * @param str The string
+ * @return The number
+ */
+uint32_t ascii_to_uint32(unsigned char* str);
 #endif

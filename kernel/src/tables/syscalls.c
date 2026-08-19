@@ -1,5 +1,5 @@
 #include "syscalls.h"
-#include "syscall_defines.h"
+#include <shared/syscall_defines.h>
 #include "../filesystem/vfs/vfs.h"
 #include "../filesystem/file_operations.h"
 #include "interrupts.h"
@@ -8,7 +8,7 @@
 #include "../processes/process.h"
 #include "../processes/scheduler.h"
 #include "../processes/kworker.h"
-#include "../utilities/util.h"
+#include <shared/util.h>
 #include "../filesystem/fsutil.h"
 #include "../filesystem/filesystem.h"
 #include "../memory/kmalloc.h"

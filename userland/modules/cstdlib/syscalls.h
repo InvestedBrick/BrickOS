@@ -1,8 +1,6 @@
 #ifndef INCLUDE_SYSCALLS_H
 #define INCLUDE_SYSCALLS_H
 
-#include "fs.h"
-
 #define FD_STDIN 0x0
 #define FD_STDOUT 0x1
 #define FD_STDERR 0x2
@@ -12,9 +10,10 @@ typedef struct {
     unsigned char* stdout_filename;
     unsigned char* stderr_filename;
 }process_fds_init_t;
-
-#include "../../../kernel/src/tables/syscall_defines.h"
-#include "../../../kernel/src/networking/network_defines.h"
+#include <shared/device_defines.h>
+#include <shared/syscall_defines.h>
+#include <shared/network_defines.h>
+#include <shared/fs_defines.h>
 #include <stdint.h>
 #include <stdbool.h>
 /**

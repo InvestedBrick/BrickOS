@@ -1,6 +1,6 @@
 #include "icmp.h"
 #include "networking.h"
-#include "../utilities/util.h"
+#include <shared/util.h>
 #include "ip.h"
 #include "ethernet.h"
 #include "../memory/kmalloc.h"

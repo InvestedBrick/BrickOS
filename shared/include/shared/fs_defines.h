@@ -1,6 +1,8 @@
 #ifndef INCLUDE_FS_DEFINES_H
 #define INCLUDE_FS_DEFINES_H
 
+#include <stdint.h>
+
 #define FILE_FLAG_NONE 0x0
 #define FILE_FLAG_READ 0x1
 #define FILE_FLAG_WRITE 0x2
@@ -27,5 +29,12 @@
 #define FS_FILE_PERM_READABLE 0x1
 #define FS_FILE_PERM_WRITABLE 0x2
 #define FS_FILE_PERM_EXECUTABLE 0x4
+
+typedef struct {
+    uint32_t inode_id;
+    uint32_t len;
+    uint32_t type;
+    unsigned char name[];
+} dirent_t;
 
 #endif

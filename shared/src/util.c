@@ -1,7 +1,5 @@
-#include "util.h"
-#include "vector.h"
-#include "../memory/kmalloc.h"
-#include "../io/log.h"
+#include <shared/util.h>
+#include <shared/format.h>
 #include <stddef.h>
 
 void* memmove(void* dest, void* src, uint32_t n) {
@@ -25,20 +23,6 @@ void* memmove(void* dest, void* src, uint32_t n) {
     return dest;
 }
 
-uint8_t streq(const unsigned char* str1, const unsigned char* str2){
-    uint32_t i = 0;
-    while(1){
-        if (str1[i] != str2[i]) return 0;
-
-        if (str1[i] == '\0' && str2[i] == '\0') return 1;
-
-        i++;
-    }
-
-    //how did we get here?
-    return 1;
-
-}
 uint8_t strneq(const unsigned char* str1, const unsigned char* str2, uint32_t len_1, uint32_t len_2){
     uint32_t max_len = len_1 > len_2 ? len_1 : len_2;
 
@@ -48,14 +32,6 @@ uint8_t strneq(const unsigned char* str1, const unsigned char* str2, uint32_t le
         if (str1[i] == '\0' && str2[i] == '\0') return 1;
     }
     return 1;
-}
-
-void free_string_arr(string_array_t* str_arr){
-    for (uint32_t i = 0; i < str_arr->n_strings;i++){
-        kfree(str_arr->strings[i].str);
-    }
-    if (str_arr->n_strings > 0) kfree(str_arr->strings);
-    kfree(str_arr);
 }
 
 uint32_t rfind_char(unsigned char* str, unsigned char c){
@@ -80,44 +56,6 @@ int memcmp(const void* ptr1, const void* ptr2, size_t num) {
     return 0;
 }
 
-shared_addr_t* shared_address_find(vector_t* vec, void* addr){
-    for (uint32_t i = 0; i < vec->size; i++){
-        shared_addr_t* shrd_addr = (shared_addr_t*)vec->data[i];
-        if (shrd_addr->addr == addr){
-            return shrd_addr;
-        }
-    }
-    return nullptr;
-}
-
-bool shared_address_add(vector_t* vec,void* addr){
-
-    shared_addr_t* shrd_addr = shared_address_find(vec,addr);
-    if (!shrd_addr){
-        shrd_addr = (shared_addr_t*)kmalloc(sizeof(shared_addr_t));
-        shrd_addr->addr = addr;
-        shrd_addr->cntr = 1;
-        vector_append(vec,(vector_data_t)shrd_addr);
-        return true;
-    }
-    shrd_addr->cntr++;
-    return false;
-}
-
-bool shared_address_remove(vector_t* vec, void* addr){
-    shared_addr_t* shrd_addr = shared_address_find(vec,addr);
-    if (!shrd_addr) return false;
-
-    shrd_addr->cntr--;
-    if (shrd_addr->cntr == 0){
-        // last address holder
-        vector_erase_item(vec,(vector_data_t)shrd_addr);
-        kfree(shrd_addr);
-        return true;
-    }
-    return false;
-}
-
 uint64_t min(uint64_t a, uint64_t b){
     return a < b ? a : b;
 }
@@ -126,15 +64,13 @@ uint64_t max(int64_t a, int64_t b){
     return a > b ? a : b;
 }
 
-unsigned char* ipv4_to_str(uint32_t ip_addr){
-    unsigned char* buffer = (unsigned char*)kmalloc(16);
-    write_bufferf(buffer,16,"%d.%d.%d.%d",  
+void ipv4_to_str(uint32_t ip_addr, unsigned char* out_buffer){
+    write_bufferf(out_buffer,16,"%d.%d.%d.%d",  
         (ip_addr >> 24) & 0xFF,
         (ip_addr >> 16) & 0xFF,
         (ip_addr >> 8) & 0xFF,
         ip_addr & 0xFF
     );
-    return buffer;
 }
 
 uint32_t ipv4_to_uint32(unsigned char* str){
@@ -175,18 +111,25 @@ uint32_t ipv4_to_uint32(unsigned char* str){
             parts[3];
 }
 
-void log_MAC(uint8_t* mac_addr){
-    unsigned char* mac_str = (unsigned char*)kmalloc(18);
-    mac_str[17] = 0;
+void mac_to_str(uint8_t* mac_addr, unsigned char* out_buffer){
+    out_buffer[17] = 0;
     char* hex = "0123456789abcdef";
     for (uint32_t i = 0; i < 6;i++){
         uint8_t byte = mac_addr[i];
-        mac_str[i * 3] = hex[byte / 16];
-        mac_str[i * 3 + 1] = hex[byte % 16];
+        out_buffer[i * 3] = hex[byte / 16];
+        out_buffer[i * 3 + 1] = hex[byte % 16];
         if (i < 5)
-            mac_str[i * 3 + 2] = ':';
+            out_buffer[i * 3 + 2] = ':';
     }
 
-    logf("MAC ADDR: %s",mac_str);
-    kfree(mac_str);
+}
+
+uint32_t ascii_to_uint32(unsigned char* str){
+    uint32_t result = 0;
+    for (uint32_t i = 0; str[i];i++){
+        if (str[i] < '0' || str[i] > '9') break;
+        result = result * 10 + (str[i] - '0');
+    }
+
+    return result;
 }

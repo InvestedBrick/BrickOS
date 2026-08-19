@@ -1,5 +1,5 @@
 #include "vector.h"
-#include "util.h"
+#include <shared/util.h>
 #include "../memory/kmalloc.h"
 #include <stdint.h>
 void vector_resize(vector_t* vec,uint32_t new_capacity){

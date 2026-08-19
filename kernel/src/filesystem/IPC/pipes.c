@@ -1,9 +1,9 @@
 #include "pipes.h"
-#include "../../utilities/util.h"
+#include <shared/util.h>
 #include "../../utilities/vector.h"
 #include "../../processes/process.h"
 #include "../filesystem.h"
-#include "../fs_defines.h"
+#include <shared/fs_defines.h>
 #include "../../memory/kmalloc.h"
 #include "../../memory/memory.h"
 #include "../vfs/vfs.h"

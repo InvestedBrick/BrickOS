@@ -3,10 +3,11 @@
 
 #include <stdint.h>
 #include "syscalls.h"
-#include "../../../kernel/src/filesystem/devices/device_defines.h"
-#include "font_bitmaps.h"
+#include <shared/device_defines.h>
+#include <shared/font_bitmaps.h>
+#include <shared/fs_defines.h>
+#include <shared/util.h>
 #include "malloc.h"
-#include "stdutils.h"
 
 typedef struct{
     unsigned char* fb;

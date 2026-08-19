@@ -1,6 +1,6 @@
 #include "scheduler.h"
 #include "../memory/kmalloc.h"
-#include "../utilities/util.h"
+#include <shared/util.h>
 #include "../memory/memory.h"
 #include "../io/log.h"
 #include "process.h"

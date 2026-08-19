@@ -1,7 +1,8 @@
 #include "filesystem.h"
 #include "../drivers/ATA_PIO/ata.h"
 #include "../io/log.h"
-#include "../utilities/util.h"
+#include <shared/util.h>
+#include "fsutil.h"
 #include "../memory/kmalloc.h"
 #include "file_operations.h"
 #include "../screen/screen.h"

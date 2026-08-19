@@ -1,6 +1,6 @@
 #ifndef INCLUDE_SHELL_H
 #define INCLUDE_SHELL_H
-#include "cstdlib/stdutils.h"
+#include <shared/util.h>
 typedef struct {
     char* executing_dir;
     string_t command;
@@ -11,9 +11,9 @@ typedef struct {
 typedef void (*command_handler_t)(command_t*);
 
 typedef struct {
-    const char* name;
+    unsigned char* name;
     command_handler_t handler;
-    const char* help;
+    unsigned char* help;
 }shell_command_t;
 
 void cmd_nwtest(command_t* cmd);

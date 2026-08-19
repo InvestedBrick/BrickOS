@@ -2,7 +2,7 @@
 #include "../kernel_header.h"
 #include "../memory/memory.h"
 #include "../memory/kmalloc.h"
-#include "../utilities/util.h"
+#include <shared/util.h>
 #include "../io/io.h"
 #include "../io/log.h"
 #include "../drivers/PCI/pci.h"

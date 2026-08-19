@@ -11,7 +11,7 @@
 #include "../../processes/process.h"
 #include "../../drivers/PS2/keyboard/keyboard.h"
 #include "../../drivers/PS2/mouse/mouse.h"
-#include "device_defines.h"
+#include <shared/device_defines.h>
 #include <stdint.h>
 
 vector_t dev_vec;

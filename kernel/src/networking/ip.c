@@ -2,7 +2,7 @@
 #include "networking.h"
 #include "../memory/kmalloc.h"
 #include "ethernet.h"
-#include "../utilities/util.h"
+#include <shared/util.h>
 #include "../io/log.h"
 #include "../tables/interrupts.h"
 #include "icmp.h"

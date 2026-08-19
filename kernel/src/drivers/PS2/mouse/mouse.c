@@ -5,7 +5,7 @@
 #include "../../../tables/interrupts.h"
 #include "../../../ACPI/apic.h"
 #include "../../../filesystem/vfs/vfs.h"
-#include "../../../filesystem/devices/device_defines.h"
+#include <shared/device_defines.h>
 #include <stdint.h>
 
 static uint8_t mouse_cycle = 0;

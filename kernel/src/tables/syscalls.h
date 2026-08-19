@@ -4,9 +4,9 @@
 
 #include "../processes/process.h"
 #include "interrupts.h"
-#include "syscall_defines.h"
+#include <shared/syscall_defines.h>
 #include "../filesystem/filesystem.h"
-#include "../networking/network_defines.h"
+#include <shared/network_defines.h>
 
 // only internally used
 #define MMAP_UNSPEC_ADDR (uint64_t)0x12345

@@ -1,5 +1,5 @@
 #include "syscalls.h"
-#include "fs.h"
+#include <shared/fs_defines.h>
 
 int write(uint32_t fd, const char* buffer, uint32_t count) {
     int ret;

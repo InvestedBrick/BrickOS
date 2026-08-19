@@ -5,7 +5,7 @@
 #include <uacpi/event.h>
 #include <uacpi/utilities.h>
 #include <uacpi/resources.h>
-#include "../utilities/util.h"
+#include <shared/util.h>
 #include "../memory/memory.h"
 #include "../memory/kmalloc.h"
 #include "../tables/interrupts.h"

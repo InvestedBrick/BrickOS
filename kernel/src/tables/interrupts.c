@@ -7,7 +7,7 @@
 #include "../processes/kworker.h"
 #include "../memory/memory.h"
 #include "syscalls.h"
-#include "syscall_defines.h"
+#include <shared/syscall_defines.h>
 #include "../filesystem/file_operations.h"
 #include "../filesystem/filesystem.h"
 #include "../memory/kmalloc.h"
@@ -15,7 +15,7 @@
 #include "../drivers/timer/pit.h"
 #include "../kernel_header.h"
 #include "timer_callbacks.h"
-#include "../networking/network_defines.h"
+#include <shared/network_defines.h>
 
 void page_fault_handler(process_t* p,uint64_t fault_addr,interrupt_stack_frame_t* stack_frame);
 
@@ -296,7 +296,7 @@ void interrupt_handler(interrupt_stack_frame_t* stack_frame) {
     if (!head) {
         if (stack_frame->interrupt_number < APIC_INTERRUPT_START){
             logf("Fault occured: %x (%s)",stack_frame->interrupt_number,get_current_process()->process_name);
-            sys_exit(get_current_process(),stack_frame);
+            //sys_exit(get_current_process(),stack_frame);
         }
         return;
     }

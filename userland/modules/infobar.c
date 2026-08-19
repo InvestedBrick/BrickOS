@@ -1,24 +1,18 @@
 
 #include "cstdlib/window.h"
 #include "cstdlib/time.h"
+#include <shared/util.h>
+#include <shared/format.h>
 #define VBE_COLOR_BLACK 0xff000000
 #define VBE_COLOR_GRAY  0xffaaaaaa
 
 unsigned char* major_minor_to_decimal(uint32_t major, uint32_t minor, unsigned char* ending) {
-    unsigned char* major_str = uint32_to_ascii(major);
-    uint32_t major_strlen = strlen(major_str);
-    unsigned char* minor_str = uint32_to_ascii(minor);
-    uint32_t minor_strlen = strlen(minor_str);
-    uint32_t ending_strlen = strlen(ending);
-    uint32_t total_str_size = major_strlen + minor_strlen + ending_strlen + 2;// +2  one for . and one for \0
-    unsigned char* result = malloc(total_str_size);
-    memset(result, 0, total_str_size);
-    memcpy(result,major_str,major_strlen);
-    result[major_strlen] = '.';
-    memcpy(&result[major_strlen + 1],minor_str,minor_strlen);
-    memcpy(&result[major_strlen + 1 + minor_strlen],ending,ending_strlen);
-    free(major_str);
-    free(minor_str);
+    unsigned char buf[256] = {0};
+    write_bufferf(buf,256,"%d.%d%s",major, minor,ending);
+    uint32_t len = strlen(buf);
+    unsigned char* result = (unsigned char*)malloc(len + 1);
+    memcpy(result,buf,len + 1);
+    
     return result;
 }
 
@@ -58,6 +52,15 @@ void print_string(user_fb_t* fb, unsigned char* str) {
     }   
 }
 
+void print_stringf(user_fb_t* fb,unsigned char* fmt, ...){
+    unsigned char buf[256] = {0};
+    va_list ap;
+    va_start(ap,fmt);
+    simple_vsnprintf(buf, sizeof(buf),(const char*) fmt,ap);
+    va_end(ap);
+    print_string(fb,buf);
+}
+
 void print_meminfo(user_fb_t* fb) {
     unsigned char buf[128] = {0};
     int meminfo = open("sysinfo/meminfo",FILE_FLAG_NONE);
@@ -69,18 +72,12 @@ void print_meminfo(user_fb_t* fb) {
     uint32_t used_pages = ascii_to_uint32(buf);
     uint32_t total_pages = ascii_to_uint32(&buf[split + 1]);
 
-    unsigned char* used_percent = uint32_to_ascii((used_pages * 100) / total_pages);
+    uint32_t used_percent = ((used_pages * 100) / total_pages);
     unsigned char* used_str = large_bytenum_to_decimal_str(used_pages * 0x1000);
     unsigned char* total_str = large_bytenum_to_decimal_str(total_pages * 0x1000);
 
-    print_string(fb,"Memory: ");
-    print_string(fb,used_str);
-    print_string(fb,"/");
-    print_string(fb,total_str);
-    print_string(fb," (");
-    print_string(fb,used_percent);
-    print_string(fb,"%)");
-    free(used_percent);
+    print_stringf(fb,"Memory: %s/%s (%d%)",used_str,total_str,used_percent);
+
     free(used_str);
     free(total_str);
     close(meminfo);
@@ -98,16 +95,10 @@ void print_diskinfo(user_fb_t* fb) {
     
     unsigned char* used_str = large_bytenum_to_decimal_str(used_sectors * 512);
     unsigned char* total_str = large_bytenum_to_decimal_str(total_sectors * 512);
-    unsigned char* disk_used_percent = uint32_to_ascii((used_sectors * 100) / total_sectors);
+    uint32_t disk_used_percent = ((used_sectors * 100) / total_sectors);
 
-    print_string(fb,"Disk: ");
-    print_string(fb,used_str);
-    print_string(fb,"/");
-    print_string(fb,total_str);
-    print_string(fb," (");
-    print_string(fb,disk_used_percent);
-    print_string(fb,"%)");
-    free(disk_used_percent);
+    print_stringf(fb,"Disk: %s/%s (%d%)",used_str,total_str,disk_used_percent);
+
     free(used_str);
     free(total_str);
     close(diskinfo);
@@ -115,10 +106,9 @@ void print_diskinfo(user_fb_t* fb) {
 void print_cpuinfo(user_fb_t* fb) {
     unsigned char buf[128] = {0};
     int cpuinfo = open("sysinfo/cpuinfo",FILE_FLAG_NONE);
-    memset(buf,0x0,sizeof(buf));
     int bytes_read = read(cpuinfo,buf,sizeof(buf));
-    print_string(fb,"CPU: ");
-    print_string(fb,buf);
+    print_stringf(fb,"CPU: %s",buf);
+
     close(cpuinfo);
 }
 void print_uptime(user_fb_t* fb) {
@@ -131,21 +121,12 @@ void print_uptime(user_fb_t* fb) {
     uint32_t seconds = uptime_seconds % 60;
     print_string(fb,"Uptime: ");
     if (hours > 0) {
-        unsigned char* hours_str = uint32_to_ascii(hours);
-        print_string(fb,hours_str);
-        print_string(fb,"h ");
-        free(hours_str);
+        print_stringf(fb,"%dh ",hours);
     }
     if (minutes > 0) {
-        unsigned char* minutes_str = uint32_to_ascii(minutes);
-        print_string(fb,minutes_str);
-        print_string(fb,"m ");
-        free(minutes_str);
+        print_stringf(fb,"%dm ",minutes);
     }
-    unsigned char* seconds_str = uint32_to_ascii(seconds);
-    print_string(fb,seconds_str);
-    print_string(fb,"s");
-    free(seconds_str);
+    print_stringf(fb,"%ds ",seconds);
     close(uptime);
 }
 
@@ -154,26 +135,14 @@ void print_datetime(user_fb_t* fb){
     date_t date;
     parse_unix_timestamp(timestamp,&date);
     char* months[] = {"Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"};
-    char* day_str = uint32_to_ascii(date.day);
-    char* year_str = uint32_to_ascii(date.year);
-    print_string(fb,months[date.month - 1]);
-    print_string(fb," ");
-    print_string(fb,day_str);
-    print_string(fb,", ");
-    print_string(fb,year_str);
-    free(day_str);
-    free(year_str);
 
-    char* hour_str = uint32_to_ascii(date.hour);
-    char* minute_str = uint32_to_ascii(date.minute);
+    print_stringf(fb,"%s %d, %d",months[date.month - 1],date.day,date.year);
+
     print_string(fb," ");
     if (date.hour < 10) print_string(fb,"0");
-    print_string(fb,hour_str);
-    print_string(fb,":");
+    print_stringf(fb,"%d:",date.hour);
     if (date.minute < 10) print_string(fb,"0");
-    print_string(fb,minute_str);
-    free(hour_str);
-    free(minute_str);
+    print_stringf(fb,"%d",date.minute);
 }
 
 int main(){

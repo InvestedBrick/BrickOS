@@ -2,7 +2,7 @@
 #ifndef INCLUDE_FSUTIL_H
 #define INCLUDE_FSUTIL_H
 
-#include "../utilities/util.h"
+#include <shared/util.h>
 
 /**
  * get_full_active_path:
@@ -25,4 +25,10 @@ int get_full_active_path(unsigned char* path_buffer, uint32_t buf_len);
  * @return A string array of either one or two strings, depending on if there are preceding directories
  */
 string_array_t* split_filepath(unsigned char* path);
+
+/**
+ * Frees a string array assuming the array, the strings and the char* are heap allocated
+ * @param str_arr The string array
+ */
+void free_string_arr(string_array_t* str_arr);
 #endif

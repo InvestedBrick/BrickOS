@@ -3,7 +3,7 @@
 #include "../io/log.h"
 #include "../filesystem/vfs/vfs.h"
 #include "../filesystem/devices/devs.h"
-#include "../utilities/util.h"
+#include <shared/util.h>
 #include "../memory/memory.h"
 #include <stdint.h>
 #include <stddef.h>

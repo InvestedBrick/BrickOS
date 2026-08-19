@@ -1,7 +1,7 @@
 #include "ethernet.h"
 #include "networking.h"
 #include "../memory/kmalloc.h"
-#include "../utilities/util.h"
+#include <shared/util.h>
 #include "../io/log.h"
 #include "arp.h"
 #include "ip.h"

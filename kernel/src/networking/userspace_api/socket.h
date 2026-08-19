@@ -1,7 +1,7 @@
 #ifndef INCLUDE_SOCKET_H
 #define INCLUDE_SOCKET_H
 
-#include "../network_defines.h"
+#include <shared/network_defines.h>
 #include "../../filesystem/vfs/vfs.h"
 #include "../../processes/spinlocks.h"
 #include "../../processes/scheduler.h"

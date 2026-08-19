@@ -1,12 +1,13 @@
 #include "shell.h"
 #include "cstdlib/stdio.h"
-#include "cstdlib/stdutils.h"
+#include <shared/util.h>
 #include "cstdlib/syscalls.h"
 #include "cstdlib/malloc.h"
 #include "cstdlib/time.h"
-#include "../../kernel/src/filesystem/devices/device_defines.h"
-#include "../../kernel/src/networking/network_defines.h"
+#include <shared/device_defines.h>
+#include <shared/network_defines.h>
 #include <stdint.h>
+#include <shared/format.h>
 
 #define LINE_BUFFER_SIZE 256
 //TODO: extract most commands to individual executables
@@ -35,8 +36,9 @@ typedef struct{
 
 // cleanly ripped from terminal.. I really need to add shared code
 pipe_return_t create_io_pipes(){
-    int pid = getpid();
-    unsigned char* pid_str = uint32_to_ascii((uint32_t)pid);
+    unsigned char pid_str[6] = {0};
+    write_bufferf(pid_str,sizeof(pid_str),"%d",getpid());
+
     uint32_t pid_strlen = strlen(pid_str);
 
     unsigned char* stdin = (unsigned char*)malloc(sizeof("tmp/stdin_") + pid_strlen);
@@ -46,7 +48,6 @@ pipe_return_t create_io_pipes(){
     unsigned char* stdout = (unsigned char*)malloc(sizeof("tmp/stdout_") + pid_strlen);
     memcpy(stdout,"tmp/stdout_",sizeof("tmp/stdout_") - 1);
     memcpy(&stdout[sizeof("tmp/stdout_") - 1],pid_str,pid_strlen + 1);
-    free(pid_str);
 
     mknod_params_t params = {
         .type = TYPE_PIPE,
@@ -112,7 +113,7 @@ int delete_dir_recursive(unsigned char* dir_name){
     return 0;
 }
 
-int argcheck(command_t* cmd,const char* msg){
+int argcheck(command_t* cmd,unsigned char* msg){
     if (!cmd->args)
         {print(msg);return 1;}
 
@@ -215,9 +216,7 @@ void cmd_sysinfo(command_t* cmd){
     unsigned char buf[128] = {0};
     int uptime = open("sysinfo/uptime",FILE_FLAG_NONE);
     int bytes_read = read(uptime,buf,sizeof(buf));
-    print("Uptime: ");
-    print(buf);
-    print(" seconds\n");
+    printf("Uptime: %s seconds\n",buf);
     close(uptime);
 
     int meminfo = open("sysinfo/meminfo",FILE_FLAG_NONE);
@@ -229,23 +228,14 @@ void cmd_sysinfo(command_t* cmd){
     uint32_t used_pages = ascii_to_uint32(buf);
     uint32_t total_pages = ascii_to_uint32(&buf[split + 1]);
 
-    unsigned char* used_percent = uint32_to_ascii((used_pages * 100) / total_pages);
-    print("Memory: ");
-    print(buf);
-    print("/");
-    print(&buf[split + 1]);
-    print(" (");
-    print(used_percent);
-    print("%)\n");
-    free(used_percent);
+    uint32_t used_percent = ((used_pages * 100) / total_pages);
+    printf("Memory: %s/%s (%d%)\n",buf,&buf[split + 1],used_percent);
     close(meminfo);
 
     int cpuinfo = open("sysinfo/cpuinfo",FILE_FLAG_NONE);
     memset(buf,0x0,sizeof(buf));
     bytes_read = read(cpuinfo,buf,sizeof(buf));
-    print("CPU: ");
-    print(buf);
-    print("\n");
+    printf("CPU: %s\n",buf);
     close(cpuinfo);
 
     int diskinfo = open("sysinfo/diskinfo",FILE_FLAG_NONE);
@@ -256,15 +246,8 @@ void cmd_sysinfo(command_t* cmd){
     buf[split] = '\0';
     uint32_t used_sectors = ascii_to_uint32(buf);
     uint32_t total_sectors = ascii_to_uint32(&buf[split + 1]);
-    print("Disk: ");
-    print(buf);
-    print("/");
-    print(&buf[split + 1]);
-    print(" (");
-    char* disk_used_percent = uint32_to_ascii((used_sectors * 100) / total_sectors);
-    print(disk_used_percent);
-    print("%)\n");
-    free(disk_used_percent);
+    used_percent = (used_sectors * 100) / total_sectors;
+    printf("Disk: %s/%s (%d%)\n",buf,&buf[split + 1],used_percent);
     close(diskinfo);
 }
 
@@ -333,9 +316,7 @@ void cmd_run(command_t* cmd){
         };
 
         if (spawn(cmd->args[0].str,0,&fds) == SYSCALL_FAIL) {
-            print("Failed to spawn process from binary '");
-            print(cmd->args[0].str);
-            print("'\n");
+            printf("Failed to spawn process from binary '%s'\n",cmd->args[0].str);
             close(ret.stdin_fd);
             close(ret.stdout_fd);
             return;
@@ -357,20 +338,14 @@ void cmd_run(command_t* cmd){
                 break;
             }
         }
-        print("Process '");
-        print(cmd->args[0].str);
-        print("' finished execution\n");
+        printf("Process '%s' finished execution\n",cmd->args[0].str);
     }else{
         //detached -> independant process
         if (spawn(cmd->args[0].str,0,0) == SYSCALL_FAIL) {
-            print("Failed to spawn process from binary '");
-            print(cmd->args[0].str);
-            print("'\n");
+            printf("Failed to spawn process from binary '%s'",cmd->args[0].str);
             return;
         }
-        print("Spawned '");
-        print(cmd->args[0].str);
-        print("' in detached mode\n");
+        printf("Spawned '%s' in detached mode\n",cmd->args[0].str);
     }
 }
 
@@ -378,41 +353,25 @@ void cmd_clock(command_t* cmd){
     uint64_t timestamp = gettimeofday();
     date_t date;
     parse_unix_timestamp(timestamp,&date);
-    print("Today is the ");
-    char* day = uint32_to_ascii(date.day);
-    char* year = uint32_to_ascii(date.year);
     char* months[] = {"January","February","March","April","May","June","July","August","September","October","November","December"};
-    print(day);
-    char last_num = day[strlen(day) - 1];
-    char second_last_num = '0';
-    if (strlen(day) > 1){
-        second_last_num = day[strlen(day) - 2];
-    }
-    const char* suffix = "th";
-    if (second_last_num != '1') {
-        switch (last_num) {
-            case '1': suffix = "st"; break;
-            case '2': suffix = "nd"; break;
-            case '3': suffix = "rd"; break;
+    
+    printf("Today is the %d",date.day);
+    char* suffix = "th";
+    if ((date.day / 10) != 1) { // 11 through 19 all get 'th's
+        switch (date.day % 10) {
+            case 1: suffix = "st"; break;
+            case 2: suffix = "nd"; break;
+            case 3: suffix = "rd"; break;
         }
     }
-    print(suffix);
+    printf("%s of %s %d\n",suffix, months[date.month - 1],date.year);
 
-    print(" of ");
-    print(months[date.month - 1]);
-    print(" "); print(year); print("\nThe time is: ");
-    free(day); 
-    free(year);
-    char* hour = uint32_to_ascii(date.hour);
-    char* minute = uint32_to_ascii(date.minute);
-    char* second = uint32_to_ascii(date.second);
-    print(hour); print(":"); 
+    printf("The time is: ");
+
+    if (date.hour < 10) print("0");
+    printf("%d:",date.hour);
     if (date.minute < 10) print("0");
-    print(minute); print(" and "); print(second); print(" seconds\n");
-    free(hour);
-    free(minute);
-    free(second);
-
+    printf("%d and %d seconds\n",date.minute,date.second);
 }
 void free_command(command_t com){
     free(com.command.str);

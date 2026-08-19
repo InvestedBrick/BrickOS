@@ -2,7 +2,7 @@
 #include "../io/log.h"
 #include "../drivers/NICs/82540EM.h"
 #include "../drivers/PCI/pci.h"
-#include "../utilities/util.h"
+#include <shared/util.h>
 #include "../memory/kmalloc.h"
 #include "arp.h"
 #include "ip.h"

@@ -2,9 +2,9 @@
 #define QOI_IMPLEMENTATION
 #ifdef QOI_IMPLEMENTATION
 #include "../modules/cstdlib/malloc.h"
-#include "../modules/cstdlib/stdutils.h"
+#include <shared/util.h>
 #include "../modules/cstdlib/syscalls.h"
-#define NULL 0
+
 #ifndef QOI_MALLOC
     #define QOI_MALLOC(sz) malloc(sz)
     #define QOI_FREE(p)    free(p)

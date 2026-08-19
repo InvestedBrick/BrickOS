@@ -1,7 +1,7 @@
 #include "pci.h"
 #include "../../io/io.h"
 #include "../../io/log.h"
-#include "../../utilities/util.h"
+#include <shared/util.h>
 #include "../../memory/kmalloc.h"
 pci_device_t* pci_head = nullptr;
 void check_device(uint8_t bus, uint8_t slot);

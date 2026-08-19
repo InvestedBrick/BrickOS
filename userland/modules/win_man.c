@@ -1,9 +1,11 @@
-#include "cstdlib/stdutils.h"
+#include <shared/util.h>
+#include <shared/device_defines.h>
+#include <shared/format.h>
 #include "cstdlib/syscalls.h"
 #include "cstdlib/stdio.h"
-#include "../../kernel/src/filesystem/devices/device_defines.h"
 #include "cstdlib/malloc.h"
 #include "../qoi/qoi.h"
+#include <stddef.h>
 #define MAX_MOUSE_PACKETS 128
 typedef struct {
     uint32_t cmd;
@@ -180,7 +182,8 @@ void handle_window_request(framebuffer_t* fb,win_man_msg_t* msg){
     new_win->section.height = req->height;
     new_win->owner_pid = msg->pid;
 
-    unsigned char* pid_str = uint32_to_ascii(msg->pid);
+    unsigned char pid_str[6] ={0};
+    write_bufferf(pid_str,sizeof(pid_str),"%d",msg->pid);
     int dir = open(pid_str,FILE_FLAG_CREATE | FILE_CREATE_DIR);
     chdir(pid_str);
 
@@ -202,7 +205,6 @@ void handle_window_request(framebuffer_t* fb,win_man_msg_t* msg){
     uint32_t filename_len = sizeof("win.tmp");
     unsigned char* backing_filename = (unsigned char*)malloc(filename_len);
     memcpy(backing_filename,"win.tmp",sizeof("win.tmp"));
-    free(pid_str);
 
     new_win->backing_fd = open(backing_filename,FILE_FLAG_CREATE | FILE_FLAG_READ | FILE_FLAG_WRITE);
     
@@ -228,13 +230,6 @@ void handle_window_request(framebuffer_t* fb,win_man_msg_t* msg){
     add_window_to_list(new_win);
     free(backing_filename);
     chdir("..");
-}
-
-uint32_t min(uint32_t a, uint32_t b) {
-    return (a < b) ? a : b;
-}
-uint32_t max(uint32_t a, uint32_t b) {
-    return (a > b) ? a : b;
 }
 
 void enlarge_section(section_t* sec,uint32_t x, uint32_t y,uint32_t width, uint32_t height){
@@ -639,7 +634,8 @@ void handle_process_shudown(uint32_t pid){
 
     if (!win) return;
 
-    unsigned char* pid_str = uint32_to_ascii(pid);
+    unsigned char pid_str[6] ={0};
+    write_bufferf(pid_str,sizeof(pid_str),"%d",pid);
 
     free(win->comitted_buffer);
     chdir(pid_str);
@@ -675,7 +671,6 @@ void handle_process_shudown(uint32_t pid){
     win->next = 0;
     free(win);
     win = 0;
-    free(pid_str);
 
 }
 
@@ -878,5 +873,5 @@ void main(){
         composite_windows(&fb);
     }
 
-    exit(EXIT_SUCCESS);
+    exit(0);
 }

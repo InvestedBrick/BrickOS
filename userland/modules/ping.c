@@ -1,9 +1,9 @@
 #include "cstdlib/syscalls.h"
 #include "cstdlib/malloc.h"
 //TODO: move as include to cstdlib
-#include "../../kernel/src/networking/network_defines.h"
+#include <shared/network_defines.h>
 #include "cstdlib/stdio.h"
-#include "cstdlib/stdutils.h"
+#include <shared/util.h>
 
 #define PCKT_SIZE 64
 
@@ -102,15 +102,7 @@ void recv_ping(int sockfd, in_sockaddr_t* src_addr){
 
         // for me.. yay
         uint32_t post_hdr_len = switch_endian16(ip_hdr->total_length) - ip_hdr_len - sizeof(icmp_header_t) - sizeof(icmp_echo_t); 
-        print("Recieved packet successfully, seq=");
-        unsigned char* seq_str = uint32_to_ascii((uint32_t)switch_endian16(packet->echo.echo_seq));
-        unsigned char* ttl_str = uint32_to_ascii((uint32_t)ip_hdr->time_to_live);
-        print(seq_str);
-        print(", ttl=");
-        print(ttl_str);
-        print("\n");
-        free(seq_str);
-        free(ttl_str);
+        printf("Recieved packet successfully, seq=%d, ttl=%d\n",switch_endian16(packet->echo.echo_seq),ip_hdr->time_to_live);
         return;
        
     }

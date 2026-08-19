@@ -1,17 +1,18 @@
 #include "file_operations.h"
+#include <shared/syscall_defines.h>
 #include "filesystem.h"
-#include "../utilities/util.h"
+#include <shared/util.h>
 #include "../memory/kmalloc.h"
 #include "../screen/screen.h"
 #include "../drivers/ATA_PIO/ata.h"
-#include "fs_defines.h"
+#include <shared/fs_defines.h>
 #include "devices/devs.h"
 #include "IPC/pipes.h"
 #include "../processes/process.h"
 #include "../processes/scheduler.h"
 #include "virt_files/virt_files.h"
 #include "../io/log.h"
-#include "../tables/syscall_defines.h"
+
 vfs_handles_t fs_ops = {
     .close = fs_close,
     .write = fs_write,

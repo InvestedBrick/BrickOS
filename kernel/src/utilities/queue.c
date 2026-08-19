@@ -1,6 +1,6 @@
 #include "queue.h"
 #include "../memory/kmalloc.h"
-#include "../utilities/util.h"
+#include <shared/util.h>
 
 void init_queue(queue_t* queue){
     queue->head = nullptr;

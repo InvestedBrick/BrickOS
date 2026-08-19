@@ -3,7 +3,7 @@
 #include "../../io/io.h"
 #include "../../memory/kmalloc.h"
 #include "../../memory/memory.h"
-#include "../../utilities/util.h"
+#include <shared/util.h>
 #include "../PCI/pci.h"
 #include "../../tables/syscalls.h"
 #include "../../ACPI/acpi.h"
@@ -345,8 +345,11 @@ void init_82540EM_driver(net_interface_t* iface, pci_device_t* dev){
     i82540em_enable_eeprom(i82540em);
     i82540em_reset(i82540em,iface->mac_addr);
 
-    log_MAC(iface->mac_addr);
-    
+    unsigned char* mac_str = (unsigned char*)kmalloc(18);
+    mac_to_str(iface->mac_addr,mac_str);
+    logf("MAC: %s",mac_str);
+    kfree(mac_str);
+        
     //NOTE: Qemu does not seem to support emulating flash memory and just moves the I/O base addr up
     uint32_t bar = pci_config_read_dword(dev->bus,dev->slot,dev->func,curr_config_off);
     if (bar & 0x1){

@@ -2,7 +2,7 @@
 #include "../memory/memory.h"
 #include "../memory/kmalloc.h"
 #include "../utilities/vector.h"
-#include "../utilities/util.h"
+#include <shared/util.h>
 #include "../io/log.h"
 #include "scheduler.h"
 #include "../tables/tss.h"
@@ -14,7 +14,7 @@
 #include "../filesystem/filesystem.h"
 #include "../filesystem/file_operations.h"
 #include "../kernel_header.h"
-#include "../tables/syscall_defines.h"
+#include <shared/syscall_defines.h>
 #include "../filesystem/devices/devs.h"
 #include "scheduler.h"
 #include "../tables/timer_callbacks.h"
@@ -438,8 +438,9 @@ int kill_process(uint32_t pid){
     }
     // Threads are already dead since we should be coming from remove_thread
     free_user_pml4_table(process->pml4);
-    if (process->file_inode);
+    if (process->file_inode)
         process->file_inode->perms |= FS_FILE_PERM_WRITABLE;
+        
     kfree((void*)(process->kernel_stack_top - MEMORY_PAGE_SIZE));
     kfree(process->phdrs);
     logf("Killed '%s'",process->process_name);

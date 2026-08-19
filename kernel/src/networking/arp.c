@@ -2,7 +2,7 @@
 #include "../io/log.h"
 #include "networking.h"
 #include "../memory/kmalloc.h"
-#include "../utilities/util.h"
+#include <shared/util.h>
 #include "../processes/scheduler.h"
 #include "ip.h"
 #include "ethernet.h"
@@ -134,7 +134,8 @@ void arp_cache_mac(arp_header_t* arp_hdr){
     }
     mutex_wait(&route->iface->mac_cache_mutex,LOCK_TIMEOUT_INF);
 
-    unsigned char* ip_addr_str = ipv4_to_str(cache->ip_addr);
+    unsigned char* ip_addr_str = (unsigned char*)kmalloc(16);
+    ipv4_to_str(cache->ip_addr,ip_addr_str);
     kfree(ip_addr_str);
     memcpy(cache->mac,arp_hdr->src_mac,sizeof(cache->mac));
 
