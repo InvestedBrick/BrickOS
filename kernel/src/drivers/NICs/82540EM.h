@@ -2,6 +2,9 @@
 #define INCLUDE_82540EM_H
 #include "../PCI/pci.h"
 #include "../../networking/networking.h"
+#include "../../utilities/queue.h"
+#include "../../processes/spinlocks.h"
+#include "../../processes/kworker.h"
 
 typedef struct {
     uint64_t buff_addr; // phys addr
@@ -28,6 +31,16 @@ typedef struct {
 
 #define I8254x_N_RX_DESCRS 32
 
+typedef struct {
+    void* data_buf;
+    uint32_t size; 
+}rx_item_t;
+
+typedef struct {
+    uint32_t count;
+    rx_item_t items[];
+}rx_batch_t;
+
 typedef struct{
     uint64_t reg_base_addr;
     uint64_t flash_base_addr;
@@ -37,6 +50,7 @@ typedef struct{
     i8254x_rx_descriptor_t* rx_ring;
 
     // RX vars
+    spinlock_t rx_lock;
     uint32_t rx_next; 
     uint8_t accumulating;
     uint64_t total_size;

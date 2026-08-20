@@ -156,7 +156,20 @@ void i82540em_reset(i82540em_t* nic, uint8_t* mac_addr){
 
 }
 
+void net_rx_process_batch(rx_batch_t* batch){
+    for (uint32_t i = 0; i < batch->count;i++){
+        rx_item_t* item = &batch->items[i];
+        ethernet_handle_packet(item->data_buf,item->size);
+        kfree(item->data_buf);
+    }
+    kfree(batch);
+}
+
 void i8254x_recv_packets(i82540em_t* nic){
+
+    spinlock_acquire(&nic->rx_lock);
+    rx_batch_t* batch = kmalloc(sizeof(rx_batch_t) + sizeof(rx_item_t) * I8254x_N_RX_DESCRS);
+    uint32_t batch_count = 0;
 
     while(nic->rx_ring[nic->rx_next].status & I8254x_RX_STAT_DD){
         i8254x_rx_descriptor_t* rx_desc = &nic->rx_ring[nic->rx_next];
@@ -184,8 +197,9 @@ void i8254x_recv_packets(i82540em_t* nic){
             }
             nic->accumulating = 0;
             nic->total_size = 0;
-            ethernet_handle_packet(data_buffer,write_off);
-            kfree(data_buffer);
+            batch->items[batch_count].data_buf = data_buffer;
+            batch->items[batch_count].size = write_off;
+            batch_count++;
         }
 
         nic->rx_next = (nic->rx_next + 1) % I8254x_N_RX_DESCRS;
@@ -194,6 +208,14 @@ void i8254x_recv_packets(i82540em_t* nic){
 
     uint32_t tail = (nic->rx_next == 0) ? I8254x_N_RX_DESCRS - 1 : nic->rx_next - 1;
     i82540em_mmio_reg_write(nic,I8254x_REG_RDT,tail);
+
+    if (batch_count){
+        batch->count = batch_count;
+        enqueue_kernel_work((work_func_t)net_rx_process_batch,(void*)batch);
+    }else{
+        kfree(batch);
+    }
+    spinlock_release(&nic->rx_lock);
 }
 
 void i8254x_send_packet(i82540em_t* nic, void* data, uint64_t len,bool EOP){
@@ -330,6 +352,7 @@ void init_82540EM_driver(net_interface_t* iface, pci_device_t* dev){
 
     iface->mtu = DEFAULT_MTU;
     i82540em = (i82540em_t*)kmalloc(sizeof(i82540em_t));
+    spinlock_init(&i82540em->rx_lock);
     iface->send = i8254x_send;
 
     uint16_t cmd = pci_config_read_word(dev->bus,dev->slot,dev->func,0x4);
