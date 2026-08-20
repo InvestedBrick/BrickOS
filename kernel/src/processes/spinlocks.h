@@ -29,6 +29,22 @@ typedef struct {
 #define LOCK_TIMEOUT_INF (uint64_t)-1
 
 /**
+ * spinlock_acquire_irq:
+ * Acquires a spinlock while also disabling interrupts
+ * @param lock The spinlock to acquire
+ * @return the saved eflags register
+ */
+uint32_t spinlock_acquire_irq(spinlock_t* lock);
+
+/**
+ * spinlock_release_irq:
+ * Releases a spinlock while restoring the irq state
+ * @param lock The spinlock to release
+ * @param flags The eflags register to restore
+ */
+void spinlock_release_irq(spinlock_t* lock, uint32_t flags);
+
+/**
  * spinlock_acquire:
  * Tries to acquire a spinlock and switches to another task if currently locked
  * @param lock The spinlock to acquire

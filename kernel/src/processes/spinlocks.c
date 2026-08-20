@@ -7,6 +7,18 @@ void spinlock_init(spinlock_t* lock){
     atomic_flag_clear(lock);
 }
 
+uint32_t spinlock_acquire_irq(spinlock_t* lock){
+    uint32_t flags = irq_save();
+    while(atomic_flag_test_and_set_explicit(lock,memory_order_acquire)) 
+        asm volatile ("pause");
+    return flags;
+}
+
+void spinlock_release_irq(spinlock_t* lock, uint32_t flags){
+    atomic_flag_clear_explicit(lock,memory_order_release);
+    irq_restore(flags);
+}
+
 void spinlock_acquire(spinlock_t* lock){
     while(atomic_flag_test_and_set_explicit(lock,memory_order_acquire))
         yield();
