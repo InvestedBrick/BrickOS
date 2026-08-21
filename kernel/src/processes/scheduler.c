@@ -17,7 +17,10 @@
 #include "kworker.h"
 #include <stdbool.h>
 
+spinlock_t t_queue_lock;
 thread_t* t_queue;
+
+spinlock_t sleeping_thread_queue_lock;
 sleeping_thread_t* sleeping_thread_head;
 thread_t* current_thread;
 
@@ -30,20 +33,34 @@ void yield(){
     asm volatile ("int $" STR(INT_YIELD));
 }
 
-//TODO: sort sleeping threads after wakeup tick, so that wakeup() becomes O(1)
+static void insert_sleeping_thread(sleeping_thread_t* thread){
+    // insert sorted by wakeup tick
+    spinlock_acquire(&sleeping_thread_queue_lock);
+    sleeping_thread_t* curr = sleeping_thread_head;
+    if (!curr || thread->wakeup_tick <= curr->wakeup_tick) {
+
+        thread->next = sleeping_thread_head;
+        sleeping_thread_head = thread;
+    }else{
+        while (curr->next && curr->next->wakeup_tick < thread->wakeup_tick) curr = curr->next;
+        thread->next = curr->next;
+        curr->next = thread;
+    }
+    spinlock_release(&sleeping_thread_queue_lock);
+}
+
 void add_sleeping_thread(thread_t* thread, uint64_t sleep_ticks){
     if (thread->exec_state == EXEC_STATE_SLEEPING) return;
     thread->exec_state = EXEC_STATE_SLEEPING;
     thread->sleeping_thread.thread = thread;
     thread->sleeping_thread.wakeup_tick = ticks + min(UINT64_MAX - ticks, sleep_ticks);
-    thread->sleeping_thread.next = sleeping_thread_head;
-    sleeping_thread_head = &thread->sleeping_thread;
+    insert_sleeping_thread(&thread->sleeping_thread);
 
 }
 
 void wakeup_thread(thread_t* thread){
     if (thread->exec_state != EXEC_STATE_SLEEPING) return;
-
+    spinlock_acquire(&sleeping_thread_queue_lock);
     sleeping_thread_t* prev = nullptr;
     sleeping_thread_t* curr = sleeping_thread_head;
     while(curr){
@@ -56,36 +73,25 @@ void wakeup_thread(thread_t* thread){
             
             thread->sleeping_thread.next = nullptr;
             thread->exec_state = EXEC_STATE_RUNNING;
+            spinlock_release(&sleeping_thread_queue_lock);
             return;
         }
         prev = curr;
         curr = curr->next;
     }
+    spinlock_release(&sleeping_thread_queue_lock);
 }
 
 void manage_sleeping_threads(){
-    sleeping_thread_t* prev = nullptr;
+    spinlock_acquire(&sleeping_thread_queue_lock);
     sleeping_thread_t* curr = sleeping_thread_head;
-
-    while (curr) {
-        if (curr->wakeup_tick <= ticks) {
-            sleeping_thread_t* next = curr->next;
-
-            if (prev)
-                prev->next = next;
-            else
-                sleeping_thread_head = next;
-
-            curr->next = nullptr;
-            curr->thread->lock_wthread.wait_state = TIMED_OUT;
-            curr->thread->exec_state = EXEC_STATE_RUNNING;
-
-            curr = next;
-        } else {
-            prev = curr;
-            curr = curr->next;
-        }
+    while(curr->wakeup_tick <= ticks){
+        curr->thread->lock_wthread.wait_state = TIMED_OUT;
+        curr->thread->exec_state = EXEC_STATE_RUNNING;
+        curr = curr->next;
     }
+    sleeping_thread_head = curr;
+    spinlock_release(&sleeping_thread_queue_lock);
 }
 
 thread_t* get_current_thread(){
@@ -93,6 +99,8 @@ thread_t* get_current_thread(){
 }
 
 void init_scheduler(){
+    spinlock_init(&t_queue_lock);
+    spinlock_init(&sleeping_thread_queue_lock);
     t_queue = global_kernel_process.main_thread;
     current_thread = t_queue;
 
@@ -102,19 +110,21 @@ void init_scheduler(){
 }
 
 thread_t* get_thread_by_tid(uint32_t tid){
+    spinlock_acquire(&t_queue_lock);
     thread_t* node = t_queue;
     while (node) {
-        if (node->tid == tid) return node;
+        if (node->tid == tid) {
+            spinlock_release(&t_queue_lock);
+            return node;
+        }
         node = node->next;
     }
+    spinlock_release(&t_queue_lock);
     return 0;
 }
 
-thread_t* create_thread(process_t* owner_proc){
-    if (!t_queue) {
-        error("Process queue not initialized");
-        return nullptr;
-    }
+static thread_t* create_thread(process_t* owner_proc){
+    
     thread_t* thread = (thread_t*)kmalloc(sizeof(thread_t));
     memset(thread,0x0,sizeof(thread_t));
     thread->next = nullptr;
@@ -133,6 +143,12 @@ thread_t* create_thread(process_t* owner_proc){
 
 void enqueue_thread(thread_t* thread){
     // add to main thread queue
+    spinlock_acquire(&t_queue_lock);
+    if (!t_queue) {
+        error("Process queue not initialized");
+        spinlock_release(&t_queue_lock);
+        return;
+    }
     thread_t* last = t_queue;
 
     process_t* owner_proc = thread->owner_proc;
@@ -147,6 +163,7 @@ void enqueue_thread(thread_t* thread){
         while(last->next_proc_thread) {last = last->next_proc_thread;}
         last->next_proc_thread = thread; 
     }
+    spinlock_release(&t_queue_lock);
 }
 
 int add_thread(struct process* usr_proc){
@@ -200,11 +217,11 @@ thread_t* find_schedule_candidate(){
 
 void switch_task(interrupt_stack_frame_t* regs){
     
-    uint32_t f = irq_save();
+    uint32_t f = spinlock_acquire_irq(&t_queue_lock);
     
     // only switch when the scheduler was set up 
     if (!t_queue || !t_queue->next){
-        irq_restore(f);
+        spinlock_release_irq(&t_queue_lock,f);
         return;
     }
     thread_t* old_thread = current_thread;
@@ -216,12 +233,14 @@ void switch_task(interrupt_stack_frame_t* regs){
 
     current_thread = find_schedule_candidate();
 
-    irq_restore(f);
-
+    
     if (old_thread->owner_proc->process_id != current_thread->owner_proc->process_id){
         set_kernel_stack(current_thread->owner_proc->kernel_stack_top);
         mem_set_current_pml4_table(current_thread->owner_proc->pml4);
     }
+
+    spinlock_release_irq(&t_queue_lock,f);
+    
     // send EOI since we cant return to interrupt_handler
     if (regs->interrupt_number != INT_YIELD)
         write_apic_register(APIC_REG_EOI,0x0); 
@@ -246,7 +265,7 @@ void switch_task(interrupt_stack_frame_t* regs){
 
 void remove_thread(thread_t* thread){
     if (!thread) return;
-    uint32_t f = irq_save();
+    spinlock_acquire(&t_queue_lock);
 
     thread_t* before_thread = t_queue;
     while(before_thread->next && before_thread->next != thread) before_thread = before_thread->next;
@@ -262,7 +281,7 @@ void remove_thread(thread_t* thread){
         }
 
         kfree(thread);
-        irq_restore(f);
+        spinlock_release(&t_queue_lock);
         return;
     }
 
@@ -274,5 +293,5 @@ void remove_thread(thread_t* thread){
     }
 
     kfree(thread);
-    irq_restore(f);
+    spinlock_release(&t_queue_lock);
 }
