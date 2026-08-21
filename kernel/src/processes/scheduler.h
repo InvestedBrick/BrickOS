@@ -51,6 +51,7 @@ typedef struct thread{
     uint64_t kernel_rsp; 
     uint64_t init_rsp;
     uint64_t init_user_ss;
+    uint64_t kernel_stack_top;
     inode_t* active_dir;
 
    sleeping_thread_t sleeping_thread;

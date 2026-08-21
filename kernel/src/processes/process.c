@@ -33,12 +33,11 @@ void finish_up_root_process(){
 
 }
 
-void create_root_process(uint64_t stack_top){
+void create_root_process(){
     init_process_vector();
 
     memset(global_kernel_process.fd_table,0,MAX_FDS * sizeof(generic_file_t*));
 
-    global_kernel_process.kernel_stack_top = stack_top;
     global_kernel_process.pml4 = mem_get_current_pml4_table();
     global_kernel_process.process_id = get_pid();
     global_kernel_process.vm_areas = 0;
@@ -294,9 +293,6 @@ uint32_t create_process(unsigned char* file_path,uint8_t priv_lvl, unsigned char
         return 0;
     }
 
-    //allocate a kernel stack
-    uint64_t kernel_stack = (uint64_t)kmalloc(MEMORY_PAGE_SIZE);
-    
     process_t* process = (process_t*)kmalloc(sizeof(process_t));
     
     process->process_id = pid;
@@ -338,7 +334,6 @@ uint32_t create_process(unsigned char* file_path,uint8_t priv_lvl, unsigned char
     
     process->vm_areas = nullptr;
     process->running = 0;
-    process->kernel_stack_top = kernel_stack + MEMORY_PAGE_SIZE;
     
     inode_t* file = get_inode_by_path(file_path);
     file->perms &= ~FS_FILE_PERM_WRITABLE;
@@ -441,7 +436,6 @@ int kill_process(uint32_t pid){
     if (process->file_inode)
         process->file_inode->perms |= FS_FILE_PERM_WRITABLE;
         
-    kfree((void*)(process->kernel_stack_top - MEMORY_PAGE_SIZE));
     kfree(process->phdrs);
     logf("Killed '%s'",process->process_name);
     kfree(process->process_name);

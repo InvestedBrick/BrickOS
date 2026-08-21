@@ -46,9 +46,6 @@ void shutdown(){
 
 void kmain()
 {   
-    uint64_t stack_top;
-    asm volatile ("mov %%rsp, %0" : "=r"(stack_top));
-    
     // Serial port setup
     serial_configure_baud_rate(SERIAL_COM1_BASE,3);
     serial_configure_line(SERIAL_COM1_BASE);
@@ -85,7 +82,7 @@ void kmain()
     init_kmalloc(MEMORY_PAGE_SIZE);
     log("Initialized kmalloc");
     
-    create_root_process(stack_top);
+    create_root_process();
     log("Set up kernel process");
     
     init_scheduler();

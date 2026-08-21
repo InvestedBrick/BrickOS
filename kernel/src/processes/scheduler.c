@@ -137,6 +137,7 @@ static thread_t* create_thread(process_t* owner_proc){
     thread->owner_proc = owner_proc;
     thread->exec_state = EXEC_STATE_INIT;
     thread->active_dir = current_thread->active_dir;
+    thread->kernel_stack_top = (uint64_t)kmalloc(MEMORY_PAGE_SIZE) + MEMORY_PAGE_SIZE;
 
     return thread;
 }
@@ -235,7 +236,7 @@ void switch_task(interrupt_stack_frame_t* regs){
 
     
     if (old_thread->owner_proc->process_id != current_thread->owner_proc->process_id){
-        set_kernel_stack(current_thread->owner_proc->kernel_stack_top);
+        set_kernel_stack(current_thread->kernel_stack_top);
         mem_set_current_pml4_table(current_thread->owner_proc->pml4);
     }
 

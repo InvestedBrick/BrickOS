@@ -19,7 +19,6 @@ typedef struct process{
     unsigned char* process_name;
     
     uint64_t* pml4; 
-    uint64_t kernel_stack_top; 
     uint8_t running;
     uint8_t priv_lvl;
 
@@ -55,7 +54,7 @@ extern vector_t process_vector;
 
 #define MAX_PIDS 32768
 
-void create_root_process(uint64_t stack_top);
+void create_root_process();
 
 void finish_up_root_process();
 
