@@ -85,7 +85,7 @@ void wakeup_thread(thread_t* thread){
 void manage_sleeping_threads(){
     spinlock_acquire(&sleeping_thread_queue_lock);
     sleeping_thread_t* curr = sleeping_thread_head;
-    while(curr->wakeup_tick <= ticks){
+    while(curr && curr->wakeup_tick <= ticks){
         curr->thread->lock_wthread.wait_state = TIMED_OUT;
         curr->thread->exec_state = EXEC_STATE_RUNNING;
         curr = curr->next;
@@ -103,6 +103,7 @@ void init_scheduler(){
     spinlock_init(&sleeping_thread_queue_lock);
     t_queue = global_kernel_process.main_thread;
     current_thread = t_queue;
+    sleeping_thread_head = nullptr;
 
     for (uint32_t i = 0; i < N_KWORKERS; i++){
         add_kworker();

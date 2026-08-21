@@ -50,8 +50,8 @@ void create_root_process(){
     
     global_kernel_process.main_thread = (thread_t*)kmalloc(sizeof(thread_t));
     memset(global_kernel_process.main_thread,0x0,sizeof(thread_t));
-    global_kernel_process.main_thread->active_dir = get_inode_by_id(FS_ROOT_DIR_ID);
     global_kernel_process.main_thread->tid = get_pid();
+    //active dir is set in init_filesystem
     global_kernel_process.main_thread->owner_proc = &global_kernel_process;
     global_kernel_process.main_thread->exec_state = EXEC_STATE_DONT_SCHEDULE;
 
