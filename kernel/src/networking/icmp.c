@@ -10,7 +10,7 @@
 static atomic_uint_fast16_t icmp_id;
 
 icmp_socket_t* icmp_sock_head = nullptr;
-mutex_t icmp_sock_queue_lock;
+spinlock_t icmp_sock_queue_lock;
 
 uint16_t get_new_icmp_ident(){
     return atomic_fetch_add(&icmp_id,1);
@@ -140,11 +140,11 @@ void icmp_handle_packet(uint8_t* data, uint32_t len){
 }
 
 void icmp_handle_socket_packet(ipv4_header_t* ip_hdr, uint8_t ip_hlen, uint32_t total_len){
-    mutex_wait(&icmp_sock_queue_lock,LOCK_TIMEOUT_INF);
+    spinlock_acquire(&icmp_sock_queue_lock);
 
     icmp_socket_t* sock = icmp_sock_head;
     if (!sock) {
-        mutex_signal(&icmp_sock_queue_lock);
+        spinlock_release(&icmp_sock_queue_lock);
         return;
     }
 
@@ -160,14 +160,14 @@ void icmp_handle_socket_packet(ipv4_header_t* ip_hdr, uint8_t ip_hlen, uint32_t 
     packet->packet.src_addr.inet_family = INET_FAM_IPv4;
 
     while(sock){
-        mutex_wait(&sock->sock.lock,LOCK_TIMEOUT_INF);
+        spinlock_acquire(&sock->sock.lock);
         atomic_fetch_add(&packet->refcnt,1);
         enqueue_rx_data((generic_proto_socket_t*)sock,(recvd_packet_t*)packet);
-        mutex_signal(&sock->sock.lock);
+        spinlock_release(&sock->sock.lock);
         sock = (icmp_socket_t*)sock->sock.next;
     }
 
-    mutex_signal(&icmp_sock_queue_lock);
+    spinlock_release(&icmp_sock_queue_lock);
 }
 
 void icmp_handle_dest_unreachable(ipv4_header_t* ip_hdr, uint8_t ip_hlen, uint32_t total_len){

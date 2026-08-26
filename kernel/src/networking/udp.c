@@ -8,7 +8,7 @@
 #include "../filesystem/vfs/vfs.h"
 
 udp_socket_t* udp_sock_head = nullptr;
-mutex_t udp_sock_queue_lock;
+spinlock_t udp_sock_queue_lock;
 
 /**
  * POLICY:
@@ -18,16 +18,16 @@ mutex_t udp_sock_queue_lock;
 
 
 uint8_t is_udp_port_used(uint16_t port){
-    mutex_wait(&udp_sock_queue_lock,LOCK_TIMEOUT_INF);
+    spinlock_acquire(&udp_sock_queue_lock);
     udp_socket_t* curr = udp_sock_head;
     while(curr){
         if (curr->port == port) {
-            mutex_signal(&udp_sock_queue_lock);
+            spinlock_release(&udp_sock_queue_lock);
             return 1;
         }
         curr = (udp_socket_t*)curr->sock.next;
     }
-    mutex_signal(&udp_sock_queue_lock);
+    spinlock_release(&udp_sock_queue_lock);
     return 0;
 
 }
@@ -39,10 +39,10 @@ int udp_bind(socket_t* sock, sockaddr_t* addr, uint32_t len){
     in_sockaddr_t* inet_sockaddr = (in_sockaddr_t*)addr;
     if (inet_sockaddr->inet_family != INET_FAM_IPv4) return UDP_RET_FAIL;
     
-    mutex_wait(&udp_sock->sock.lock,LOCK_TIMEOUT_INF);
+    spinlock_acquire(&udp_sock->sock.lock);
     
     if (is_udp_port_used(inet_sockaddr->inet_port)) {
-        mutex_signal(&udp_sock->sock.lock);
+        spinlock_release(&udp_sock->sock.lock);
         return UDP_RET_FAIL;
     }
 
@@ -52,7 +52,7 @@ int udp_bind(socket_t* sock, sockaddr_t* addr, uint32_t len){
     udp_sock->ip_addr = inet_sockaddr->inet_addr;
     udp_sock->port = inet_sockaddr->inet_port;
 
-    mutex_signal(&udp_sock->sock.lock);
+    spinlock_release(&udp_sock->sock.lock);
     return 0;
 }
 
@@ -84,7 +84,7 @@ void udp_cleanup_sock(generic_proto_socket_t* sock){
 }
 
 udp_socket_t* find_target_udp_socket(uint32_t ip_addr, uint16_t port){
-    // must be mutex locked from outside
+    // must be spinlock locked from outside
     udp_socket_t* curr = udp_sock_head;
     while(curr){
         if ((curr->ip_addr == ip_addr && curr->port == port) || 
@@ -163,17 +163,17 @@ void udp_handle_packet(uint8_t* data, uint32_t len){
     uint16_t dst_port = switch_endian16(udp_hdr->dst_port);
     uint16_t src_port = switch_endian16(udp_hdr->src_port);
 
-    mutex_wait(&udp_sock_queue_lock,LOCK_TIMEOUT_INF);
+    spinlock_acquire(&udp_sock_queue_lock);
     udp_socket_t* sock = find_target_udp_socket(dst_ip,dst_port);
     if (!sock) {
-        mutex_signal(&udp_sock_queue_lock);
+        spinlock_release(&udp_sock_queue_lock);
         return;
     }
     
-    mutex_wait(&sock->sock.lock,LOCK_TIMEOUT_INF);
-    mutex_signal(&udp_sock_queue_lock);
+    spinlock_acquire(&sock->sock.lock);
+    spinlock_release(&udp_sock_queue_lock);
     udp_enqueue_rx_data(sock,payload,payload_size,src_ip,src_port);
-    mutex_signal(&sock->sock.lock);
+    spinlock_release(&sock->sock.lock);
 }
 
 proto_handles_t udp_proto_handles = {

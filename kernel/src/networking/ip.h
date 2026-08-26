@@ -66,7 +66,7 @@ typedef struct raw_ip_socket {
 
 extern proto_handles_t raw_ip_proto_handles;
 extern raw_ip_socket_t* raw_ip_sock_head;
-extern mutex_t raw_ip_sock_queue_lock;
+extern spinlock_t raw_ip_sock_queue_lock;
 
 void init_ip_linked_lists();
 

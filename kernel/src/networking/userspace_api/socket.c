@@ -7,9 +7,9 @@
 #include "../../io/log.h"
 
 void init_socket_queues(){
-    mutex_init(&udp_sock_queue_lock);
-    mutex_init(&raw_ip_sock_queue_lock);
-    mutex_init(&icmp_sock_queue_lock);
+    spinlock_init(&udp_sock_queue_lock);
+    spinlock_init(&raw_ip_sock_queue_lock);
+    spinlock_init(&icmp_sock_queue_lock);
 }
 
 socket_t* valid_socket(process_t* p, uint32_t fd){
@@ -323,8 +323,8 @@ void enqueue_rx_data(generic_proto_socket_t* sock, recvd_packet_t* packet){
     }
 }
 
-void insert_socket(generic_proto_socket_t** queue_head,generic_proto_socket_t* sock,mutex_t* queue_lock){
-    mutex_wait(queue_lock,LOCK_TIMEOUT_INF);
+void insert_socket(generic_proto_socket_t** queue_head,generic_proto_socket_t* sock,spinlock_t* queue_lock){
+    spinlock_acquire(queue_lock);
     generic_proto_socket_t* curr = *queue_head;
     if (!curr) *queue_head = sock;
     else{
@@ -332,24 +332,24 @@ void insert_socket(generic_proto_socket_t** queue_head,generic_proto_socket_t* s
 
         curr->next = sock;
     }
-    mutex_signal(queue_lock);
+    spinlock_release(queue_lock);
 }
 
-void cleanup_socket(generic_proto_socket_t** queue_head,generic_proto_socket_t* sock,mutex_t* queue_lock){
-    mutex_wait(queue_lock,LOCK_TIMEOUT_INF);
+void cleanup_socket(generic_proto_socket_t** queue_head,generic_proto_socket_t* sock,spinlock_t* queue_lock){
+    spinlock_acquire(queue_lock);
     if (*queue_head == sock) *queue_head = sock->next;
     else{
         generic_proto_socket_t* prev = *queue_head;
         while(prev->next && prev->next != sock) prev = prev->next;
         if (!prev->next){
-            mutex_signal(queue_lock);
+            spinlock_release(queue_lock);
             return;
         }
         prev->next = sock->next;
     }
 
-    mutex_wait(&sock->lock,LOCK_TIMEOUT_INF);
-    mutex_signal(queue_lock);
+    spinlock_acquire(&sock->lock);
+    spinlock_release(queue_lock);
     
     socket_clear_rx_queue(sock);
     socket_clear_wait_queue(sock);
@@ -357,9 +357,9 @@ void cleanup_socket(generic_proto_socket_t** queue_head,generic_proto_socket_t* 
     kfree(sock);
 }
 
-void init_prot_socket(generic_proto_socket_t* sock, uint32_t sock_size,generic_proto_socket_t** queue_head,mutex_t* queue_lock){
+void init_prot_socket(generic_proto_socket_t* sock, uint32_t sock_size,generic_proto_socket_t** queue_head,spinlock_t* queue_lock){
     memset(sock,0x0,sock_size);
-    mutex_init(&sock->lock);
+    spinlock_init(&sock->lock);
 
 
     insert_socket(queue_head,sock,queue_lock);
@@ -371,13 +371,13 @@ int generic_inet_recvfrom(socket_t* sock, void* buf, uint32_t buf_len, uint32_t 
     in_sockaddr_t* in_addr = (in_sockaddr_t*)src_addr;
 
     recvd_packet_t* packet = nullptr;
-    mutex_wait(&gen_sock->lock,LOCK_TIMEOUT_INF);
+    spinlock_acquire(&gen_sock->lock);
     while (true){
         packet = gen_sock->rx_queue;
         if (packet) break;
 
         if (flags & MSG_DONTWAIT) {
-            mutex_signal(&gen_sock->lock);
+            spinlock_release(&gen_sock->lock);
             return SOCKET_GENERIC_RECVFROM_FAIL;
         }
 
@@ -385,10 +385,10 @@ int generic_inet_recvfrom(socket_t* sock, void* buf, uint32_t buf_len, uint32_t 
         
         flags |= MSG_DONTWAIT;
 
-        mutex_signal(&gen_sock->lock);
+        spinlock_release(&gen_sock->lock);
 
         yield();
-        mutex_wait(&gen_sock->lock,LOCK_TIMEOUT_INF);
+        spinlock_acquire(&gen_sock->lock);
     }
 
     if (in_addr){
@@ -409,7 +409,7 @@ int generic_inet_recvfrom(socket_t* sock, void* buf, uint32_t buf_len, uint32_t 
         kfree(packet->data);
         kfree(packet);
     }
-    mutex_signal(&gen_sock->lock);
+    spinlock_release(&gen_sock->lock);
 
 
     return cpy_len;

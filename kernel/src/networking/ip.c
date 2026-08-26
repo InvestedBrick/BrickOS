@@ -11,13 +11,13 @@
 
 static atomic_uint_fast16_t ip_id;
 ipv4_ll_link_t* packet_ll_origin = nullptr;
-mutex_t ip_ll_mutex;
+spinlock_t ip_ll_lock;
 
 raw_ip_socket_t* raw_ip_sock_head = nullptr;
-mutex_t raw_ip_sock_queue_lock;
+spinlock_t raw_ip_sock_queue_lock;
 
 void init_ip_linked_lists(){
-    mutex_init(&ip_ll_mutex);
+    spinlock_init(&ip_ll_lock);
 }
 
 uint64_t create_packet_part_ident(uint32_t src_ip, uint16_t ident, uint8_t protocol){
@@ -58,7 +58,7 @@ void abort_reassembly(ipv4_packet_part_t* part){
 
 void ipv4_timer_callback(){
     // called every second
-    mutex_wait(&ip_ll_mutex,LOCK_TIMEOUT_INF);
+    spinlock_acquire(&ip_ll_lock);
     ipv4_ll_link_t* head = packet_ll_origin;
     while(head){
         ipv4_ll_link_t* to_del = nullptr;
@@ -72,7 +72,7 @@ void ipv4_timer_callback(){
             
         }
     }
-    mutex_signal(&ip_ll_mutex);
+    spinlock_release(&ip_ll_lock);
 }
 
 route_t* route_lookup(uint32_t dst_ip){
@@ -411,7 +411,7 @@ void ip_handle_packet(uint8_t* data, uint32_t write_off, uint32_t total_len) {
 
         part->next = nullptr;
         
-        mutex_wait(&ip_ll_mutex,LOCK_TIMEOUT_INF);
+        spinlock_acquire(&ip_ll_lock);
         insert_ipv4_packet_part(part);
 
         if (ipv4_packet_complete(part)){
@@ -420,7 +420,7 @@ void ip_handle_packet(uint8_t* data, uint32_t write_off, uint32_t total_len) {
             hand_ip_packet_along(out_data,len,part->protocol);
             kfree(out_data); // can be freed here since was allocated in unify_ip_packet
         }
-        mutex_signal(&ip_ll_mutex);
+        spinlock_release(&ip_ll_lock);
 
 
     }
@@ -429,7 +429,7 @@ void ip_handle_packet(uint8_t* data, uint32_t write_off, uint32_t total_len) {
 }
 
 void handle_raw_ip_packet(uint8_t* data, uint32_t len){
-    mutex_wait(&raw_ip_sock_queue_lock,LOCK_TIMEOUT_INF);
+    spinlock_acquire(&raw_ip_sock_queue_lock);
 
     ipv4_header_t* ip_hdr = (ipv4_header_t*)(data);
     uint8_t ip_hlen = (ip_hdr->version_ihl & 0xf) * sizeof(uint32_t);
@@ -439,7 +439,10 @@ void handle_raw_ip_packet(uint8_t* data, uint32_t len){
     uint32_t dst_ip = switch_endian32(ip_hdr->dst_ip);
 
     raw_ip_socket_t* sock = raw_ip_sock_head;
-    if (!sock) return;
+    if (!sock) {
+        spinlock_release(&raw_ip_sock_queue_lock);
+        return;
+    }
 
 
     raw_ip_recvd_packet_t* packet = (raw_ip_recvd_packet_t*)kmalloc(sizeof(raw_ip_recvd_packet_t));
@@ -458,16 +461,16 @@ void handle_raw_ip_packet(uint8_t* data, uint32_t len){
         // every socket with the same protocol and either the same ip or INADDR_ANY should get the packet
         if ((sock->ip_addr == dst_ip && sock->protocol == packet->protocol) || 
         (sock->ip_addr == INADDR_ANY && sock->protocol == packet->protocol)) {
-            mutex_wait(&sock->sock.lock,LOCK_TIMEOUT_INF);
+            spinlock_acquire(&sock->sock.lock);
             atomic_fetch_add(&packet->refcnt, 1);
             enqueue_rx_data((generic_proto_socket_t*)sock, (recvd_packet_t*)packet);
-            mutex_signal(&sock->sock.lock);
+            spinlock_release(&sock->sock.lock);
         }
         sock = (raw_ip_socket_t*)sock->sock.next;
     }
 
 
-    mutex_signal(&raw_ip_sock_queue_lock);
+    spinlock_release(&raw_ip_sock_queue_lock);
     
 
 }
@@ -501,14 +504,14 @@ int raw_ip_bind(socket_t* sock, sockaddr_t* addr, uint32_t len){
     in_sockaddr_t* inet_sockaddr = (in_sockaddr_t*)addr;
     if (inet_sockaddr->inet_family != INET_FAM_IPv4) return RAW_IP_RET_FAIL;
 
-    mutex_wait(&raw_ip_sock->sock.lock,LOCK_TIMEOUT_INF);
+    spinlock_acquire(&raw_ip_sock->sock.lock);
 
     socket_clear_rx_queue((generic_proto_socket_t*)raw_ip_sock);
     socket_clear_wait_queue((generic_proto_socket_t*)raw_ip_sock);
 
     raw_ip_sock->ip_addr = inet_sockaddr->inet_addr;
 
-    mutex_signal(&raw_ip_sock->sock.lock);
+    spinlock_release(&raw_ip_sock->sock.lock);
 
     return 0;
 }

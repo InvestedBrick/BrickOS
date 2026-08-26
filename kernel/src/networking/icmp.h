@@ -34,7 +34,7 @@ typedef struct {
 }icmp_socket_t;
 
 extern icmp_socket_t* icmp_sock_head;
-extern mutex_t icmp_sock_queue_lock;
+extern spinlock_t icmp_sock_queue_lock;
 extern proto_handles_t icmp_proto_handles;
 
 #define ICMP_RET_FAIL -1

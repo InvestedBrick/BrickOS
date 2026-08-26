@@ -48,7 +48,7 @@ typedef struct {
 #define UDP_HDR_RET_DATA_OVERFLOW 0x1
 
 extern udp_socket_t* udp_sock_head;
-extern mutex_t udp_sock_queue_lock;
+extern spinlock_t udp_sock_queue_lock;
 
 /**
  * udp_add_header:

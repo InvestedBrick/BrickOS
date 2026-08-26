@@ -32,7 +32,7 @@ typedef struct generic_proto_socket {
     recvd_packet_t* rx_queue;
     uint32_t rx_queue_size;
     
-    mutex_t lock;
+    spinlock_t lock;
     struct generic_proto_socket* next;
 }generic_proto_socket_t;
 
@@ -210,7 +210,7 @@ void enqueue_rx_data(generic_proto_socket_t* sock, recvd_packet_t* packet);
  * @param sock The socket to insert
  * @param queue_lock The lock for the protocol's socket queue
  */
-void insert_socket(generic_proto_socket_t** queue_head,generic_proto_socket_t* sock,mutex_t* queue_lock);
+void insert_socket(generic_proto_socket_t** queue_head,generic_proto_socket_t* sock,spinlock_t* queue_lock);
 
 /**
  * cleanup_socket:
@@ -219,7 +219,7 @@ void insert_socket(generic_proto_socket_t** queue_head,generic_proto_socket_t* s
  * @param sock The socket to clean up
  * @param queue_lock The lock for the protocol's socket queue
  */
-void cleanup_socket(generic_proto_socket_t** queue_head,generic_proto_socket_t* sock,mutex_t* queue_lock);
+void cleanup_socket(generic_proto_socket_t** queue_head,generic_proto_socket_t* sock,spinlock_t* queue_lock);
 
 /**
  * init_prot_socket:
@@ -228,7 +228,7 @@ void cleanup_socket(generic_proto_socket_t** queue_head,generic_proto_socket_t* 
  * @param sock_size The size of the protocol-specific socket structure
  * @param queue_head The head of the protocol's socket queue
  */
-void init_prot_socket(generic_proto_socket_t* sock, uint32_t sock_size,generic_proto_socket_t** queue_head,mutex_t* queue_lock);
+void init_prot_socket(generic_proto_socket_t* sock, uint32_t sock_size,generic_proto_socket_t** queue_head,spinlock_t* queue_lock);
 
 /**
  * generic_inet_recvfrom:
