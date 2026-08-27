@@ -4,14 +4,20 @@
 #include "../utilities/vector.h"
 #include "../kernel_header.h"
 #include "../../limine-protocol/include/limine.h"
+#include "../processes/spinlocks.h"
 #include "kmalloc.h"
 
 uint64_t total_alloced_pages;
 uint64_t total_pages;
 uint64_t mem_number_vpages;
 static uint64_t mem_phys_alloc_start;
+
+spinlock_t mem_bitmap_lock;
 static uint8_t* memory_bitmap;
+
+spinlock_t shm_obj_lock;
 vector_t shm_obj_vec;
+
 static uint64_t* kernel_pml4;
 
 void free_dynamic_mapping(uint64_t virt);
@@ -57,6 +63,7 @@ bool shared_address_remove(vector_t* vec, void* addr){
 
 void init_shm_obj_vector(){
     init_vector(&shm_obj_vec);
+    spinlock_init(&shm_obj_lock);
 }
 
 virt_mem_area_t* find_virt_mem_area(virt_mem_area_t* start,uint64_t addr){
@@ -104,17 +111,23 @@ void free_shrd_vma_obj(virt_mem_area_t* vma){
     }
 }
 shared_object_t* find_shared_object_by_id(uint32_t unique_id){
+    uint32_t f = spinlock_acquire_irq(&shm_obj_lock);
     for (uint32_t i = 0; i < shm_obj_vec.size;i++){
         shared_object_t* shrd_obj = (shared_object_t*)shm_obj_vec.data[i];
-        if (shrd_obj->unique_id == unique_id) 
+        if (shrd_obj->unique_id == unique_id) {
+            spinlock_release_irq(&shm_obj_lock,f);
             return shrd_obj;
+        }
     }
 
+    spinlock_release_irq(&shm_obj_lock,f);
     return 0;
 }
 
 void append_shared_object(shared_object_t* shrd_obj){
+    uint32_t f = spinlock_acquire_irq(&shm_obj_lock);
     vector_append(&shm_obj_vec,(vector_data_t)shrd_obj);
+    spinlock_release_irq(&shm_obj_lock,f);
 }
 
 uint64_t linear_phys_to_virt(uint64_t phys){
@@ -161,6 +174,8 @@ void pmm_init(uint64_t phys_alloc_start, uint64_t mem_high){
 
     memory_bitmap = (uint8_t*)linear_phys_to_virt(phys_alloc_start);
     memset(memory_bitmap,0,bitmap_size);
+    spinlock_init(&mem_bitmap_lock);
+
     // reserve the kernel pages
     uint64_t kernel_pages = (ALIGN_UP(bitmap_size,MEMORY_PAGE_SIZE)) / MEMORY_PAGE_SIZE;
 
@@ -186,8 +201,10 @@ void pmm_free_page_frame(uint64_t phys_addr){
     uint64_t frame = (phys_addr - mem_phys_alloc_start) / MEMORY_PAGE_SIZE;
     uint64_t byte = frame / 8;
     uint64_t bit = frame % 8;
+    spinlock_acquire(&mem_bitmap_lock);
     memory_bitmap[byte] &= ~(1 << bit);
     if (total_alloced_pages > 0) total_alloced_pages--;
+    spinlock_release(&mem_bitmap_lock);
 }
 
 void free_table_entry(uint64_t* tbl,uint32_t tbl_idx){
@@ -373,6 +390,7 @@ invalid_unmap:
 }
 
 uint64_t pmm_alloc_page_frame() {
+    spinlock_acquire(&mem_bitmap_lock);
     uint32_t n_bytes = CEIL_DIV(total_pages,8);
     for (uint32_t b = 0; b < n_bytes;b++){
         
@@ -390,12 +408,12 @@ uint64_t pmm_alloc_page_frame() {
                 total_alloced_pages++;
 
                 uint64_t phys_addr = (b * 8 + i) * MEMORY_PAGE_SIZE + mem_phys_alloc_start;
-                
+                spinlock_release(&mem_bitmap_lock);
                 return phys_addr;
             }
         }
     }
-
+    spinlock_release(&mem_bitmap_lock);
     panic("System ran out of physical memory");
     return 0;
 }
