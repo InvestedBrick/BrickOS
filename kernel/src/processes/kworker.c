@@ -2,22 +2,26 @@
 #include "../memory/kmalloc.h"
 #include "scheduler.h"
 #include "../io/log.h"
+#include "spinlocks.h"
 
+spinlock_t work_queue_lock;
 queue_t work_queue;
+
+spinlock_t worker_queue_lock;
 queue_t worker_queue;
 
 void kwork(){
     thread_t* worker = get_current_thread();
     while(true){
         while(true){
-            uint32_t f = irq_save();
+            spinlock_acquire(&work_queue_lock);
             if (work_queue.size == 0){
-                irq_restore(f);
+                spinlock_release(&work_queue_lock);
                 break;
             }
             
             kwork_t* work = (kwork_t*)queue_pop(&work_queue);
-            irq_restore(f);
+            spinlock_release(&work_queue_lock);
 
             if (work->args){
                 void (*func)(void*) = ((void (*)(void*))work->func);
@@ -27,14 +31,17 @@ void kwork(){
             }
             kfree(work);
         }
-        uint32_t f = irq_save();
+        spinlock_acquire(&work_queue_lock);
         if (work_queue.size > 0){
-            irq_restore(f);
+            spinlock_release(&work_queue_lock);
             continue;
         }
+        spinlock_release(&work_queue_lock);
+
         add_sleeping_thread(worker,THREAD_ETERNAL_SLEEP);
+        spinlock_acquire(&worker_queue_lock);
         queue_push(&worker_queue,(queue_data_t)worker);
-        irq_restore(f);
+        spinlock_release(&worker_queue_lock);
         yield();
     }
 }
@@ -44,11 +51,14 @@ void enqueue_kernel_work(work_func_t func, void* args){
     work->func = func;
     work->args = args;
 
-    uint32_t f = irq_save();
+    uint32_t f = spinlock_acquire_irq(&work_queue_lock);
     queue_push(&work_queue, (queue_data_t)work);
+    spinlock_release_irq(&work_queue_lock,f);
+
     thread_t* t = nullptr;
+    f = spinlock_acquire_irq(&worker_queue_lock);
     if (worker_queue.size > 0) t = (thread_t*)queue_pop(&worker_queue);
-    irq_restore(f);
+    spinlock_release_irq(&worker_queue_lock,f);
 
     if (t) wakeup_thread(t);
 
@@ -57,11 +67,13 @@ void enqueue_kernel_work(work_func_t func, void* args){
 void init_kworkers(){
     init_queue(&work_queue);
     init_queue(&worker_queue);
+    spinlock_init(&work_queue_lock);
+    spinlock_init(&worker_queue_lock);
 }
 
 void add_kworker(){
     thread_t* worker = create_kernel_worker_thread(kwork);
-    uint32_t f = irq_save();
+    uint32_t f = spinlock_acquire_irq(&worker_queue_lock);
     queue_push(&worker_queue,(queue_data_t)worker);
-    irq_restore(f);
+    spinlock_release_irq(&worker_queue_lock,f);
 }
