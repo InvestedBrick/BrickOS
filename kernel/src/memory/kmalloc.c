@@ -3,11 +3,15 @@
 #include <shared/util.h>
 #include "../io/log.h"
 #include <stdint.h>
-static uint64_t heap_size;
+#include "../processes/spinlocks.h"
+
 static uint8_t kmalloc_initialized = 0;
 
 //NOTE: This allocator does currently not care about returning allocated pages to the page manager since I don't wanna deal with it
+spinlock_t malloc_lock;
 memory_block_t* head = 0;
+
+static uint64_t heap_size;
 
 void alloc_and_map_new_page(){
     if(heap_size + (uint64_t)MEMORY_PAGE_SIZE > KERNEL_MALLOC_END) {panic("Kernel heap has run out of memory"); return;}
@@ -61,14 +65,17 @@ void split_block(memory_block_t* block, uint32_t size){
 void* kmalloc(uint32_t size){
     if (size <= 0) return 0;
     if (!kmalloc_initialized) { error("kmalloc has not been initialized"); return 0;}
+    uint32_t f = spinlock_acquire_irq(&malloc_lock);
     memory_block_t* block = find_free_block(size);
     if(block != 0){
         split_block(block,size);
         block->free = 0;
+        spinlock_release_irq(&malloc_lock,f);
         return (void*)((char*)block + MEMORY_BLOCK_SIZE);
     }
     
     // no large enough block exists -> allocate more space
+    spinlock_release_irq(&malloc_lock,f);
     uint32_t total_size = size + MEMORY_BLOCK_SIZE;
     uint32_t n_pages_to_alloc = CEIL_DIV(total_size,MEMORY_PAGE_SIZE);
     //allocate more pages if needed
@@ -76,6 +83,7 @@ void* kmalloc(uint32_t size){
         alloc_and_map_new_page();
     }
 
+    f = spinlock_acquire_irq(&malloc_lock);
     memory_block_t* last = head;
     while (last && last->next) last = last->next;
     block = (memory_block_t*) ((char*)last + MEMORY_BLOCK_SIZE + last->size);
@@ -83,6 +91,7 @@ void* kmalloc(uint32_t size){
     block->free = 0;
     block->next = 0;
     if (last) last->next = block; else head = block;
+    spinlock_release_irq(&malloc_lock,f);
 
     return (void*)((char*)block + MEMORY_BLOCK_SIZE);
 
@@ -95,18 +104,19 @@ void kfree(void* addr){
     // I hope you dont start freeing random pointers
     memory_block_t* block = (memory_block_t*)((char*)addr - MEMORY_BLOCK_SIZE);
     
-    if (block->free) panic("Double free detected");
+    uint32_t f = spinlock_acquire_irq(&malloc_lock);
+    if (block->free) {spinlock_release_irq(&malloc_lock,f); panic("Double free detected");}
     
     block->free = 1;
-
     defrag_heap();
+    spinlock_release_irq(&malloc_lock,f);
 }   
 
 void init_kmalloc(uint32_t initial_heapsize){
     heap_size = 0;
     kmalloc_initialized = 1;
     set_heap_size(initial_heapsize);
-
+    spinlock_init(&malloc_lock);
     // Initialize the first block
     head = (memory_block_t*) KERNEL_MALLOC_START;
     head->size = heap_size - MEMORY_BLOCK_SIZE;
