@@ -11,11 +11,16 @@
 #include "IPC/pipes.h"
 #include "../processes/process.h"
 #include "../processes/scheduler.h"
+#include "../processes/spinlocks.h"
 #include "../kernel_header.h"
 #include "virt_files/virt_files.h"
 
 vector_t inodes;
+spinlock_t inodes_lock;
+
 vector_t inode_name_pairs; // Note to self: do not free this with vector free, the names have to be freed too
+spinlock_t inode_name_pairs_lock;
+
 sectors_headerdata_t header_data; 
 uint32_t active_partially_used_bitmaps;
 uint32_t used_sectors = 0;
@@ -25,6 +30,7 @@ uint32_t used_sectors = 0;
 
 uint8_t first_time_fs_init = 0;
 
+spinlock_t last_read_sector_lock;
 unsigned char* last_read_sector;
 uint32_t last_read_sector_idx;
 
@@ -58,24 +64,31 @@ inode_t* get_inode_by_path(unsigned char* path){
 }
 
 inode_name_pair_t* get_name_by_inode_id(uint32_t id){
+    spinlock_acquire(&inode_name_pairs_lock);
     for(uint32_t i = 0; i < inode_name_pairs.size;i++){
         inode_name_pair_t* pair = (inode_name_pair_t*)inode_name_pairs.data[i];
         if (pair->id == id){
+            spinlock_release(&inode_name_pairs_lock);
             return pair;
         }
     }
+    spinlock_release(&inode_name_pairs_lock);
     return 0;
 }
 
 uint32_t get_inode_id_by_name(uint32_t parent_id, unsigned char* name){
     // really inefficient, need to improve
     uint32_t len = strlen(name);
+    spinlock_acquire(&inode_name_pairs_lock);
     for (uint32_t i = 0; i < inode_name_pairs.size; i++) {
         inode_name_pair_t* pair = (inode_name_pair_t*)inode_name_pairs.data[i];
         if (pair->parent_id == parent_id && strneq(pair->name, name,len,pair->length)) {
+            spinlock_release(&inode_name_pairs_lock);
             return pair->id;
         }
     }
+
+    spinlock_release(&inode_name_pairs_lock);
     return (uint32_t)-1;
 }
 
@@ -95,13 +108,16 @@ uint8_t dir_contains_name(inode_t* dir,unsigned char* name){
 }
 
 inode_t* get_inode_by_id(uint32_t id){
+    uint32_t f = spinlock_acquire_irq(&inodes_lock);
     for(uint32_t i = 0; i < inodes.size;i++){
         inode_t* node = (inode_t*)inodes.data[i];
         if(node->id == id){
+            spinlock_release_irq(&inodes_lock,f);
             return node;
         }
     }
 
+    spinlock_release_irq(&inodes_lock,f);
     return 0;
 }
 string_t get_active_dir_string(){
@@ -119,6 +135,7 @@ inode_t* get_parent_inode(inode_t* child){
 }
 
 void efficient_read_sector(uint32_t sector_id){
+    // "efficient" they say
     if (last_read_sector_idx != sector_id){
         read_sectors(ATA_PRIMARY_BUS_IO,1,last_read_sector,sector_id);
         last_read_sector_idx = sector_id;
@@ -212,6 +229,7 @@ void shift_sector_bitmaps_left(unsigned char** bitmaps, uint32_t start, uint32_t
 }
 
 void read_bitmaps_from_disk(){
+    uint32_t f = spinlock_acquire_irq(&last_read_sector_lock);
     // bitmap headerdata starts at sector 101 (BITMAP_SECTOR_START)
     read_sectors(ATA_PRIMARY_BUS_IO,1,last_read_sector,BITMAP_SECTOR_START);
     last_read_sector_idx = BITMAP_SECTOR_START;
@@ -236,6 +254,7 @@ void read_bitmaps_from_disk(){
         memcpy(header_data.sector_bitmaps[i],&last_read_sector[bitmap_idx_in_sector * SECTOR_BITMAP_SIZE],SECTOR_BITMAP_SIZE);
     }
 
+    spinlock_release_irq(&last_read_sector_lock,f);
 }
 
 void write_bitmaps_to_disk() {
@@ -398,12 +417,13 @@ uint32_t count_indirect_sector_entries(uint32_t sector_idx){
     for (uint32_t i = 0; i < FS_SECTORS_PER_INDIRECT_SECTOR;i++){
         if (*(uint32_t*)&last_read_sector[i * sizeof(uint32_t)] != 0) count++;
     }
-
+    
     return count;
 }
 
 unsigned char* read_dir_entries_to_buffer(inode_t* dir){
     uint32_t total_sectors = 0;
+    uint32_t f = spinlock_acquire_irq(&last_read_sector_lock);
 
     if (dir->indirect_sector){
         total_sectors += count_indirect_sector_entries(dir->indirect_sector);
@@ -416,11 +436,14 @@ unsigned char* read_dir_entries_to_buffer(inode_t* dir){
             if (indirect_sector_idx != 0) total_sectors += count_indirect_sector_entries(indirect_sector_idx);
         }
     }
-
+    
     for (uint32_t sec = 0; dir->data_sectors[sec] != 0 && sec < NUM_DATA_SECTORS_PER_FILE;sec++){total_sectors++;}
-
-    if (total_sectors == 0) return 0;
-
+    
+    if (total_sectors == 0) {
+        spinlock_release_irq(&last_read_sector_lock,f);
+        return 0;
+    }
+    
     unsigned char* buffer = (char*)kmalloc(total_sectors * ATA_SECTOR_SIZE);
     // read all the sectors individually, since they might not be continuous
     for (uint32_t i = 0; i < total_sectors;i++ ){
@@ -446,7 +469,8 @@ unsigned char* read_dir_entries_to_buffer(inode_t* dir){
             read_sectors(ATA_PRIMARY_BUS_IO,1,&buffer[i * ATA_SECTOR_SIZE],sector);
         }
     }
-
+    
+    spinlock_release_irq(&last_read_sector_lock,f);
     return buffer;
 
 }
@@ -480,7 +504,9 @@ void build_inodes(inode_t* parent){
         memcpy(pair->name,&buffer[buffer_idx + 1],name_len);
         pair->name[name_len] = 0;
 
+        uint32_t f = spinlock_acquire_irq(&inode_name_pairs_lock);
         vector_append(&inode_name_pairs,(vector_data_t)pair);
+        spinlock_release_irq(&inode_name_pairs_lock,f);
 
         buffer_idx += name_len + sizeof(uint8_t);
 
@@ -495,7 +521,10 @@ void build_inodes(inode_t* parent){
         // copy the data from disk to memory
         memcpy((void*)inode,&last_read_sector[sector_offset],sizeof(inode_t));
 
+        f = spinlock_acquire_irq(&inodes_lock);
         vector_append(&inodes,(vector_data_t)inode);
+        spinlock_release_irq(&inodes_lock,f);
+
         build_inodes(inode); 
     }
 
@@ -511,11 +540,18 @@ void init_filesystem(){
     last_read_sector = (unsigned char*)kmalloc(ATA_SECTOR_SIZE);
 
     // read the first sector 
+    spinlock_init(&last_read_sector_lock);
+
+    uint32_t f = spinlock_acquire_irq(&last_read_sector_lock);
     read_sectors(ATA_PRIMARY_BUS_IO,1,last_read_sector,0);
     last_read_sector_idx = 0;
 
     init_vector(&inodes);
+    spinlock_init(&inodes_lock);
+
     init_vector(&inode_name_pairs);
+    spinlock_init(&inode_name_pairs_lock);
+
     init_dev_vec();
     init_pipe_vec();
     
@@ -574,6 +610,7 @@ void init_filesystem(){
         memcpy(root_node->data_sectors,&last_read_sector[sizeof(uint32_t) * 5],NUM_DATA_SECTORS_PER_FILE * sizeof(uint32_t));
         read_bitmaps_from_disk();
     }
+    spinlock_release_irq(&last_read_sector_lock,f);
     
     inode_name_pair_t* name_pair = (inode_name_pair_t*)kmalloc(sizeof(inode_name_pair_t));
     name_pair->length = 4;
@@ -582,12 +619,16 @@ void init_filesystem(){
     name_pair->name = kmalloc(sizeof(unsigned char) * 5);
     memcpy(name_pair->name,"root",sizeof(unsigned char) * 5);
 
+    f = spinlock_acquire_irq(&inode_name_pairs_lock);
     vector_append(&inode_name_pairs,(vector_data_t)name_pair);
+    spinlock_release_irq(&inode_name_pairs_lock,f);
 
     global_kernel_process.main_thread->active_dir = root_node;
     
+    f = spinlock_acquire_irq(&inodes_lock);
     vector_append(&inodes,(vector_data_t)root_node);
-    
+    spinlock_release_irq(&inodes_lock,f);
+
     build_inodes(root_node);
 
     if (first_time_fs_init){
@@ -597,6 +638,7 @@ void init_filesystem(){
         if (create_file(root_node,"dev",strlen("dev"),FS_TYPE_DIR,FS_FILE_PERM_NONE,PRIV_STD) < 0) error("Failed to create dev/");
         if (create_file(root_node,"tmp",strlen("tmp"),FS_TYPE_DIR,FS_FILE_PERM_NONE,PRIV_STD) < 0) error("Failed to create tmp/");
     }
+
 }
 
 uint8_t write_directory_entry(inode_t* parent_dir, uint32_t child_inode_id, unsigned char* name, uint8_t name_length){
@@ -614,6 +656,7 @@ uint8_t write_directory_entry(inode_t* parent_dir, uint32_t child_inode_id, unsi
 
     uint32_t bytes_written = 0;
     uint32_t remaining_bytes_in_sector = ATA_SECTOR_SIZE - sector_offset;
+    spinlock_acquire(&last_read_sector_lock);
     while(bytes_written < data_buffer_size){
 
         uint32_t to_write = data_buffer_size - bytes_written;
@@ -667,8 +710,7 @@ uint8_t write_directory_entry(inode_t* parent_dir, uint32_t child_inode_id, unsi
             }
             sector = parent_dir->data_sectors[sector_idx];
         }
-
-
+        
         efficient_read_sector(sector);
         memcpy(&last_read_sector[sector_offset],&data_buffer[bytes_written],to_write);
         write_sectors(ATA_PRIMARY_BUS_IO,1,last_read_sector,sector);
@@ -686,6 +728,8 @@ uint8_t write_directory_entry(inode_t* parent_dir, uint32_t child_inode_id, unsi
     last_read_sector_idx = parent_dir->data_sectors[0];
     *(uint32_t*)&last_read_sector[0] = *(uint32_t*)&last_read_sector[0] + 1; // increment the number of entries
     write_sectors(ATA_PRIMARY_BUS_IO,1,last_read_sector,parent_dir->data_sectors[0]); 
+    
+    spinlock_release(&last_read_sector_lock);
 
     return 1;
 }
@@ -926,11 +970,13 @@ int delete_file_by_inode(inode_t* parent_dir,inode_t* inode){
 
 
     if (inode->d_indirect_sector){
+        spinlock_acquire(&last_read_sector_lock);
         efficient_read_sector(inode->d_indirect_sector);
         for (uint32_t i = 0; i < FS_SECTORS_PER_INDIRECT_SECTOR;i++){
             uint32_t s_indir_sector = *(uint32_t*)&last_read_sector[i * sizeof(uint32_t)];
             if (s_indir_sector) free_indirect_sector(s_indir_sector);
         }
+        spinlock_release(&last_read_sector_lock);
         free_sector(inode->d_indirect_sector);
     }
 
@@ -947,12 +993,19 @@ int delete_file_by_inode(inode_t* parent_dir,inode_t* inode){
     erase_directory_entry(parent_dir,inode->id);
     
     inode_name_pair_t* pair = get_name_by_inode_id(inode->id);
+    spinlock_acquire(&inode_name_pairs_lock);
     vector_erase_item(&inode_name_pairs,(uint64_t)pair);
+    spinlock_release(&inode_name_pairs_lock);
+
     kfree(pair->name);
     kfree(pair);
 
     free_inode_section(inode->id);
+    
+    spinlock_acquire(&inodes_lock);
     vector_erase_item(&inodes,(uint64_t)inode);
+    spinlock_release(&inodes_lock);
+
     kfree(inode);
 
     return FS_FILE_DELETION_SUCCESS;
@@ -1052,6 +1105,7 @@ void write_inode_to_disk(inode_t* inode){
         sector_idx = 0;
         sector_start = 0;
     }
+    spinlock_acquire(&last_read_sector_lock);
     efficient_read_sector(sector_idx);
 
     *(uint32_t*)&last_read_sector[sector_start] = inode->id;
@@ -1065,14 +1119,18 @@ void write_inode_to_disk(inode_t* inode){
     memcpy(&last_read_sector[sector_start + sizeof(uint32_t) * 5],inode->data_sectors,sizeof(uint32_t) * NUM_DATA_SECTORS_PER_FILE);
 
     write_sectors(ATA_PRIMARY_BUS_IO,1,last_read_sector,sector_idx);
+    spinlock_release(&last_read_sector_lock);
+
 }
 
 void write_to_disk(){
+    uint32_t f = spinlock_acquire_irq(&inodes_lock);
     for (uint32_t i = 0; i < inodes.size;i++){
         inode_t* inode = (inode_t*)inodes.data[i];
         if (inode->type == FS_TYPE_VIRT_FILE || inode->type == FS_TYPE_VIRT_DIR) continue; // virtual files/dirs dont have a representation on disk
         write_inode_to_disk(inode);
     }
+    spinlock_release_irq(&inodes_lock,f);
     log("Wrote all inodes to disk");
     write_bitmaps_to_disk();
     log("Wrote all bitmaps to disk");
