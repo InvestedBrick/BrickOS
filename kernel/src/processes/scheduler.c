@@ -182,7 +182,6 @@ int add_thread(struct process* usr_proc){
 thread_t* create_kernel_worker_thread(void (*entry_func)()){
     thread_t* kthread  = create_thread(&global_kernel_process);
     if (!kthread) return nullptr;
-    memset(kthread,0x0,sizeof(thread_t));
 
     kthread->regs.rip = (uint64_t)entry_func;
     kthread->regs.rflags = EFLAGS_IF;
