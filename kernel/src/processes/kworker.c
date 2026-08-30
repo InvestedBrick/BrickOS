@@ -14,14 +14,14 @@ void kwork(){
     thread_t* worker = get_current_thread();
     while(true){
         while(true){
-            spinlock_acquire(&work_queue_lock);
+            uint32_t f = spinlock_acquire_irq(&work_queue_lock);
             if (work_queue.size == 0){
-                spinlock_release(&work_queue_lock);
+                spinlock_release_irq(&work_queue_lock,f);
                 break;
             }
             
             kwork_t* work = (kwork_t*)queue_pop(&work_queue);
-            spinlock_release(&work_queue_lock);
+            spinlock_release_irq(&work_queue_lock,f);
 
             if (work->args){
                 void (*func)(void*) = ((void (*)(void*))work->func);
@@ -31,17 +31,17 @@ void kwork(){
             }
             kfree(work);
         }
-        spinlock_acquire(&work_queue_lock);
+        uint32_t f = spinlock_acquire_irq(&work_queue_lock);
         if (work_queue.size > 0){
-            spinlock_release(&work_queue_lock);
+            spinlock_release_irq(&work_queue_lock,f);
             continue;
         }
-        spinlock_release(&work_queue_lock);
+        spinlock_release_irq(&work_queue_lock,f);
 
         add_sleeping_thread(worker,THREAD_ETERNAL_SLEEP);
-        spinlock_acquire(&worker_queue_lock);
+        f = spinlock_acquire_irq(&worker_queue_lock);
         queue_push(&worker_queue,(queue_data_t)worker);
-        spinlock_release(&worker_queue_lock);
+        spinlock_release_irq(&worker_queue_lock,f);
         yield();
     }
 }
