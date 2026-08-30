@@ -69,10 +69,10 @@ void finish_up_root_process();
  */
 uint32_t create_process(unsigned char* file_path,uint8_t priv_lvl,unsigned char* argv[],process_fds_init_t* start_fds);
 /**
- * init_process_vector:
- * Sets up the process vector
+ * init_processes:
+ * Sets up the process vector and its spinlock
  */
-void init_process_vector();
+void init_processes();
 /**
  * kill_process:
  * Neutralizes the process

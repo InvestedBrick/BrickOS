@@ -20,7 +20,11 @@
 #include "../tables/timer_callbacks.h"
 #include "../utilities/elf_parser.h"
 #include "../tables/gdt.h"
+#include "../processes/spinlocks.h"
+
 vector_t process_vector;
+spinlock_t proc_vec_lock;
+
 static uint8_t pid_used[MAX_PIDS] = {0};
 static uint32_t next_pid = 1;
 process_t* overwrite_proc = 0;
@@ -34,7 +38,7 @@ void finish_up_root_process(){
 }
 
 void create_root_process(){
-    init_process_vector();
+    init_processes();
 
     memset(global_kernel_process.fd_table,0,MAX_FDS * sizeof(generic_file_t*));
 
@@ -61,11 +65,14 @@ void create_root_process(){
 
 
 process_t* get_process_by_pid(uint32_t pid){
+    spinlock_acquire(&proc_vec_lock);
     for (uint32_t i = 0; i < process_vector.size;i++){
         if (((process_t*)(process_vector.data[i]))->process_id == pid){
+            spinlock_release(&proc_vec_lock);
             return (process_t*)(process_vector.data[i]);
         }
     }
+    spinlock_release(&proc_vec_lock);
     return 0;
 }
 
@@ -343,8 +350,10 @@ uint32_t create_process(unsigned char* file_path,uint8_t priv_lvl, unsigned char
     
     process->page_alloc_start = code_data_pages * MEMORY_PAGE_SIZE;
     
+    spinlock_acquire(&proc_vec_lock);
     vector_append(&process_vector,(vector_data_t)process); // too lazy to implement a vector for structs
-    
+    spinlock_release(&proc_vec_lock);
+
     uint64_t* pml4 = create_user_pml4_table();
     
     process->pml4 = pml4;
@@ -399,13 +408,15 @@ void dispatch_process(uint32_t pid){
 }
 
 
-void init_process_vector(){
+void init_processes(){
+    spinlock_init(&proc_vec_lock);
     init_vector(&process_vector);
 }
 
 int kill_process(uint32_t pid){
     if (!(pid > 0 && pid < MAX_PIDS && pid_used[pid])) return SYSCALL_FAIL;
     process_t* process;
+    spinlock_acquire(&proc_vec_lock);
     for (uint32_t i = 0; i < process_vector.size;i++){
         if (((process_t*)(process_vector.data[i]))->process_id == pid){
             process = (process_t*)(process_vector.data[i]);
@@ -413,6 +424,7 @@ int kill_process(uint32_t pid){
             break;
         }
     }
+    spinlock_release(&proc_vec_lock);
     process->running = 0;
 
     for (uint32_t i = 0; i < MAX_FDS;i++){
