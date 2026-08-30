@@ -3,6 +3,8 @@
 #include "../../io/log.h"
 #include <shared/util.h>
 #include "../../memory/kmalloc.h"
+
+spinlock_t pci_list_lock;
 pci_device_t* pci_head = nullptr;
 void check_device(uint8_t bus, uint8_t slot);
 
@@ -82,12 +84,14 @@ void add_pci_device(uint8_t bus, uint8_t slot, uint8_t func){
     logf("Found PCI Device - Bus: %x, Slot : %x, Func: %x, Vendor ID: %x, Device ID: %x, Class: %x, Subclass: %x",
         bus,slot,func,device->vendor_id,device->device_id,device->class_code,device->subclass);
 
+    uint32_t f = spinlock_acquire_irq(&pci_list_lock);
     if (!pci_head) pci_head = device;
     else {
         pci_device_t* it = pci_head;
         while(it->next) it = it->next;
         it->next = device;
     }
+    spinlock_release_irq(&pci_list_lock,f);
 }
 
 void check_bus(uint8_t bus){
@@ -124,6 +128,7 @@ void check_device(uint8_t bus, uint8_t slot){
 }
 
 void pci_check_all_busses(){
+    spinlock_init(&pci_list_lock);
     uint8_t header_type = get_header_type(0,0,0);
     uint8_t bus; 
     uint8_t func;

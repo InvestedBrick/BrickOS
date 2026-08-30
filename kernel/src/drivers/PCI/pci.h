@@ -26,6 +26,7 @@
 #define PCI_CLASS_BASE_SYSTEM_PERIPHERAL 0x8
 
 #include <stdint.h>
+#include "../../processes/spinlocks.h"
 
 typedef struct pci_device {
     struct pci_device* next;
@@ -40,6 +41,7 @@ typedef struct pci_device {
     uint8_t header_type;
 } pci_device_t;
 
+extern spinlock_t pci_list_lock;
 extern pci_device_t* pci_head;
 
 /**

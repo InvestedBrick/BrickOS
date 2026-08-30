@@ -93,6 +93,7 @@ void setup_network_driver(){
     register_timer_callback(arp_timer_callback,1000);
     init_ip_linked_lists();
     init_socket_queues();
+    uint32_t f = spinlock_acquire_irq(&pci_list_lock);
     pci_device_t* dev = pci_head;
     while(dev){
         if (dev->class_code == PCI_CLASS_NETWORK_CONTROLLER 
@@ -113,6 +114,8 @@ void setup_network_driver(){
         }
         dev = dev->next;
     }
+    spinlock_release_irq(&pci_list_lock,f);
+    
     logf("set up NIC driver");
     memcpy(lo->mac_addr,eth0->mac_addr,sizeof(lo->mac_addr));
     lo->arp_cache_head->ip_addr = eth0->ip_addr;
