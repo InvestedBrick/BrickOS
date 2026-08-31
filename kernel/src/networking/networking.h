@@ -13,6 +13,7 @@
 #include "../processes/spinlocks.h"
 #include "arp.h"
 #include "udp.h"
+#include "dhcp.h"
 #include <stdint.h>
 
 struct arp_mac_cache;
@@ -30,12 +31,12 @@ typedef struct net_interface {
     char name[16];
     uint8_t mac_addr[6];
     
-    uint32_t ip_addr;
+    dhcp_client_t dhcp;
     
     uint32_t mtu;
     
     struct arp_mac_cache* arp_cache_head;
-    mutex_t mac_cache_mutex; 
+    spinlock_t mac_cache_lock; 
     uint32_t (*send)(void*,uint32_t);
 
 }net_interface_t;
@@ -54,24 +55,6 @@ typedef struct {
 }routing_table_t;
 
 extern routing_table_t routing_table;
-
-typedef struct {
-    uint8_t op_code;
-    uint8_t htype;
-    uint8_t hlen;
-    uint8_t hops;
-    uint32_t xid;
-    uint16_t secs;
-    uint16_t flags;
-    uint32_t client_ip_addr;
-    uint32_t your_ip_addr;
-    uint32_t server_ip_addr;
-    uint32_t gateway_ip_addr;
-    uint8_t client_hardware_addr[16];
-    uint8_t server_name[64];
-    uint8_t boot_file_name[128];
-    uint8_t options[0];
-}__attribute__((packed)) dhcp_header_t;
 
 #define NETW_DEV_ID_82540EM 0x100e
 void setup_network_driver();
