@@ -285,20 +285,14 @@ void setup_arguments(process_t* proc,unsigned char* argv[]){
 }
 
 uint32_t create_process(unsigned char* file_path,uint8_t priv_lvl, unsigned char* argv[],process_fds_init_t* start_fds) {
-    uint32_t f = irq_save();
-
     Elf64_Ehdr ehdr;
     if (!validate_elf(file_path,&ehdr)){
         errorf("Tried to spawn invalid ELF: %s",file_path);
-        irq_restore(f);
         return 0;
     }
 
     int pid = get_pid();
-    if (pid == -1){
-        irq_restore(f);
-        return 0;
-    }
+    if (pid == -1) return 0;
 
     process_t* process = (process_t*)kmalloc(sizeof(process_t));
     
@@ -360,7 +354,6 @@ uint32_t create_process(unsigned char* file_path,uint8_t priv_lvl, unsigned char
     process->main_thread = nullptr;
     int tid = add_thread(process);
     if (tid == -1) {
-        irq_restore(f);
         return 0;
     }
     process->main_thread = get_thread_by_tid(tid);
@@ -377,8 +370,6 @@ uint32_t create_process(unsigned char* file_path,uint8_t priv_lvl, unsigned char
         uint64_t stack_mem = pmm_alloc_page_frame();
         mem_map_page_in_pml4(process->pml4, stack_base - (i * MEMORY_PAGE_SIZE), stack_mem, PAGE_FLAG_WRITE | PAGE_FLAG_USER);
     }
-
-    irq_restore(f);
 
     return process->process_id;
 
