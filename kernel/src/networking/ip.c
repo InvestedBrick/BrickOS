@@ -155,7 +155,7 @@ uint8_t ip_add_header(net_interface_t* iface,uint8_t* data, uint32_t* write_off,
     hdr->time_to_live = ttl;
     hdr->flags_fragment_offset = 0;
     if (df) hdr->flags_fragment_offset |= switch_endian16(IP_FLAGS_DONT_FRAGMENT);
-    hdr->src_ip = switch_endian32(iface->ip_addr);
+    hdr->src_ip = switch_endian32(iface->dhcp.ip_addr);
     hdr->dst_ip = switch_endian32(dst_addr);
     hdr->total_length = switch_endian16(IP_HDR_DEFAULT_SIZE + post_hdr_data_len);
     hdr->header_checksum = 0;
@@ -360,7 +360,7 @@ void ip_handle_packet(uint8_t* data, uint32_t write_off, uint32_t total_len) {
     route_t* route = route_lookup(src_ip); // src_ip is the IP of where it came from -> other way around should be same interface
     if (!route) return; 
 
-    if (dst_ip != route->iface->ip_addr) return; // not for me ; TODO: add acceptance for multicast stuff
+    if (!(dst_ip == route->iface->dhcp.ip_addr || dst_ip == IP_BROADCAST_ADDRESS)) return; // not for me 
 
     uint32_t hdr_len = (ipv4_hdr->version_ihl & 0xf) * sizeof(uint32_t);
     

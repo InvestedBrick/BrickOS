@@ -22,6 +22,8 @@
 #define IPv4_MAX_PACKET_SIZE 65535
 #define IP_TTL_MAX 255
 
+#define IP_BROADCAST_ADDRESS 0xffffffff
+
 // fragment offset is measured in units of 8 bytes to where the fragment belongs
 
 #define IP_OPTION_TYPE_END 0
