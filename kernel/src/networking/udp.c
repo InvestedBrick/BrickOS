@@ -122,7 +122,7 @@ uint8_t udp_add_header(net_interface_t* iface, uint8_t* data, uint32_t* write_of
 
     pseudo_ip_hdr_t pseudo_ip;
     pseudo_ip.dst_addr = switch_endian32(dst_addr);
-    pseudo_ip.src_addr = switch_endian32(iface->ip_addr);
+    pseudo_ip.src_addr = switch_endian32(iface->dhcp.ip_addr);
     pseudo_ip.zero = 0;
     pseudo_ip.protocol = IP_PROTOCOL_UDP;
     pseudo_ip.udp_length = udp_hdr->length; // already in network order
