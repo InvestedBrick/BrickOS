@@ -13,11 +13,11 @@ plan:
     [X] fix mouse driver
     [X] running more UI processes
     [X] switch executables to ELF format
-    [ ] code cleanup (static + inline where possible, proper const where possible etc, proper lock safety where needed)
+    [X] background image
+    [WIP] networking
+    [WIP] code cleanup (static + inline where possible, proper const where possible etc, proper lock safety where needed)
     [ ] dynamically linked code
     [ ] text editor
-    [X] background image
-    [ ] networking
     [?] better fileystem
 
 networking:
@@ -31,3 +31,10 @@ networking:
     [ ] TCP
     [ ] DNS
     [X] Userspace API
+
+
+KNWON ISSUES:
+  - send remove window ioctl from kernel upon sysexit, win man must reject pids without window
+  - win man 0xd faults randomly
+  - non executable instruction fetch in terminal
+  - win man failing on creation of wm/ and a memory leak later
