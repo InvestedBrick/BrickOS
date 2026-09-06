@@ -49,3 +49,14 @@ queue_data_t queue_pop(queue_t* queue){
     queue->size--;
     return data;
 }
+
+
+queue_data_t queue_back(queue_t* queue){
+    if (!queue->size) return 0;
+
+    queue_entry_t* entry = queue->head;
+    while (entry->next) entry = entry->next;
+
+    return entry->data;
+
+}

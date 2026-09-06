@@ -48,7 +48,16 @@ void queue_push(queue_t* queue, queue_data_t data);
  * queue_pop:
  * Removes and returns the first element in a queue
  * @param queue The queue
+ * @return The front element of a queue while consuming it
  */
 queue_data_t queue_pop(queue_t* queue);
+
+/**
+ * queue_back:
+ * Returns a peak into the last element of a queue
+ * @param queue The queue
+ * @return The last element of a queue without consuming it
+ */
+queue_data_t queue_back(queue_t* queue);
 
 #endif
