@@ -142,6 +142,7 @@ uint64_t sys_mmap(process_t *p, uint64_t addr, uint64_t size,uint32_t prot, uint
                                             n_pages * sizeof(shared_page_t*)
                                      );
             // set the new shared pages null
+            shrd_obj->n_pages = n_pages;
             memset((void*)&shrd_obj->shared_pages[old_n_pages],0x0,(shrd_obj->n_pages - old_n_pages) * sizeof(shared_page_t*));
         }
 

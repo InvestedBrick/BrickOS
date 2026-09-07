@@ -99,6 +99,7 @@ void free_shrd_vma_obj(virt_mem_area_t* vma){
         
         shrd_page->ref_count--;
         if (shrd_page->ref_count == 0){
+            pmm_free_page_frame(shrd_page->phys_addr);
             kfree(shrd_page);
             vma->shrd_obj->shared_pages[i] = nullptr;
         }

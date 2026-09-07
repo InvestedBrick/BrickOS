@@ -1021,8 +1021,11 @@ inode_t* create_inode(uint8_t perms, uint8_t type, uint8_t priv_lvl,uint32_t id)
     file->d_indirect_sector = 0;
     file->size = 0;
     file->priv_lvl = priv_lvl;
-    vector_append(&inodes,(vector_data_t)file);
 
+    spinlock_acquire(&inodes_lock);
+    vector_append(&inodes,(vector_data_t)file);
+    spinlock_release(&inodes_lock);
+    
     return file;
 }
 
