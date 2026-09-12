@@ -456,6 +456,7 @@ void enter_user_mode(struct thread* thread){
         "push %2\n\t"
         "push %3\n\t"
         "push %4\n\t"
+        "sti\n\t" // should not be necessary but just to be sure
         "iretq\n\t"
         :
         : "r"(thread->init_user_ss),
@@ -473,6 +474,7 @@ __attribute__((noreturn))
 void enter_kernel_thread(struct thread* thread){
     asm volatile(
         "mov %0, %%rsp\n\t"
+        "sti\n\t"
         "jmp *%1\n\t"
         :
         : "r"(thread->init_rsp),

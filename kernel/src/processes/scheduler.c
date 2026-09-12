@@ -240,7 +240,7 @@ void switch_task(interrupt_stack_frame_t* regs){
         mem_set_current_pml4_table(current_thread->owner_proc->pml4);
     }
 
-    spinlock_release_irq(&t_queue_lock,f);
+    spinlock_release(&t_queue_lock); // keep irqs disabled
     
     // send EOI since we cant return to interrupt_handler
     if (regs->interrupt_number != INT_YIELD)
