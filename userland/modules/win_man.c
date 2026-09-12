@@ -726,8 +726,6 @@ void update_mouse(framebuffer_t* fb,int mouse_fd){
     int bytes_read = read(mouse_fd,(const char*)buffer,sizeof(buffer));
     if (bytes_read <= 0) return;
 
-    getpid(); // if I remove this useless syscall I get a page fault, I dont know why.. please help, temporary support pillar here
-
     uint32_t n_packets = bytes_read / sizeof(mouse_packet_t);
     for (uint32_t i = 0; i < n_packets;i++){
 

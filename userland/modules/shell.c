@@ -342,7 +342,7 @@ void cmd_run(command_t* cmd){
     }else{
         //detached -> independant process
         if (spawn(cmd->args[0].str,0,0) == SYSCALL_FAIL) {
-            printf("Failed to spawn process from binary '%s'",cmd->args[0].str);
+            printf("Failed to spawn process from binary '%s\n'",cmd->args[0].str);
             return;
         }
         printf("Spawned '%s' in detached mode\n",cmd->args[0].str);
