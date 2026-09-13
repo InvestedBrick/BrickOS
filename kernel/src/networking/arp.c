@@ -65,7 +65,7 @@ uint8_t arp_add_header(net_interface_t* iface,uint8_t* data, uint32_t* write_off
     hdr->plen = ARP_IP_PLEN;
     hdr->opcode = switch_endian16(opcode);
     memcpy(hdr->src_mac,iface->mac_addr,sizeof(hdr->src_mac));
-    hdr->src_ip = switch_endian32(iface->dhcp.ip_addr);
+    hdr->src_ip = switch_endian32(iface->dhcp->ip_addr);
 
     if (dst_mac) memcpy(hdr->dst_mac,dst_mac,sizeof(hdr->dst_mac));
     else memset(hdr->dst_mac,0x0,sizeof(hdr->dst_mac));
@@ -176,6 +176,12 @@ arp_mac_cache_t* arp_cache_contains_ip(uint32_t ip_addr){
 }
 
 void arp_lookup(uint32_t ip_addr,uint8_t* mac_out){
+
+    if (ip_addr == IP_BROADCAST_ADDRESS) {
+        memset(mac_out,0xff,6); // also broadcast for ethernet
+        return;
+    }
+
     route_t* route = route_lookup(ip_addr);
     if (!route) return;
 
@@ -230,7 +236,7 @@ void arp_handle_packet(uint8_t* data, uint32_t write_off, uint32_t total_len){
     route_t* route = route_lookup(src_ip);
     if (!route) return; // not for this network (how did it get here??)
 
-    if (dst_ip != route->iface->dhcp.ip_addr) return; // not for me
+    if (dst_ip != route->iface->dhcp->ip_addr) return; // not for me
 
     uint16_t opcode = switch_endian16(arp_hdr->opcode);
     switch (opcode)
