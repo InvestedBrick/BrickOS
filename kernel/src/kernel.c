@@ -8,6 +8,7 @@
 #include "memory/kmalloc.h"
 #include "tables/syscalls.h"
 #include "drivers/PCI/pci.h"
+#include "utilities/random.h"
 #include "drivers/timer/pit.h"
 #include "tables/interrupts.h"
 #include "processes/process.h"
@@ -25,7 +26,6 @@
 #include "drivers/PS2/keyboard/keyboard.h"
 #include "filesystem/virt_files/virt_files.h"
 #include <stdint.h>
-
 extern uint8_t check_SSE();
 extern uint8_t check_FPU();
 extern void enable_SSE();
@@ -60,6 +60,8 @@ void kmain()
     log("Enabled SSE and FPU support");
 
     parse_bootloader_data();
+
+    setup_rng();
 
     // Set up global descriptor table
     init_gdt();
