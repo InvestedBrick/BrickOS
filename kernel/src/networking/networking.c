@@ -61,8 +61,9 @@ void update_or_insert_route(net_interface_t* iface, uint32_t network, uint32_t n
 
 net_interface_t* init_loopback_interface(){
     net_interface_t* lo = (net_interface_t*)kmalloc(sizeof(net_interface_t));
+    lo->dhcp = (dhcp_client_t*)kmalloc(sizeof(dhcp_client_t));
     memcpy(lo->name,"loopback",sizeof("loopback"));
-    lo->dhcp.ip_addr = IP_TESTING;
+    lo->dhcp->ip_addr = IP_TESTING;
     lo->send = ethernet_loopback_stub;
     lo->mtu = (uint32_t)-1;
     lo->arp_cache_head = (arp_mac_cache_t*)kmalloc(sizeof(arp_mac_cache_t));
@@ -75,6 +76,7 @@ net_interface_t* init_loopback_interface(){
 
 net_interface_t* init_eth0_interface(){
     net_interface_t* eth0 = (net_interface_t*)kmalloc(sizeof(net_interface_t));
+    eth0->dhcp = (dhcp_client_t*)kmalloc(sizeof(dhcp_client_t));
     memcpy(eth0->name,"eth0",sizeof("eth0"));
     eth0->arp_cache_head = nullptr;
     spinlock_init(&eth0->mac_cache_lock);
@@ -104,7 +106,7 @@ void setup_network_driver(){
                 if (driver.dev_id == dev->device_id && driver.vendor_id == dev->vendor_id){
                     driver.init_driver(eth0,dev);
 
-                    eth0->dhcp.ip_addr = IP_TESTING;
+                    eth0->dhcp->ip_addr = IP_TESTING;
                     found = true;
                     break;
                 }
@@ -118,17 +120,15 @@ void setup_network_driver(){
     
     logf("set up NIC driver");
     memcpy(lo->mac_addr,eth0->mac_addr,sizeof(lo->mac_addr));
-    lo->arp_cache_head->ip_addr = eth0->dhcp.ip_addr;
+    lo->arp_cache_head->ip_addr = eth0->dhcp->ip_addr;
 
     // for sending on the same machine
     register_route(lo,IP_TESTING,0xffffffff,0);
     register_route(lo,LOOPBACK_ADDR,0xffffffff,0); 
 
     register_route(eth0,IP_TESTING & NETMASK_DEFAULT,NETMASK_DEFAULT,0); // route for local network
+    register_route(eth0,IP_BROADCAST_ADDRESS,0xffffffff,0);
     register_route(eth0,0,0,ROUTER_IP); // default route 
-
-    uint32_t ip = ipv4_to_uint32("192.168.100.1"); 
-    arp_send_request(ip);
 
 }
 

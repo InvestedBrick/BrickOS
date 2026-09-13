@@ -25,13 +25,16 @@ typedef struct udp_header udp_header_t;
 struct pseudo_ip_hdr;
 typedef struct pseudo_ip_hdr pseudo_ip_hdr_t;
 
+struct dhcp_client;
+typedef struct dhcp_client dhcp_client_t;
+
 #define LOOPBACK_ADDR 0x7f000001
 
 typedef struct net_interface {
     char name[16];
     uint8_t mac_addr[6];
     
-    dhcp_client_t dhcp;
+    dhcp_client_t* dhcp;
     
     uint32_t mtu;
     
