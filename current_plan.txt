@@ -32,9 +32,5 @@ networking:
     [ ] DNS
     [X] Userspace API
 
-
-KNWON ISSUES:
-  - send remove window ioctl from kernel upon sysexit, win man must reject pids without window
-  - win man 0xd faults randomly
-  - non executable instruction fetch in terminal
-  - win man failing on creation of wm/ and a memory leak later
+KNOWN ISSUES:
+    - no clean shutdown procedure
