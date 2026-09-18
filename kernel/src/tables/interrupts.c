@@ -107,6 +107,7 @@ void page_fault_stub(interrupt_stack_frame_t* stack_frame){
     uint64_t cr2;
     asm volatile ("mov %%cr2, %0" : "=r"(cr2));
     thread_t* curr_thread = get_current_thread();
+    if (!curr_thread) error("Failed to get current thread during page fault");
     page_fault_handler(curr_thread->owner_proc,cr2,stack_frame);
 }
 
