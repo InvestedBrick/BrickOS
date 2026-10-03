@@ -80,13 +80,17 @@ uint32_t dhcp_discover(process_t* p, uint64_t sock_fd, net_interface_t* iface){
     queue_push(&dhcp_options,(queue_data_t)param_req_list);
     queue_push(&dhcp_options,(queue_data_t)end);
 
-    uint32_t total_len = sizeof(dhcp_header_t) + msg_type->len + param_req_list->len;
-
+    
+    uint32_t total_len = sizeof(dhcp_header_t) 
+    + msg_type->len + sizeof(dhcp_option_t) 
+    + param_req_list->len + sizeof(dhcp_option_t)
+    + 1 ; // 1 for the 0xff end byte
+    
     uint8_t* data = (unsigned char*)kmalloc(total_len);
     memset(data,0x0,total_len);
-
+    
     uint32_t xid = (uint32_t)(simple_rand_u64() & 0xffffffff);
-
+    
     uint8_t ret = dhcp_write_header(iface,data,xid,DHCP_RECV_STYLE_UNICAST,0x0,&dhcp_options);
     
     kfree(msg_type);
@@ -150,7 +154,7 @@ dhcp_offer_info_t* dhcp_await_offer(process_t* p, uint64_t sock_fd, uint32_t xid
         dhcp_option_t* option = (dhcp_option_t*)((uint8_t*)dhcp_hdr + option_offset);
         switch(option->type){
             case OPT_DHCP_MSG_TYPE:
-                if ((uint8_t*)option->data[0] != DHCPOFFER){
+                if (option->data[0] != DHCPOFFER){
                     errorf("recieved dhcp packet is not an offer as expected...");
                     goto invalid_option;
                 }
@@ -195,7 +199,7 @@ invalid_option:
 }
 
 uint8_t dhcp_request(process_t* p, uint64_t sock_fd, uint32_t xid){
-
+    return 0;
 }
 
 void dhcp_await_ack(process_t* p, uint64_t sock_fd, uint32_t xid){
