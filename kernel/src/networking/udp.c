@@ -87,10 +87,15 @@ udp_socket_t* find_target_udp_socket(uint32_t ip_addr, uint16_t port){
     // must be spinlock locked from outside
     udp_socket_t* curr = udp_sock_head;
     while(curr){
-        if ((curr->ip_addr == ip_addr && curr->port == port) || 
-            (curr->ip_addr == INADDR_ANY && curr->port == port)){
-            return curr;
-        }
+        if (curr->port == port 
+            && (
+                   curr->ip_addr == ip_addr       
+                || curr->ip_addr == INADDR_ANY    
+                || ip_addr == IP_BROADCAST_ADDRESS
+                )
+            ){
+                return curr;
+            }
         curr = (udp_socket_t*)curr->sock.next;
     }
     
