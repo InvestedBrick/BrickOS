@@ -16,3 +16,4 @@ hdd.img
 *.elf
 limine.conf
 *.gdb
+dhcp.pcap
