@@ -372,10 +372,10 @@ int generic_inet_recvfrom(socket_t* sock, void* buf, uint32_t buf_len, uint32_t 
 
     recvd_packet_t* packet = nullptr;
     spinlock_acquire(&gen_sock->lock);
-    while (true){
-        packet = gen_sock->rx_queue;
-        if (packet) break;
-
+    
+    packet = gen_sock->rx_queue;
+    if (!packet){
+        
         if (flags & MSG_DONTWAIT) {
             spinlock_release(&gen_sock->lock);
             return SOCKET_GENERIC_RECVFROM_FAIL;
@@ -383,14 +383,12 @@ int generic_inet_recvfrom(socket_t* sock, void* buf, uint32_t buf_len, uint32_t 
 
         add_packet_waiting_thread(gen_sock,get_current_thread(),sock->sock_opts.recv_timeout);
         
-        flags |= MSG_DONTWAIT;
-
         spinlock_release(&gen_sock->lock);
-
+        
         yield();
         spinlock_acquire(&gen_sock->lock);
     }
-
+        
     if (in_addr){
         in_addr->inet_family = packet->src_addr.inet_family;
         in_addr->inet_addr = packet->src_addr.inet_addr;
