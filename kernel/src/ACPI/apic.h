@@ -104,4 +104,6 @@ void ioapic_set_mask_all(bool mask);
 
 void write_msr(uint32_t msr,uint32_t low, uint32_t high);
 void read_msr(uint32_t msr,uint32_t* low, uint32_t* high);
+
+void ioapic_print_irq_mask_status();
 #endif

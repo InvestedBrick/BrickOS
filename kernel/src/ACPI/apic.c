@@ -259,6 +259,7 @@ uint8_t ioapic_register_pci_irq(pci_device_t* dev, uint8_t int_pin){
     uint32_t val = vec;
     val |= (polarity & 0x1) << 13;
     val |= (trigger & 0x1) << 15;
+    val |= (1 << IOAPIC_REG_MASK_OFFSET); // start off masked, only unmask once we enable interrupts
 
     uint32_t dest =  lapic_data.apic_id << 24;
 
@@ -295,6 +296,22 @@ void ioapic_set_mask_all(bool mask){
     }
 }
 
+void ioapic_print_irq_mask_status(){
+    for (uint8_t irq = APIC_INTERRUPT_START; irq < next_vec;irq++){
+        int64_t gsi = vec_to_gsi[irq];
+        if (gsi < 0) continue;
+        struct acpi_madt_ioapic* ioapic = find_responsible_ioapic(gsi);
+        if (!ioapic) { warnf("No IO APIC for gsi %d", gsi); continue; }
+
+        uint8_t pin = gsi - ioapic->gsi_base;
+        uintptr_t base = ioapic->address + HHDM;
+
+        uint32_t low = read_ioapic_register(base, IOREDTBL(pin));
+        bool masked = (low >> IOAPIC_REG_MASK_OFFSET) & 0x1;
+        logf("IRQ %d (GSI %d) is %s", irq, gsi, masked ? "masked" : "unmasked");
+    }
+}
+
 uint8_t ioapic_redirect_legacy_irq(uint32_t irq){
     struct acpi_madt_ioapic* ioapic = find_responsible_ioapic(irq);
     if (!ioapic) {warnf("Found no responsible IO APIC for IRQ %d",irq);return 0;}
@@ -318,6 +335,7 @@ uint8_t ioapic_redirect_legacy_irq(uint32_t irq){
     uint32_t val = vec;
     val |= (polarity & 0x1) << 13;
     val |= (trigger & 0x1) << 15;
+    val |= (1 << IOAPIC_REG_MASK_OFFSET); // start off masked, only unmask once we enable interrupts
 
     uint32_t dest =  lapic_data.apic_id << 24;
 
