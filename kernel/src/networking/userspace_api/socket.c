@@ -372,11 +372,14 @@ int generic_inet_recvfrom(socket_t* sock, void* buf, uint32_t buf_len, uint32_t 
 
     recvd_packet_t* packet = nullptr;
     spinlock_acquire(&gen_sock->lock);
-    
-    packet = gen_sock->rx_queue;
-    if (!packet){
+
+    uint64_t timeout_tick = sock->sock_opts.recv_timeout == THREAD_ETERNAL_SLEEP ? 
+                                ticks + sock->sock_opts.recv_timeout
+                            :   THREAD_ETERNAL_SLEEP;    
+
+    while(!(packet = gen_sock->rx_queue)) {
         
-        if (flags & MSG_DONTWAIT) {
+        if (flags & MSG_DONTWAIT || ticks >= timeout_tick) {
             spinlock_release(&gen_sock->lock);
             return SOCKET_GENERIC_RECVFROM_FAIL;
         }
@@ -387,7 +390,7 @@ int generic_inet_recvfrom(socket_t* sock, void* buf, uint32_t buf_len, uint32_t 
         
         yield();
         spinlock_acquire(&gen_sock->lock);
-        packet = gen_sock->rx_queue;
+        // loop needed since there could technically be a race condition between two sockets on the same port etc and one snatches a packet right before we try to access it -> retry
     }
         
     if (in_addr){
