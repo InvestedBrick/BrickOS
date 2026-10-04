@@ -51,4 +51,10 @@ void kfree(void* addr);
  * @return The reallocated pointer
  */
 void* krealloc(void* ptr,uint32_t old_size,uint32_t new_size);
+
+/**
+ * heap_checker:
+ * Analyzes all heap memory blocks and prints out anomalous finds
+ */
+void heap_checker();
 #endif

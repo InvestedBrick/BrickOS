@@ -13,6 +13,21 @@ memory_block_t* head = 0;
 
 static uint64_t heap_size;
 
+void heap_checker(){
+    memory_block_t* current = head;
+    while (current) {
+        if (current->free > 1 
+            || (uint64_t)current->next > KERNEL_MALLOC_END 
+            || ((uint64_t)current->next < KERNEL_MALLOC_START && (uint64_t)current->next != 0 )
+            || (uint64_t)current->size == 0
+        ){
+            errorf("Found anomalous memory block in heap: ");
+            errorf("Current: %x,Free: %d, next: %x, size: %x",(uint64_t)current,current->free, (uint64_t)current->next,current->size);
+        }
+        current = current->next;
+    }
+}
+
 void alloc_and_map_new_page(){
     if(heap_size + (uint64_t)MEMORY_PAGE_SIZE > KERNEL_MALLOC_END) {panic("Kernel heap has run out of memory"); return;}
     uint64_t phys_addr = pmm_alloc_page_frame();
