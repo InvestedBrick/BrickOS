@@ -97,6 +97,8 @@ void interrupt_handler(interrupt_stack_frame_t* stack_frame);
 
 void load_idt(const idt_t* first_entry);
 
+void enable_yield();
+
 /**
  * remap_PIC:
  * Remaps the standard PIC1 and PIC2 interrupts so that they dont conflict with BIOS interrupts

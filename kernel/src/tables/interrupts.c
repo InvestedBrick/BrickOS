@@ -22,7 +22,7 @@ void page_fault_handler(process_t* p,uint64_t fault_addr,interrupt_stack_frame_t
 interrupt_handler_t* int_head;
 static idt_entry_t idt_entries[IDT_MAX_ENTRIES] __attribute__((aligned(0x10)));
 static int enabled_idt[IDT_MAX_ENTRIES] = {0};
-
+static bool yield_allowed = true;
 extern void* idt_code_table[];
 
 static idt_t idt;
@@ -52,6 +52,10 @@ uint32_t irq_save(){
 
 void irq_restore(uint32_t eflags){
     write_eflags(eflags);
+}
+
+void enable_yield(){
+    yield_allowed = true;
 }
 
 interrupt_handler_t* register_irq(uint32_t int_num, interrupt_function_ptr int_handler){
@@ -86,7 +90,7 @@ void unregister_irq(uint32_t int_num){
     kfree(to_delete);
 }
 
-void timer_stub(interrupt_stack_frame_t* stack_frame){
+static void timer_stub(interrupt_stack_frame_t* stack_frame){
     uint32_t f = irq_save();
 
     ticks++;
@@ -103,12 +107,17 @@ void timer_stub(interrupt_stack_frame_t* stack_frame){
 
 }
 
-void page_fault_stub(interrupt_stack_frame_t* stack_frame){
+static void page_fault_stub(interrupt_stack_frame_t* stack_frame){
     uint64_t cr2;
     asm volatile ("mov %%cr2, %0" : "=r"(cr2));
     thread_t* curr_thread = get_current_thread();
     if (!curr_thread) error("Failed to get current thread during page fault");
     page_fault_handler(curr_thread->owner_proc,cr2,stack_frame);
+}
+
+static void yield_stub(interrupt_stack_frame_t* stack_frame){
+    if (yield_allowed)
+        switch_task(stack_frame);
 }
 
 void set_idt_entry(uint8_t num,uint64_t offset,uint8_t attributes){
@@ -290,6 +299,7 @@ void page_fault_handler(process_t* p,uint64_t fault_addr,interrupt_stack_frame_t
 void interrupt_handler(interrupt_stack_frame_t* stack_frame) {
     
     disable_interrupts();
+    logf("Interrupt %x triggered",stack_frame->interrupt_number);
     interrupt_handler_t* head = int_head;
     while (head && head->int_num != stack_frame->interrupt_number) head = head->next;
     enable_interrupts();
@@ -326,7 +336,7 @@ void init_idt(){
 void register_basic_interrupts(){
     register_irq(INT_SOFTWARE,handle_software_interrupt);
     register_irq(INT_PAGE_FAULT,page_fault_stub);
-    register_irq(INT_YIELD,switch_task);
+    register_irq(INT_YIELD,yield_stub);
 
     uint8_t timer_irq = ioapic_redirect_legacy_irq(0);
     register_irq(timer_irq,timer_stub);
