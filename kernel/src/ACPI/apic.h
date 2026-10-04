@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include "../drivers/PCI/pci.h"
+#include <stdbool.h>
 
 #define IA32_APIC_BASE_MSR 0x1B
 #define IA32_APIC_BASE_MSR_BSP 0x100 // Processor is a BSP
@@ -16,6 +17,8 @@
 #define IOAPICVER 1
 #define IOAPICARB 2
 #define IOREDTBL(n) (0x10 + n * 2)
+
+#define IOAPIC_REG_MASK_OFFSET 16
 
 typedef struct {
     void* apic_virt_base;
@@ -83,6 +86,21 @@ uint8_t ioapic_register_pci_irq(pci_device_t* dev, uint8_t int_pin);
  * @return The interrupt vector that the IRQ was redirected to, or 0 if the redirection failed
  */
 uint8_t ioapic_redirect_legacy_irq(uint32_t irq);
+
+/**
+ * ioapic_set_mask:
+ * Masks or unmasks an IRQ in the IO APIC
+ * @param irq The IRQ to mask/unmask
+ * @param mask true to mask, false to unmask
+ */
+void ioapic_set_mask(uint8_t irq, bool mask);
+
+/**
+ * ioapic_set_mask_all:
+ * Masks or unmasks all IRQs in the IO APIC
+ * @param mask true to mask, false to unmask
+ */
+void ioapic_set_mask_all(bool mask);
 
 void write_msr(uint32_t msr,uint32_t low, uint32_t high);
 void read_msr(uint32_t msr,uint32_t* low, uint32_t* high);

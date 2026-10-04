@@ -18,6 +18,25 @@ vector_t int_src_overrides;
 apic_data_t lapic_data;
 bool found_lapic = false;
 
+#define MAX_VECTORS 256
+static int64_t vec_to_gsi[MAX_VECTORS];   // -1 = unused
+
+void init_vec_table(){
+    for (int i = 0; i < MAX_VECTORS; i++) vec_to_gsi[i] = -1;
+}
+
+static uint8_t next_vec = APIC_INTERRUPT_START;
+
+static uint8_t alloc_irq_vector(uint8_t gsi){
+    if (next_vec == MAX_VECTORS - 1) {
+        errorf("Ran out of interrupt vectors");
+        return 0;
+    }
+    uint8_t vec = next_vec++;
+    vec_to_gsi[vec] = gsi;
+    return vec;
+}
+
 void write_ioapic_register(uintptr_t ioapic_base,uint8_t offset, uint32_t val){
     // select register via IOREGSEL
     *(volatile uint32_t*)(ioapic_base) = offset;
@@ -235,7 +254,8 @@ uint8_t ioapic_register_pci_irq(pci_device_t* dev, uint8_t int_pin){
     if (!ioapic) {warnf("Found no responsible IO APIC for gsi %d",gsi); goto cleanup; }
     
     uint8_t pin = gsi - ioapic->gsi_base;
-    uint8_t vec = APIC_INTERRUPT_START + pin;
+    uint8_t vec = alloc_irq_vector(gsi);
+    if (!vec) goto cleanup;
     uint32_t val = vec;
     val |= (polarity & 0x1) << 13;
     val |= (trigger & 0x1) << 15;
@@ -248,6 +268,31 @@ uint8_t ioapic_register_pci_irq(pci_device_t* dev, uint8_t int_pin){
 cleanup:
     uacpi_free_pci_routing_table(PRT);
     return ret;
+}
+
+void ioapic_set_mask(uint8_t irq, bool mask){
+    if (irq < APIC_INTERRUPT_START) return;
+    int64_t gsi = vec_to_gsi[irq];
+    if (gsi < 0){
+        errorf("Tried to mask invalid irq");
+        return;
+    }
+    struct acpi_madt_ioapic* ioapic = find_responsible_ioapic(gsi);
+    if (!ioapic) { warnf("No IO APIC for gsi %d", gsi); return; }
+
+    uint8_t pin = gsi - ioapic->gsi_base;
+    uintptr_t base = ioapic->address + HHDM;
+
+    uint32_t low = read_ioapic_register(base, IOREDTBL(pin));
+    if (mask) low |=  (1u << IOAPIC_REG_MASK_OFFSET);
+    else      low &= ~(1u << IOAPIC_REG_MASK_OFFSET);
+    write_ioapic_register(base, IOREDTBL(pin), low);
+}
+
+void ioapic_set_mask_all(bool mask){
+    for (uint8_t irq = APIC_INTERRUPT_START; irq < next_vec;irq++){
+        ioapic_set_mask(irq,mask);
+    }
 }
 
 uint8_t ioapic_redirect_legacy_irq(uint32_t irq){
@@ -268,7 +313,8 @@ uint8_t ioapic_redirect_legacy_irq(uint32_t irq){
     }
 
     uint32_t pin = gsi - ioapic->gsi_base;
-    uint8_t vec = APIC_INTERRUPT_START + pin;
+    uint8_t vec = alloc_irq_vector(gsi);
+    if (!vec) return 0;
     uint32_t val = vec;
     val |= (polarity & 0x1) << 13;
     val |= (trigger & 0x1) << 15;
@@ -295,4 +341,5 @@ void acpi_enable_apic(){
 void initialize_apics(){
     discover_ioapics();
     acpi_enable_apic();
+    init_vec_table();
 }
