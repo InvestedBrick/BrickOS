@@ -387,6 +387,7 @@ int generic_inet_recvfrom(socket_t* sock, void* buf, uint32_t buf_len, uint32_t 
         
         yield();
         spinlock_acquire(&gen_sock->lock);
+        packet = gen_sock->rx_queue;
     }
         
     if (in_addr){
