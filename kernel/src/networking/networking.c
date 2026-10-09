@@ -4,18 +4,23 @@
 #include "../drivers/PCI/pci.h"
 #include <shared/util.h>
 #include "../memory/kmalloc.h"
+#include "../processes/kworker.h"
 #include "arp.h"
 #include "ip.h"
 #include "udp.h"
 #include "ethernet.h"
 #include "../tables/timer_callbacks.h"
 #include <stdbool.h>
+
 routing_table_t routing_table;
+
+// needed to be able to only unmask it during dhcp setup
+uint8_t driver_irq_vec = 0;
 
 typedef struct {
     uint16_t vendor_id;
     uint16_t dev_id;
-    void (*init_driver) (net_interface_t*,pci_device_t*);
+    uint8_t (*init_driver) (net_interface_t*,pci_device_t*);
 }driver_dev_t;
 
 #define N_REGISTERED_DRIVERS 1
@@ -63,12 +68,10 @@ net_interface_t* init_loopback_interface(){
     net_interface_t* lo = (net_interface_t*)kmalloc(sizeof(net_interface_t));
     lo->dhcp = (dhcp_client_t*)kmalloc(sizeof(dhcp_client_t));
     memcpy(lo->name,"loopback",sizeof("loopback"));
-    lo->dhcp->ip_addr = IP_TESTING;
+    lo->dhcp->state = DHCP_BOUND;
     lo->send = ethernet_loopback_stub;
     lo->mtu = (uint32_t)-1;
-    lo->arp_cache_head = (arp_mac_cache_t*)kmalloc(sizeof(arp_mac_cache_t));
-    lo->arp_cache_head->next = nullptr;
-    lo->arp_cache_head->timeout = ARP_CACHE_DONT_TIMEOUT;
+    lo->arp_cache_head = nullptr;
     spinlock_init(&lo->mac_cache_lock); 
 
     return lo;
@@ -77,6 +80,7 @@ net_interface_t* init_loopback_interface(){
 net_interface_t* init_eth0_interface(){
     net_interface_t* eth0 = (net_interface_t*)kmalloc(sizeof(net_interface_t));
     eth0->dhcp = (dhcp_client_t*)kmalloc(sizeof(dhcp_client_t));
+    eth0->dhcp->state = DHCP_INIT;
     memcpy(eth0->name,"eth0",sizeof("eth0"));
     eth0->arp_cache_head = nullptr;
     spinlock_init(&eth0->mac_cache_lock);
@@ -104,9 +108,8 @@ void setup_network_driver(){
             for (uint32_t i = 0; i < N_REGISTERED_DRIVERS;i++){
                 driver_dev_t driver = registered_drivers[i];
                 if (driver.dev_id == dev->device_id && driver.vendor_id == dev->vendor_id){
-                    driver.init_driver(eth0,dev);
+                    driver_irq_vec = driver.init_driver(eth0,dev);
 
-                    eth0->dhcp->ip_addr = IP_TESTING;
                     found = true;
                     break;
                 }
@@ -120,16 +123,17 @@ void setup_network_driver(){
     
     logf("set up NIC driver");
     memcpy(lo->mac_addr,eth0->mac_addr,sizeof(lo->mac_addr));
-    lo->arp_cache_head->ip_addr = eth0->dhcp->ip_addr;
 
     // for sending on the same machine
-    register_route(lo,IP_TESTING,0xffffffff,0);
     register_route(lo,LOOPBACK_ADDR,0xffffffff,0); 
+    arp_cache_mac_permanent_to_iface(lo,LOOPBACK_ADDR, lo->mac_addr);
 
-    register_route(eth0,IP_TESTING & NETMASK_DEFAULT,NETMASK_DEFAULT,0); // route for local network
+
+    // local routes and gateway route gets configured in DHCP setup
     register_route(eth0,IP_BROADCAST_ADDRESS,0xffffffff,0);
-    register_route(eth0,0,0,ROUTER_IP); // default route 
 
+    uint8_t broadcast_mac[6]  = {0xff,0xff,0xff,0xff,0xff,0xff};
+    arp_cache_mac_permanent_to_iface(eth0,IP_BROADCAST_ADDRESS,broadcast_mac);
 }
 
 uint32_t checksum_accumulate(uint8_t* data, size_t len, uint32_t sum) {
@@ -164,4 +168,8 @@ uint16_t compute_udp_checksum(udp_header_t* udp_hdr, pseudo_ip_hdr_t* pseudo_ip_
     sum = checksum_accumulate((uint8_t*)data,data_len,sum);
 
     return checksum_finalise(sum);
+}
+
+void finish_up_networking(){
+    enqueue_kernel_work(dhcp_configure_ip,nullptr);
 }
