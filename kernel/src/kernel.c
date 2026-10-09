@@ -1,6 +1,7 @@
 #include "io/io.h"
 #include "io/log.h"
 #include "ACPI/acpi.h"
+#include "ACPI/apic.h"
 #include "tables/gdt.h"
 #include "kernel_header.h"
 #include "memory/memory.h"
@@ -12,6 +13,7 @@
 #include "drivers/timer/pit.h"
 #include "tables/interrupts.h"
 #include "processes/process.h"
+#include "processes/kworker.h"
 #include "drivers/ATA_PIO/ata.h"
 #include "processes/scheduler.h"
 #include "utilities/elf_parser.h"
@@ -97,6 +99,8 @@ void kmain()
     log("Initialized the I8042 PS/2 controller");
 
     register_basic_interrupts();
+
+    init_kworkers();
     
     pci_check_all_busses();
     log("Scanned PCI busses");
@@ -131,13 +135,18 @@ void kmain()
 
     sys_settimezone(&global_kernel_process,1);
     
+    finish_up_networking();
+
     // Everything is now set up
+    run("modules/win_man.elf",nullptr,nullptr,PRIV_SPECIAL); // window manager should be able to open dev/kb0
+    
     run("modules/terminal.elf",nullptr,nullptr,PRIV_STD);
     
-    run("modules/win_man.elf",nullptr,nullptr,PRIV_SPECIAL); // window manager should be able to open dev/kb0
+    log("Entering user mode...");
 
-    log("Shell setup complete");
+    ioapic_set_mask_all(false); // unmask all interrupts
     enable_interrupts();
+    enable_yield();
     yield();
     
     panic("Not set up beyond here");
