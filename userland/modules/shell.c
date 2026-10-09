@@ -135,7 +135,7 @@ void cmd_nwtest(command_t* cmd){
     int sock_fd = socket(SOCKET_INET,SOCKET_TYPE_DGRAM,0);
     in_sockaddr_t addr = {
         .inet_family = INET_FAM_IPv4,
-        .inet_port = 100,
+        .inet_port = 5555,
         .inet_addr = INADDR_ANY,
     };
 
@@ -152,8 +152,8 @@ void cmd_nwtest(command_t* cmd){
 
     in_sockaddr_t dst = {
         .inet_family = INET_FAM_IPv4,
-        .inet_port = 5000,
-        .inet_addr = 0xc0a86401, // host pc IP through tap
+        .inet_port = 2000,
+        .inet_addr = 0x0a000202, // host pc IP through QEMU
     };
 
     unsigned char* msg = (unsigned char*)"Hello from BrickOS shell!";
