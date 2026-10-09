@@ -1,9 +1,6 @@
 #ifndef INCLUDE_NETWORKING_H
 #define INCLUDE_NETWORKING_H
 
-#define IP_ADDR_UNASSIGNED 0x0
-#define IP_TESTING 0xc0a86402
-#define ROUTER_IP 0xc0a80001
 #define NETMASK_DEFAULT 0xffffff00
 
 #define DEFAULT_MTU 1500
@@ -58,7 +55,7 @@ typedef struct {
 }routing_table_t;
 
 extern routing_table_t routing_table;
-
+extern uint8_t driver_irq_vec;
 #define NETW_DEV_ID_82540EM 0x100e
 void setup_network_driver();
 
@@ -94,4 +91,20 @@ uint16_t compute_udp_checksum(udp_header_t* udp_hdr, pseudo_ip_hdr_t* pseudo_ip_
  * @param gateway THe gateway to be assigned to the route
  */
 void update_or_insert_route(net_interface_t* iface, uint32_t network, uint32_t netmask, uint32_t gateway);
+
+/**
+ * finish_up_networking:
+ * Sets up networking stuff that needs interrupts such as dhcp etc
+ */
+void finish_up_networking();
+
+/**
+ * register_route:
+ * registers an entry in the routing table to send a request to a network via a provided interface
+ * @param iface The interface to send through
+ * @param network The network that this route applies to
+ * @param netmask The netmask, which will be used to test if ( ip_addr & netmask) == network
+ * @param gateway The gateway to direct through (0 if local network)
+ */
+void register_route(net_interface_t* iface, uint32_t network, uint32_t netmask, uint32_t gateway);
 #endif
