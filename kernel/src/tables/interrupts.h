@@ -166,4 +166,16 @@ void register_basic_interrupts();
 uint32_t read_eflags();
 
 void write_eflags(uint32_t eflags);
+
+/**
+ * enable_yield:
+ * Enables switching to a new process upon yield
+ */
+void enable_yield();
+
+/**
+ * disable_yield:
+ * Disables switching to a new process upon yield
+ */
+void disable_yield();
 #endif

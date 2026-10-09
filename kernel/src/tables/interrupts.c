@@ -58,6 +58,10 @@ void enable_yield(){
     yield_allowed = true;
 }
 
+void disable_yield(){
+    yield_allowed = false;
+}
+
 interrupt_handler_t* register_irq(uint32_t int_num, interrupt_function_ptr int_handler){
     interrupt_handler_t* head = int_head;
     interrupt_handler_t* handler = (interrupt_handler_t*)kmalloc(sizeof(interrupt_handler_t));
@@ -299,7 +303,6 @@ void page_fault_handler(process_t* p,uint64_t fault_addr,interrupt_stack_frame_t
 void interrupt_handler(interrupt_stack_frame_t* stack_frame) {
     
     disable_interrupts();
-    logf("Interrupt %x triggered",stack_frame->interrupt_number);
     interrupt_handler_t* head = int_head;
     while (head && head->int_num != stack_frame->interrupt_number) head = head->next;
     enable_interrupts();
