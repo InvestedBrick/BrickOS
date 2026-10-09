@@ -292,6 +292,8 @@ void i82540em_rx_setup(i82540em_t* nic){
 
     uint64_t rx_ring_phys = pmm_alloc_page_frame();
     nic->rx_ring = (i8254x_rx_descriptor_t*)map_somewhere_rw(rx_ring_phys);
+
+    memset(nic->rx_ring,0x0,rx_ring_sz);
     for (uint32_t i = 0; i < I8254x_N_RX_DESCRS;i++){
         uint64_t buff_phys = pmm_alloc_page_frame();
         nic->rx_ring[i].buff_addr = buff_phys;
@@ -347,7 +349,7 @@ void i8254x_disable_interrupts(i82540em_t* nic){
     i82540em_mmio_reg_write(nic,I8254x_REG_IMS,0);
 }
 
-void init_82540EM_driver(net_interface_t* iface, pci_device_t* dev){
+uint8_t init_82540EM_driver(net_interface_t* iface, pci_device_t* dev){
     log("FOUND THE 82540EM");
 
     iface->mtu = DEFAULT_MTU;
@@ -388,4 +390,5 @@ void init_82540EM_driver(net_interface_t* iface, pci_device_t* dev){
     uint8_t irq = ioapic_register_pci_irq(dev,int_pin);
     register_irq(irq,i8254x_interrupt_handler);
 
+    return irq;
 }

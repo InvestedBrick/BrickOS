@@ -42,6 +42,8 @@ typedef struct {
 }rx_batch_t;
 
 typedef struct{
+    uint8_t irq_vec;
+
     uint64_t reg_base_addr;
     uint64_t flash_base_addr;
     uint64_t io_reg_base_addr;
@@ -137,8 +139,9 @@ typedef struct{
  * Initializes the 82540EM NIC driver
  * @param iface A pointer to the network interface structure
  * @param dev A pointer to the PCI device structure for the 82540EM NIC
+ * @return The IRQ vector under which the interrupt handler for the driver was registered
  */
-void init_82540EM_driver(net_interface_t* iface, pci_device_t* dev);
+uint8_t init_82540EM_driver(net_interface_t* iface, pci_device_t* dev);
 
 /**
  * i8254x_send:
