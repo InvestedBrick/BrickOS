@@ -82,4 +82,13 @@ void arp_handle_packet(uint8_t* data, uint32_t write_off, uint32_t total_len);
 void arp_lookup(uint32_t ip_addr,uint8_t* mac_out);
 
 void arp_timer_callback();
+
+/**
+ * arp_cache_mac_permanent_to_iface:
+ * add a mac address to ip address association permanently to the mac cache of an interface
+ * @param iface The interface
+ * @param ip_addr The ipv4 address
+ * @param mac_addr a 6 byte long mac address
+ */
+void arp_cache_mac_permanent_to_iface(net_interface_t* iface, uint32_t ip_addr, uint8_t* mac_addr);
 #endif

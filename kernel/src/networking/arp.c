@@ -134,9 +134,6 @@ void arp_cache_mac(arp_header_t* arp_hdr){
     }
     spinlock_acquire(&route->iface->mac_cache_lock);
 
-    unsigned char* ip_addr_str = (unsigned char*)kmalloc(16);
-    ipv4_to_str(cache->ip_addr,ip_addr_str);
-    kfree(ip_addr_str);
     memcpy(cache->mac,arp_hdr->src_mac,sizeof(cache->mac));
 
     arp_mac_cache_t* head = route->iface->arp_cache_head;
@@ -148,6 +145,28 @@ void arp_cache_mac(arp_header_t* arp_hdr){
     }
 
     spinlock_release(&route->iface->mac_cache_lock);
+}
+
+void arp_cache_mac_permanent_to_iface(net_interface_t* iface, uint32_t ip_addr, uint8_t* mac_addr){
+    arp_mac_cache_t* cache = (arp_mac_cache_t*)kmalloc(sizeof(arp_mac_cache_t));
+    cache->ip_addr = ip_addr;
+    cache->next = nullptr;
+    cache->timeout = ARP_CACHE_DONT_TIMEOUT;
+
+    uint32_t f = spinlock_acquire_irq(&iface->mac_cache_lock);
+
+    memcpy(cache->mac,mac_addr,sizeof(cache->mac));
+
+    arp_mac_cache_t* head = iface->arp_cache_head;
+
+    if (!head) iface->arp_cache_head = cache;
+    else {
+        while(head->next) head = head->next;
+        head->next = cache;
+    }
+
+    spinlock_release_irq(&iface->mac_cache_lock,f);
+
 }
 
 arp_mac_cache_t* arp_cache_contains_ip_locked(net_interface_t* iface, uint32_t ip_addr){
@@ -176,11 +195,6 @@ arp_mac_cache_t* arp_cache_contains_ip(uint32_t ip_addr){
 }
 
 void arp_lookup(uint32_t ip_addr,uint8_t* mac_out){
-
-    if (ip_addr == IP_BROADCAST_ADDRESS) {
-        memset(mac_out,0xff,6); // also broadcast for ethernet
-        return;
-    }
 
     route_t* route = route_lookup(ip_addr);
     if (!route) return;
