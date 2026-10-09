@@ -120,7 +120,7 @@ typedef struct {
     uint32_t lease_time;
     uint32_t dns_cnt;
     uint32_t* dns_arr;
-}dhcp_offer_info_t;
+}dhcp_option_info_t;
 
 typedef enum{
     DHCP_INIT,
@@ -142,8 +142,8 @@ typedef struct dhcp_client{
     /**
      * Note: 
      * if time < renewal: we happy, valid lease
-     * if renewal < time < rebind: we may renew by sending a dhcp request to the server
-     * if time >= rebind: completely repeat discover and request, server may no longer be valid
+     * if renewal < time < rebind: we may renew by sending a dhcp request to the server (renewal at 50% possible)
+     * if time >= rebind: completely repeat discover and request, server may no longer be valid (at 87.5% of lease time)
      */
     uint32_t lease_end;
     uint32_t renewal_timestamp; 
@@ -161,10 +161,12 @@ typedef struct net_interface net_interface_t;
  * @param xid The transaction id to use for the header
  * @param recv_style Whether the server should reply via broadcast or unicast
  * @param gateway_ip_addr The gateway address to use in the header, if the server is on the same subnet as the client, this should be 0
+ * @param client_ip_addr Used to renew lease, otherwise should be 0 (since we dont have an IP address yet)
+ * @param server_ip_addr Used in DHCP OFFER, otherwise 0
  * @param options A queue of dhcp_option_t to write into the header, must contain an OPT_END option at the end
  * @return DHCP_HDR_RET_SUCCESS on success, DHCP_HDR_RET_INVALID_OPTIONS if options is null or does not contain an OPT_END option
  */
-uint8_t dhcp_write_header(net_interface_t* iface, uint8_t* data, uint32_t xid, uint8_t recv_style, uint32_t gateway_ip_addr, queue_t* options);
+uint8_t dhcp_write_header(net_interface_t* iface, uint8_t* data, uint32_t xid, uint8_t recv_style, uint32_t gateway_ip_addr, uint32_t client_ip_addr, uint32_t server_ip_addr, queue_t* options);
 
 /**
  * dhcp_configure_ip:
