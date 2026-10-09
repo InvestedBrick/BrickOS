@@ -357,10 +357,11 @@ void ip_handle_packet(uint8_t* data, uint32_t write_off, uint32_t total_len) {
     uint32_t src_ip = switch_endian32(ipv4_hdr->src_ip);
     uint32_t dst_ip = switch_endian32(ipv4_hdr->dst_ip);
 
-    route_t* route = route_lookup(src_ip); // src_ip is the IP of where it came from -> other way around should be same interface
-    if (!route) return; 
-
-    if (!(dst_ip == route->iface->dhcp->ip_addr || dst_ip == IP_BROADCAST_ADDRESS)) return; // not for me 
+    if (!(dst_ip == IP_BROADCAST_ADDRESS || dst_ip == LOOPBACK_ADDR)){
+        route_t* route = route_lookup(src_ip); // src_ip is the IP of where it came from -> other way around should be same interface
+        if (!route) return; 
+        if (dst_ip != route->iface->dhcp->ip_addr) return; // not for me 
+    }
 
     uint32_t hdr_len = (ipv4_hdr->version_ihl & 0xf) * sizeof(uint32_t);
     
