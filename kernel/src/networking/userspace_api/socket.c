@@ -374,8 +374,9 @@ int generic_inet_recvfrom(socket_t* sock, void* buf, uint32_t buf_len, uint32_t 
     spinlock_acquire(&gen_sock->lock);
 
     uint64_t timeout_tick = sock->sock_opts.recv_timeout == THREAD_ETERNAL_SLEEP ? 
-                                ticks + sock->sock_opts.recv_timeout
-                            :   THREAD_ETERNAL_SLEEP;    
+                                THREAD_ETERNAL_SLEEP 
+                                : ticks + sock->sock_opts.recv_timeout;
+                               
 
     while(!(packet = gen_sock->rx_queue)) {
         
