@@ -98,8 +98,10 @@ run: $(ISO)
     -cdrom $(ISO) \
     -m 512M \
     -vga qxl \
-	-netdev tap,id=net0,ifname=tap0,script=no,downscript=no \
-	-device e1000,netdev=net0
+	-netdev user,id=net0,hostfwd=udp::5555-:5555 \
+    -device e1000,netdev=net0 \
+    -object filter-dump,id=f1,netdev=net0,file=dhcp.pcap \
+	-trace "e1000_*"
 clean:
 	rm -f $(ASM_OBJS) $(C_OBJS) $(TARGET) $(ISO)
 	rm -rf limine
