@@ -14,8 +14,11 @@
 
 routing_table_t routing_table;
 
-// needed to be able to only unmask it during dhcp setup
 uint8_t driver_irq_vec = 0;
+
+uint8_t get_nic_irq_vec(){
+    return driver_irq_vec;
+}
 
 typedef struct {
     uint16_t vendor_id;

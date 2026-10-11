@@ -55,7 +55,7 @@ typedef struct {
 }routing_table_t;
 
 extern routing_table_t routing_table;
-extern uint8_t driver_irq_vec;
+
 #define NETW_DEV_ID_82540EM 0x100e
 void setup_network_driver();
 
@@ -107,4 +107,11 @@ void finish_up_networking();
  * @param gateway The gateway to direct through (0 if local network)
  */
 void register_route(net_interface_t* iface, uint32_t network, uint32_t netmask, uint32_t gateway);
+
+/**
+ * get_nic_irq_vec:
+ * returns the NIC interrupt vector
+ * @return The interrupt vector
+ */
+uint8_t get_nic_irq_vec();
 #endif
