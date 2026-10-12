@@ -14,4 +14,10 @@ void setup_rng();
  * @return A pseudorandom 64 bit number
  */
 uint64_t simple_rand_u64();
+
+/**
+ * simple_rand_u32:
+ * @return A pseudorandom 32 bit number
+ */
+uint32_t simple_rand_u32(void) ;
 #endif

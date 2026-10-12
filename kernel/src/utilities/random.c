@@ -23,6 +23,11 @@ uint64_t simple_rand_u64(void)
 
     return x * 0x2545F4914F6CDD1DULL;
 }
+
+uint32_t simple_rand_u32(void) {
+    return (uint32_t)(simple_rand_u64() & 0xffffffff);
+}
+
 #include "../io/log.h"
 void setup_rng(){
     uint64_t seed = limine_data.boot_time ^ (uint64_t)(&seed) ^ (limine_data.rsdp >> 16);
