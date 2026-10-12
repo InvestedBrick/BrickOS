@@ -91,4 +91,13 @@ void arp_timer_callback();
  * @param mac_addr a 6 byte long mac address
  */
 void arp_cache_mac_permanent_to_iface(net_interface_t* iface, uint32_t ip_addr, uint8_t* mac_addr);
+
+
+/**
+ * arp_uncache_mac_from_iface:
+ * Removes an IP addr to mac cache from an interface
+ * @param iface The interface
+ * @param ip_addr The IP address to uncache
+ */
+void arp_uncache_mac_from_iface(net_interface_t* iface, uint32_t ip_addr);
 #endif

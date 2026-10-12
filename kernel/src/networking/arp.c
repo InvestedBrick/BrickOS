@@ -169,6 +169,29 @@ void arp_cache_mac_permanent_to_iface(net_interface_t* iface, uint32_t ip_addr, 
 
 }
 
+void arp_uncache_mac_from_iface(net_interface_t* iface, uint32_t ip_addr){
+    uint32_t f = spinlock_acquire_irq(&iface->mac_cache_lock);
+
+    arp_mac_cache_t* prev = nullptr;
+    arp_mac_cache_t* curr = iface->arp_cache_head;
+
+    while (curr && curr->ip_addr != ip_addr) {
+        prev = curr;
+        curr = curr->next;
+    }
+
+    if (!curr) {
+        spinlock_release_irq(&iface->mac_cache_lock, f);
+        return;
+    }
+
+    if (prev) prev->next = curr->next;
+    else iface->arp_cache_head = curr->next;
+
+    kfree(curr);
+    spinlock_release_irq(&iface->mac_cache_lock, f);
+}
+
 arp_mac_cache_t* arp_cache_contains_ip_locked(net_interface_t* iface, uint32_t ip_addr){
     arp_mac_cache_t* head = iface->arp_cache_head;
     while(head){
