@@ -114,4 +114,29 @@ void register_route(net_interface_t* iface, uint32_t network, uint32_t netmask, 
  * @return The interrupt vector
  */
 uint8_t get_nic_irq_vec();
+
+/**
+ * get_loopback_iface:
+ * Retrieves the loopback network interface
+ * @return The lo iface on success, nullptr on failure
+ */
+net_interface_t* get_loopback_iface();
+
+/**
+ * fully_update_route:
+ * Fully updates an entry in the routing table based on given old network and netmask
+ * @param iface The interface to be assigned to the route
+ * @param old_network The old network of the route to be updated
+ * @param old_netmask The old netmask of the route to be updated
+ * @param new_network The new network of the route to be updated
+ * @param new_netmask The new netmask of the route to be updated
+ * @param new_gateway The new gateway to be assigned to the route
+ */
+void fully_update_route(net_interface_t* iface, 
+                        uint32_t old_network,
+                        uint32_t old_netmask,
+                        uint32_t new_network,
+                        uint32_t new_netmask,
+                        uint32_t new_gateway);
+
 #endif

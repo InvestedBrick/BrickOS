@@ -11,8 +11,10 @@
 #include "ethernet.h"
 #include "../tables/timer_callbacks.h"
 #include <stdbool.h>
+#include "../processes/spinlocks.h"
 
 routing_table_t routing_table;
+spinlock_t routing_table_lock;
 
 uint8_t driver_irq_vec = 0;
 
@@ -42,9 +44,23 @@ uint32_t switch_endian32(uint32_t nb) {
            ((nb>>8)&0xff00)     |
            ((nb<<24)&0xff000000);
 }
+
+net_interface_t* get_loopback_iface(){
+    route_t* lo_route = route_lookup(LOOPBACK_ADDR);
+    if (!lo_route){
+        errorf("Whaaat? no loopback route?? what if I want to send myself some useless mail? preposterous!");
+        return nullptr;
+    }
+    net_interface_t* lo = lo_route->iface;
+
+    return lo;
+}
+
 void register_route(net_interface_t* iface, uint32_t network, uint32_t netmask, uint32_t gateway){
+    spinlock_acquire(&routing_table_lock);
     if (routing_table.n_routes >= MAX_ROUTING_TABLE_ENTRIES) {
         warnf("Routing table is full, cannot register new route");
+        spinlock_release(&routing_table_lock);
         return;
     }
     route_t* new_route = &routing_table.routes[routing_table.n_routes];
@@ -53,18 +69,44 @@ void register_route(net_interface_t* iface, uint32_t network, uint32_t netmask, 
     new_route->gateway = gateway;
     new_route->iface = iface;
     routing_table.n_routes++;
+    spinlock_release(&routing_table_lock);
 }
 
 void update_or_insert_route(net_interface_t* iface, uint32_t network, uint32_t netmask, uint32_t gateway) {
+    spinlock_acquire(&routing_table_lock); /* regular spinlock is safe here since we either expect it to be fine the first time (at setup) or be called from a kthread context*/
     for (uint32_t i = 0; i < routing_table.n_routes; i++) {
         route_t* r = &routing_table.routes[i];
         if (r->network == network && r->netmask == netmask) {
             r->gateway = gateway;
             r->iface = iface;
+            spinlock_release(&routing_table_lock);
             return;
         }
     }
+    spinlock_release(&routing_table_lock);
     register_route(iface, network, netmask, gateway);
+}
+
+void fully_update_route(net_interface_t* iface, 
+                        uint32_t old_network,
+                        uint32_t old_netmask,
+                        uint32_t new_network,
+                        uint32_t new_netmask,
+                        uint32_t new_gateway){
+
+    spinlock_acquire(&routing_table_lock); 
+    for (uint32_t i = 0; i < routing_table.n_routes; i++) {
+        route_t* r = &routing_table.routes[i];
+        if (r->network == old_network && r->netmask == old_netmask) {
+            r->network = new_network;
+            r->netmask = new_netmask;
+            r->gateway = new_gateway;
+            r->iface = iface;
+            spinlock_release(&routing_table_lock);
+            return;
+        }
+    }
+    spinlock_release(&routing_table_lock);
 }
 
 net_interface_t* init_loopback_interface(){
@@ -96,6 +138,7 @@ void setup_network_driver(){
     net_interface_t* eth0 = init_eth0_interface();    
     net_interface_t* lo = init_loopback_interface();
 
+    spinlock_init(&routing_table_lock);
     routing_table.n_routes = 0;
 
     register_timer_callback(ipv4_timer_callback,1000); // callback every second
