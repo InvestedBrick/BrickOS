@@ -65,6 +65,9 @@ typedef struct thread{
 #define TASK_SWITCH_DELAY_MS 10
 #define MS_TO_TICKS(ms) (((ms) * DESIRED_STANDARD_FREQ) / 1000)
 #define TICKS_TO_MS(ticks) (((ticks) * 1000) / DESIRED_STANDARD_FREQ)
+#define SECS_TO_TICKS(secs) ((secs) * DESIRED_STANDARD_FREQ)
+#define TICKS_TO_SECS(ticks) ((ticks) / DESIRED_STANDARD_FREQ)
+
 #define TASK_SWITCH_TICKS MS_TO_TICKS(TASK_SWITCH_DELAY_MS)
 
 #define THREAD_ETERNAL_SLEEP (uint64_t)-1
