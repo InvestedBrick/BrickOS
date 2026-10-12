@@ -33,6 +33,11 @@
 #define DHCP_SET_BROADCAST (1u << 15)
 
 typedef enum {
+    DHCP_RET_SUCCESS,
+    DHCP_RET_FAILURE
+}dhcp_ret_code;
+
+typedef enum {
     OPT_PAD,
     OPT_SUBNET_MASK,
     OPT_TIME_OFFSET,
@@ -134,20 +139,23 @@ typedef enum{
 typedef struct dhcp_client{
     dhcp_state_e state;
 
-    uint32_t xid;
-
+    uint32_t sock_fd; // should be the same for all clients since they share a socket in the root process
     uint32_t ip_addr;
-    uint32_t server;
+    uint32_t server_addr;
+    uint32_t router_addr;
+    uint32_t subnet_mask;
 
     /**
      * Note: 
      * if time < renewal: we happy, valid lease
      * if renewal < time < rebind: we may renew by sending a dhcp request to the server (renewal at 50% possible)
      * if time >= rebind: completely repeat discover and request, server may no longer be valid (at 87.5% of lease time)
+     * 
+     * lease timestamps are in ticks 
      */
-    uint32_t lease_end;
-    uint32_t renewal_timestamp; 
-    uint32_t rebind_timestamp;
+    uint64_t lease_end;
+    uint64_t renewal_timestamp; 
+    uint64_t rebind_timestamp;
 }dhcp_client_t;
 
 struct net_interface;

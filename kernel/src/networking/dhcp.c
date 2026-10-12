@@ -4,11 +4,26 @@
 #include "../memory/kmalloc.h"
 #include "../tables/syscalls.h"
 #include "../utilities/random.h"
+#include "../utilities/vector.h"
 #include "arp.h"
 #include "../ACPI/apic.h"
+#include "../tables/timer_callbacks.h"
+#include "../processes/spinlocks.h"
 #include <shared/util.h>
 
-uint8_t dhcp_write_header(net_interface_t* iface, uint8_t* data, uint32_t xid, uint8_t recv_style, uint32_t gateway_ip_addr, uint32_t client_ip_addr, uint32_t server_ip_addr, queue_t* options) {
+static vector_t dhcp_ifaces_vec;
+spinlock_t dhcp_ifaces_vec_lock;
+
+static void dhcp_lease_renewer();
+
+uint8_t dhcp_write_header(net_interface_t* iface, 
+                          uint8_t* data, 
+                          uint32_t xid, 
+                          uint8_t recv_style, 
+                          uint32_t gateway_ip_addr, 
+                          uint32_t client_ip_addr, 
+                          uint32_t server_ip_addr, 
+                          queue_t* options) {
     if (!(options || ((dhcp_option_t*)queue_back(options))->type != OPT_END )) return DHCP_HDR_RET_INVALID_OPTIONS;
     
     dhcp_header_t* dhcp_hdr = (dhcp_header_t*)data;
@@ -86,7 +101,7 @@ uint32_t dhcp_recv_packet(process_t* p, uint64_t sock_fd, uint32_t xid, uint8_t*
     return recvd_bytes;
 }
 
-uint32_t dhcp_discover(process_t* p, uint64_t sock_fd, net_interface_t* iface){
+uint8_t dhcp_discover(process_t* p, uint64_t sock_fd, net_interface_t* iface, uint32_t* xid){
     in_sockaddr_t dst;
 
     dst.inet_family = INET_FAM_IPv4;
@@ -127,9 +142,9 @@ uint32_t dhcp_discover(process_t* p, uint64_t sock_fd, net_interface_t* iface){
     uint8_t* data = (unsigned char*)kmalloc(total_len);
     memset(data,0x0,total_len);
     
-    uint32_t xid = (uint32_t)(simple_rand_u64() & 0xffffffff);
+    *xid = simple_rand_u32();
     
-    uint8_t ret = dhcp_write_header(iface,data,xid,DHCP_RECV_STYLE_UNICAST,0,0,0,&dhcp_options);
+    uint8_t ret = dhcp_write_header(iface,data,*xid,DHCP_RECV_STYLE_UNICAST,0,0,0,&dhcp_options);
     
     kfree(msg_type);
     kfree(param_req_list);
@@ -147,11 +162,11 @@ uint32_t dhcp_discover(process_t* p, uint64_t sock_fd, net_interface_t* iface){
     }
 
     kfree(data);
-    return xid;
+    return DHCP_RET_SUCCESS;
 
 generic_fail:
     kfree(data);
-    return 0;
+    return DHCP_RET_FAILURE;
 
 }
 
@@ -229,12 +244,19 @@ dhcp_option_info_t* dhcp_await_offer(process_t* p, uint64_t sock_fd, uint32_t xi
 
 }
 
-uint8_t dhcp_request(process_t* p, uint64_t sock_fd, uint32_t xid, net_interface_t* iface, dhcp_option_info_t* info){
+dhcp_ret_code dhcp_request(process_t* p, 
+                           uint64_t sock_fd,
+                           uint32_t xid,
+                           net_interface_t* iface, 
+                           dhcp_option_info_t* info,
+                           bool broadcast){
+
     in_sockaddr_t dst;
 
     dst.inet_family = INET_FAM_IPv4;
     dst.inet_port = DHCP_SERVER_PORT;
-    dst.inet_addr = info->server_ip_addr;
+
+    dst.inet_addr = broadcast ? IP_BROADCAST_ADDRESS : info->server_ip_addr;;
 
     queue_t dhcp_options;
     init_queue(&dhcp_options);
@@ -273,7 +295,11 @@ uint8_t dhcp_request(process_t* p, uint64_t sock_fd, uint32_t xid, net_interface
     uint8_t* data = (unsigned char*)kmalloc(total_len);
     memset(data,0x0,total_len);
 
-    uint8_t ret = dhcp_write_header(iface,data,xid,DHCP_RECV_STYLE_UNICAST,0,0,info->server_ip_addr,&dhcp_options);
+    /**
+     * @note regarding the passing of info->ip_addr:
+     * it is not entirely correct for initial setup but ignored in practices and needed when rebinding
+     */
+    uint8_t ret = dhcp_write_header(iface,data,xid,DHCP_RECV_STYLE_UNICAST,0,info->ip_addr,info->server_ip_addr,&dhcp_options);
     
     kfree(msg_type);
     kfree(req_ip_addr);
@@ -291,35 +317,89 @@ uint8_t dhcp_request(process_t* p, uint64_t sock_fd, uint32_t xid, net_interface
         goto generic_fail;
     }
     kfree(data);
-    return 1;
+    return DHCP_RET_SUCCESS;
 
 generic_fail:
     kfree(data);
-    return 0;
+    return DHCP_RET_FAILURE;
 }
 
-uint8_t dhcp_await_ack(process_t* p, uint64_t sock_fd, uint32_t xid, dhcp_option_info_t* offer_info){
+dhcp_ret_code dhcp_await_ack(process_t* p, uint64_t sock_fd, uint32_t xid, dhcp_option_info_t* offer_info){
     uint8_t* recv_buf = nullptr;
     uint32_t recvd_bytes = dhcp_recv_packet(p,sock_fd,xid,&recv_buf);
-    if (!recv_buf) return nullptr;
+    if (!recv_buf) return DHCP_RET_FAILURE;
 
     dhcp_option_info_t* ack_info = dhcp_extract_options(DHCPACK,(dhcp_header_t*)(recv_buf),recvd_bytes);
-    if (!ack_info) return nullptr;
+    if (!ack_info) return DHCP_RET_FAILURE;
 
-
+    
+    
     if (ack_info->server_ip_addr != offer_info->server_ip_addr){
         warnf("Inconsistent DHCP server while requesting IP address: %x (offer) : %x (ack)", offer_info->server_ip_addr, ack_info->server_ip_addr);
     }
-
-    offer_info->ip_addr = ack_info->ip_addr; // formality
+    
+    offer_info->ip_addr = ack_info->ip_addr; 
+    offer_info->lease_time = ack_info->lease_time;
     
     if ((ack_info->router_addr != offer_info->router_addr) || (ack_info->subnet_mask != offer_info->subnet_mask) ){
         warnf("Inconsistent network information from DHCP while requesting IP address: router: %x (offer) : %x (ack), subnet: %x (offer) : %x (ack)", offer_info->router_addr, ack_info->router_addr, offer_info->subnet_mask, ack_info->subnet_mask);
     }
 
     kfree(ack_info);
-    return 1;
+    return DHCP_RET_SUCCESS;
 
+}
+
+
+dhcp_ret_code dhcp_req_ack(process_t* proc,
+                           uint64_t sock_fd, 
+                           uint32_t xid, 
+                           net_interface_t* iface, 
+                           dhcp_option_info_t* offer_info, 
+                           bool broadcast){
+
+    if( dhcp_request(proc,sock_fd,xid,iface,offer_info,broadcast) != DHCP_RET_SUCCESS){
+        errorf("Failed to send DHCP request");
+        return DHCP_RET_FAILURE;
+    }
+
+    if ( dhcp_await_ack(proc, sock_fd, xid, offer_info) != DHCP_RET_SUCCESS){
+        errorf("Failed to recieve DHCP ACK");
+        return DHCP_RET_FAILURE;
+    }
+
+    return DHCP_RET_SUCCESS;
+
+}
+
+void dhcp_configure_iface(net_interface_t* iface, dhcp_option_info_t* info ){
+    // configure the interface with the new IP address
+    iface->dhcp->ip_addr = info->ip_addr;
+    iface->dhcp->server_addr = info->server_ip_addr;
+    iface->dhcp->router_addr = info->router_addr;
+    iface->dhcp->subnet_mask = info->subnet_mask;
+    iface->dhcp->lease_end = ticks + SECS_TO_TICKS(info->lease_time);
+    iface->dhcp->renewal_timestamp = ticks + SECS_TO_TICKS(info->lease_time / 2);
+    iface->dhcp->rebind_timestamp = ticks + SECS_TO_TICKS(info->lease_time * 7 / 8);
+    iface->dhcp->state = DHCP_BOUND;
+}
+
+
+void dhcp_clean_loopback(uint32_t old_ip){
+    net_interface_t* lo = get_loopback_iface();
+    if (!lo) return;
+    arp_uncache_mac_from_iface(lo, old_ip);
+}
+
+void dhcp_configure_loopback(dhcp_option_info_t* info){
+    // have loopback just use the eth0 ip address
+    net_interface_t* lo = get_loopback_iface();
+    if (!lo) return;
+
+    lo->dhcp->ip_addr = info->ip_addr;
+    register_route(lo,info->ip_addr,0xffffffff,0);
+    lo->arp_cache_head->ip_addr = info->ip_addr;
+    arp_cache_mac_permanent_to_iface(lo,info->ip_addr,lo->mac_addr);
 }
 
 void dhcp_configure_ip(){
@@ -328,6 +408,9 @@ void dhcp_configure_ip(){
         error("Invalid process tried to configure ip");
         return;
     }
+
+    init_vector(&dhcp_ifaces_vec);
+    spinlock_init(&dhcp_ifaces_vec_lock);
     
     uint64_t sock_fd = sys_socket(curr_proc,SOCKET_INET,SOCKET_TYPE_DGRAM,IP_PROTOCOL_UDP);
 
@@ -342,7 +425,7 @@ void dhcp_configure_ip(){
         return;
     }
 
-    if (sys_bind(curr_proc,sock_fd,(sockaddr_t*)&addr,sizeof(addr)) < 0){
+    if (sys_bind(curr_proc,sock_fd,(sockaddr_t*)&addr,sizeof(addr)) == (uint64_t)SYSCALL_FAIL){
         error("Failed to bind dhcp kernel socket");
         sys_close(curr_proc,sock_fd);
         return;
@@ -350,15 +433,13 @@ void dhcp_configure_ip(){
 
     route_t* route = route_lookup(IP_BROADCAST_ADDRESS);
     if (!route){
-        error("Failed to get route for dhcp broadcast");
+        error("Failed to get route for DHCP broadcast");
         return;
     }
     
     route->iface->dhcp->state = DHCP_SELECTING;
-
-    uint32_t xid = dhcp_discover(curr_proc,sock_fd,route->iface);
-    
-    if (!xid){
+    uint32_t xid = 0;
+    if (dhcp_discover(curr_proc,sock_fd,route->iface,&xid) != DHCP_RET_SUCCESS){
         errorf("Failed to send DHCP discover");
         return;
     }
@@ -369,18 +450,14 @@ void dhcp_configure_ip(){
         return;
     }
 
-    // ah yes, using a rout to register a route (but it works)
-    register_route(route->iface,info->router_addr & info->subnet_mask, info->subnet_mask,0); // local network route
-    register_route(route->iface,0, 0,info->router_addr); // for outside of local network
+    /* ah yes, using a route to register a route (but it works) */
+    register_route(route->iface,info->router_addr & info->subnet_mask, info->subnet_mask,0); /* local network route */
+    register_route(route->iface,0, 0,info->router_addr); /* for outside of local network */
     
     route->iface->dhcp->state = DHCP_REQUESTING;
-    if( !dhcp_request(curr_proc,sock_fd,xid,route->iface,info)){
-        errorf("Failed to send DHCP request");
-        return;
-    }
-
-    if ( !dhcp_await_ack(curr_proc, sock_fd, xid, info)){
-        errorf("Failed to recieve DHCP ACK");
+    
+    if (dhcp_req_ack(curr_proc,sock_fd,xid,route->iface,info,false) != DHCP_RET_SUCCESS){
+        kfree(info);
         return;
     }
 
@@ -397,27 +474,94 @@ void dhcp_configure_ip(){
         logf("DNS %d: %x",i,info->dns_arr[i]);
     }
 
-    // configure the interface with the new IP address
-    route->iface->dhcp->ip_addr = info->ip_addr;
-    route->iface->dhcp->server = info->server_ip_addr;
-    route->iface->dhcp->xid = xid;
-    route->iface->dhcp->lease_end = ticks + info->lease_time;
-    route->iface->dhcp->renewal_timestamp = ticks + (info->lease_time / 2);
-    route->iface->dhcp->rebind_timestamp = ticks + (info->lease_time * 7 / 8);
-    route->iface->dhcp->state = DHCP_BOUND;
+    dhcp_configure_iface(route->iface,info);
+    route->iface->dhcp->sock_fd = sock_fd;
+    spinlock_acquire(&dhcp_ifaces_vec_lock);
+    vector_append(&dhcp_ifaces_vec,(vector_data_t)route->iface);
+    spinlock_release(&dhcp_ifaces_vec_lock);
 
+    // loopback gets managed through eth0 iface
+    dhcp_configure_loopback(info);
 
-    // have loopback just use the eth0 ip address
-    route_t* lo_route = route_lookup(LOOPBACK_ADDR);
-    if (!lo_route){
-        errorf("Whaaat? no loopback route?? what if I want to send myself some useless mail? preposterous!");
-        kfree(info);
-        return;
+    register_timer_callback(dhcp_lease_renewer,(info->lease_time * 1000) / 2);
+
+    kfree(info->dns_arr);
+    kfree(info);
+
+}
+
+static void dhcp_lease_renewer(){
+    unregister_timer_callback(dhcp_lease_renewer);
+    for (uint32_t i = 0; i < dhcp_ifaces_vec.size; i++){
+        net_interface_t* iface = (net_interface_t*)dhcp_ifaces_vec.data[i];
+
+        if (!(iface && iface->dhcp && iface->dhcp->state == DHCP_BOUND && ticks >= iface->dhcp->renewal_timestamp)) continue;
+
+        process_t* curr_proc = get_current_process(); /* impossible to not be root proc */
+        uint32_t xid = simple_rand_u32();
+        
+        dhcp_option_info_t old_info;
+        old_info.ip_addr = iface->dhcp->ip_addr;
+        old_info.server_ip_addr = iface->dhcp->server_addr;
+        old_info.router_addr = iface->dhcp->router_addr;
+        old_info.subnet_mask = iface->dhcp->subnet_mask;
+
+        if (ticks >= iface->dhcp->lease_end){
+            /* need full DORA procedure again*/
+            dhcp_clean_loopback(old_info.ip_addr);
+            iface->dhcp->state = DHCP_SELECTING;
+            uint32_t xid = 0;
+            if (dhcp_discover(curr_proc,iface->dhcp->sock_fd,iface,&xid) != DHCP_RET_SUCCESS){
+                errorf("Failed to send DHCP discover when renewing license for interface: %s", iface->name);
+                continue;
+            }
+        
+            dhcp_option_info_t* info = dhcp_await_offer(curr_proc,iface->dhcp->sock_fd,xid);
+            if (!info) {
+                errorf("Failed to recieve DHCP offer when renewing license for interface: %s",iface->name);
+                continue;
+            }
+            fully_update_route(iface,
+                               old_info.router_addr & old_info.subnet_mask, 
+                               old_info.subnet_mask, 
+                               info->router_addr & info->subnet_mask,
+                               info->subnet_mask,
+                               0);
+            update_or_insert_route(iface,
+                                   0,
+                                   0,
+                                   info->router_addr);
+            
+            iface->dhcp->state = DHCP_REQUESTING;
+
+            if (dhcp_req_ack(curr_proc,iface->dhcp->sock_fd,xid,iface,info,false) != DHCP_RET_SUCCESS){
+                errorf("Failed to get a new DHCP license for net interface: %s", iface->name);
+                kfree(info);
+                continue;
+            }
+
+            iface->dhcp->state = DHCP_BOUND;
+            dhcp_configure_loopback(info);
+            register_timer_callback(dhcp_lease_renewer,(info->lease_time * 1000) / 2);
+
+            kfree(info->dns_arr);
+            kfree(info);
+        }
+        else {
+            bool broadcast = ticks >= iface->dhcp->rebind_timestamp; /* when rebind -> broadcast, otherwise unicast*/
+            
+            iface->dhcp->state = DHCP_REBINDING;
+            
+            if (dhcp_req_ack(curr_proc,iface->dhcp->sock_fd,xid,iface,&old_info,broadcast) != DHCP_RET_SUCCESS){ 
+                errorf("Failed to renew DHCP license for net interface: %s",iface->name);
+                register_timer_callback(dhcp_lease_renewer,30 * 1000); /* add callback every 30 seconds until it works or we time out entirely*/
+                continue;
+            }
+
+            iface->dhcp->state = DHCP_BOUND;
+            
+            dhcp_configure_iface(iface,&old_info); 
+            register_timer_callback(dhcp_lease_renewer,(old_info.lease_time * 1000) / 2);
+        }
     }
-    net_interface_t* lo = lo_route->iface;
-    lo->dhcp->ip_addr = info->ip_addr;
-    register_route(lo,info->ip_addr,0xffffffff,0);
-    lo->arp_cache_head->ip_addr = info->ip_addr;
-    arp_cache_mac_permanent_to_iface(lo,info->ip_addr,lo->mac_addr);
-
 }
