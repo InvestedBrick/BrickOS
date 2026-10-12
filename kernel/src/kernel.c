@@ -20,6 +20,7 @@
 #include "filesystem/IPC/pipes.h"
 #include "filesystem/filesystem.h"
 #include "networking/networking.h"
+#include "tables/timer_callbacks.h"
 #include "modules/module_handler.h"
 #include "filesystem/devices/devs.h"
 #include "drivers/PS2/mouse/mouse.h"
@@ -101,6 +102,7 @@ void kmain()
     register_basic_interrupts();
 
     init_kworkers();
+    init_timer_callbacks();
     
     pci_check_all_busses();
     log("Scanned PCI busses");
