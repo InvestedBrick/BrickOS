@@ -36,4 +36,10 @@ void unregister_timer_callback(void (*callback)());
  */
 void handle_timer_callbacks();
 
+/**
+ * init_timer_callbacks:
+ * sets up the timer callback queue and its lock
+ */
+void init_timer_callbacks();
+
 #endif

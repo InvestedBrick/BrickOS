@@ -3,11 +3,19 @@
 #include "../processes/kworker.h"
 #include "../memory/kmalloc.h"
 #include "../io/log.h"
+#include "../processes/spinlocks.h"
 #include <stdint.h>
 
 timer_callback_t* timer_callback_head;
+spinlock_t timer_callback_queue_lock;
+
+void init_timer_callbacks(){
+    spinlock_init(&timer_callback_queue_lock);
+    timer_callback_head = nullptr;
+}
 
 void handle_timer_callbacks(){
+    // not alloweed to lock since function gets called from irq disabled context
     timer_callback_t* head = timer_callback_head;
     while(head){
         head->running_ticks++;
@@ -21,14 +29,15 @@ void handle_timer_callbacks(){
 }
 
 void register_timer_callback(void (*callback)(),uint32_t period_ms){
-    uint32_t f = irq_save();
-   
+    
     timer_callback_t* cb = (timer_callback_t*)kmalloc(sizeof(timer_callback_t));
     cb->callback = callback;
     cb->period_ticks = MS_TO_TICKS(period_ms);
     cb->running_ticks = 0;
     cb->next = nullptr;
     
+    uint32_t f = spinlock_acquire_irq(&timer_callback_queue_lock);
+
     if (!timer_callback_head) timer_callback_head = cb;
     else{
         timer_callback_t* prev = timer_callback_head;
@@ -36,18 +45,22 @@ void register_timer_callback(void (*callback)(),uint32_t period_ms){
         prev->next = cb;
     }
 
-    irq_restore(f);
+    spinlock_release_irq(&timer_callback_queue_lock,f);
 }
 
 void unregister_timer_callback(void (*callback)()){
-    uint32_t f = irq_save();
+    uint32_t f = spinlock_acquire_irq(&timer_callback_queue_lock);
 
-    if (!timer_callback_head) return;
+    if (!timer_callback_head) {
+        spinlock_release_irq(&timer_callback_queue_lock,f);
+        return;
+    }
 
     timer_callback_t* curr = timer_callback_head;
     if (timer_callback_head->callback == callback){
         timer_callback_head = timer_callback_head->next;
         kfree(curr);
+        spinlock_release_irq(&timer_callback_queue_lock,f);
         return;
     }
 
@@ -59,5 +72,5 @@ void unregister_timer_callback(void (*callback)()){
         kfree(to_del);
     }
 
-    irq_restore(f);
+    spinlock_release_irq(&timer_callback_queue_lock,f);
 }
