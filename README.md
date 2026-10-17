@@ -20,6 +20,7 @@ You can simply run `make run` to compile and start the OS.
 - custom filesytem that supports files of up to ~8MB
 - devices, virtual files, IPC
 - custom userspace window manager
+- custom network stack (currently: Ethernet, ARP, IPv4, UPD, DHCP, ICMP)
 
 ## Notice
 This project is still highly in development and kinda unstable, so things are not unlikely to break.
