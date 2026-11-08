@@ -13,6 +13,8 @@
 #define DNS_FLAG_QR_QUERY       0x0000u
 #define DNS_FLAG_QR_RESPONSE    0x8000u
 
+#define DNS_UDP_PORT 53
+
 /* Opcode (bits 14-11) */
 #define DNS_OPCODE_SHIFT        11
 #define DNS_OPCODE_MASK         0x7800u
@@ -34,14 +36,13 @@
 /* RCODE (bits 3-0) */
 #define DNS_RCODE_SHIFT         0
 #define DNS_RCODE_MASK          0x000fu
-#define DNS_FLAG_RCODE_NOERROR  0x0000u  /* no error */
-#define DNS_FLAG_RCODE_FORMERR  0x0001u  /* format error */
-#define DNS_FLAG_RCODE_SERVFAIL 0x0002u  /* server failure */
-#define DNS_FLAG_RCODE_NXDOMAIN 0x0003u  /* name does not exist */
-#define DNS_FLAG_RCODE_NOTIMP   0x0004u  /* not implemented */
-#define DNS_FLAG_RCODE_REFUSED  0x0005u  /* query refused */
+#define DNS_FLAG_RCODE_NOERROR  0x0000u
+#define DNS_FLAG_RCODE_FORMERR  0x0001u
+#define DNS_FLAG_RCODE_SERVFAIL 0x0002u
+#define DNS_FLAG_RCODE_NXDOMAIN 0x0003u
+#define DNS_FLAG_RCODE_NOTIMP   0x0004u
+#define DNS_FLAG_RCODE_REFUSED  0x0005u
 
-/* Helpers for reading fields from a host-order flags value */
 #define DNS_FLAGS_IS_RESPONSE(f)  (((f) & DNS_FLAG_QR_RESPONSE) != 0)
 #define DNS_FLAGS_OPCODE(f)       (((f) & DNS_OPCODE_MASK) >> DNS_OPCODE_SHIFT)
 #define DNS_FLAGS_RCODE(f)        ((f) & DNS_RCODE_MASK)
@@ -98,4 +99,9 @@ typedef struct {
     uint32_t rdata;
 } __attribute__((packed)) dns_rr_tail;
 
+/**
+ * dns_init:
+ * Creates and binds the kernel Domain Name System socket
+ */
+void dns_init();
 #endif /* INCLUDE_DNS_H */
