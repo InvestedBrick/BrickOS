@@ -382,6 +382,7 @@ void dhcp_configure_iface(net_interface_t* iface, dhcp_option_info_t* info ){
     iface->dhcp->renewal_timestamp = ticks + SECS_TO_TICKS(info->lease_time / 2);
     iface->dhcp->rebind_timestamp = ticks + SECS_TO_TICKS(info->lease_time * 7 / 8);
     iface->dhcp->state = DHCP_BOUND;
+    if (info->dns_cnt > 0 && info->dns_arr) iface->dns_server_ip = info->dns_arr[0];
 }
 
 
@@ -415,7 +416,7 @@ void dhcp_configure_ip(){
     uint64_t sock_fd = sys_socket(curr_proc,SOCKET_INET,SOCKET_TYPE_DGRAM,IP_PROTOCOL_UDP);
 
     in_sockaddr_t addr;
-    addr.inet_family = INADDR_ANY;
+    addr.inet_addr = INADDR_ANY;
     addr.inet_family = INET_FAM_IPv4;
     addr.inet_port = DHCP_CLIENT_PORT;
     
