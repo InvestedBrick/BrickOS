@@ -32,6 +32,7 @@ typedef struct net_interface {
     uint8_t mac_addr[6];
     
     dhcp_client_t* dhcp;
+    uint32_t dns_server_ip;
     
     uint32_t mtu;
     

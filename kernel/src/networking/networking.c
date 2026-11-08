@@ -12,6 +12,7 @@
 #include "../tables/timer_callbacks.h"
 #include <stdbool.h>
 #include "../processes/spinlocks.h"
+#include "dns.h"
 
 routing_table_t routing_table;
 spinlock_t routing_table_lock;
@@ -218,4 +219,5 @@ uint16_t compute_udp_checksum(udp_header_t* udp_hdr, pseudo_ip_hdr_t* pseudo_ip_
 
 void finish_up_networking(){
     enqueue_kernel_work(dhcp_configure_ip,nullptr);
+    enqueue_kernel_work(dns_init,nullptr);
 }
