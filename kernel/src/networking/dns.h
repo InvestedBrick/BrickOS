@@ -14,6 +14,8 @@
 #define DNS_FLAG_QR_RESPONSE    0x8000u
 
 #define DNS_UDP_PORT 53
+#define DNS_MAX_LABEL_LEN 63
+#define DNS_MAX_DOMAIN_NAME_LEN 255
 
 /* Opcode (bits 14-11) */
 #define DNS_OPCODE_SHIFT        11
@@ -98,6 +100,11 @@ typedef struct {
     uint16_t rdlen;
     uint32_t rdata;
 } __attribute__((packed)) dns_rr_tail;
+
+typedef enum {
+    DNS_RET_SUCCESS,
+    DNS_RET_FAILURE
+}dns_ret_code_e;
 
 /**
  * dns_init:
